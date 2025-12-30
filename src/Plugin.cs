@@ -11,7 +11,7 @@ namespace ToasterReskinLoader;
 public class Plugin : IPuckMod
 {
     public static string MOD_NAME = "ToasterReskinLoader";
-    public static string MOD_VERSION = "1.0.1";
+    public static string MOD_VERSION = "1.0.2";
     public static string MOD_GUID = "pw.stellaric.toaster.reskinloader";
 
     static readonly Harmony harmony = new Harmony(MOD_GUID);
@@ -94,7 +94,7 @@ public class Plugin : IPuckMod
     {
         var allPatchedMethods = harmony.GetPatchedMethods();
         var pluginId  = harmony.Id;
-
+        
         var mine = allPatchedMethods
             .Select(m => new { method = m, info = Harmony.GetPatchInfo(m) })
             .Where(x =>

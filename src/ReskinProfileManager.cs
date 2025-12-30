@@ -167,27 +167,27 @@ public static class ReskinProfileManager
             currentProfile = new Profile
             {
                 // Sticks
-                stickAttackerBluePersonal = FindEntryFromReference(serializableProfile?.StickAttackerBluePersonalRef),
-                stickAttackerRedPersonal = FindEntryFromReference(serializableProfile?.StickAttackerRedPersonalRef),
-                stickAttackerBlue = FindEntryFromReference(serializableProfile?.StickAttackerBlueRef),
-                stickAttackerRed = FindEntryFromReference(serializableProfile?.StickAttackerRedRef),
-                stickGoalieBluePersonal = FindEntryFromReference(serializableProfile?.StickGoalieBluePersonalRef),
-                stickGoalieRedPersonal = FindEntryFromReference(serializableProfile?.StickGoalieRedPersonalRef),
-                stickGoalieBlue = FindEntryFromReference(serializableProfile?.StickGoalieBlueRef),
-                stickGoalieRed = FindEntryFromReference(serializableProfile?.StickGoalieRedRef),
+                stickAttackerBluePersonal = FindEntryFromReference(serializableProfile?.StickAttackerBluePersonalRef, "stick_attacker"),
+                stickAttackerRedPersonal = FindEntryFromReference(serializableProfile?.StickAttackerRedPersonalRef, "stick_attacker"),
+                stickAttackerBlue = FindEntryFromReference(serializableProfile?.StickAttackerBlueRef, "stick_attacker"),
+                stickAttackerRed = FindEntryFromReference(serializableProfile?.StickAttackerRedRef, "stick_attacker"),
+                stickGoalieBluePersonal = FindEntryFromReference(serializableProfile?.StickGoalieBluePersonalRef, "stick_goalie"),
+                stickGoalieRedPersonal = FindEntryFromReference(serializableProfile?.StickGoalieRedPersonalRef, "stick_goalie"),
+                stickGoalieBlue = FindEntryFromReference(serializableProfile?.StickGoalieBlueRef, "stick_goalie"),
+                stickGoalieRed = FindEntryFromReference(serializableProfile?.StickGoalieRedRef, "stick_goalie"),
                 
                 // Jerseys
-                blueSkaterTorso = FindEntryFromReference(serializableProfile?.BlueSkaterTorsoRef),
-                blueSkaterGroin = FindEntryFromReference(serializableProfile?.BlueSkaterGroinRef),
-                blueGoalieTorso = FindEntryFromReference(serializableProfile?.BlueGoalieTorsoRef),
-                blueGoalieGroin = FindEntryFromReference(serializableProfile?.BlueGoalieGroinRef),
-                redSkaterTorso = FindEntryFromReference(serializableProfile?.RedSkaterTorsoRef),
-                redSkaterGroin = FindEntryFromReference(serializableProfile?.RedSkaterGroinRef),
-                redGoalieTorso = FindEntryFromReference(serializableProfile?.RedGoalieTorsoRef),
-                redGoalieGroin = FindEntryFromReference(serializableProfile?.RedGoalieGroinRef),
+                blueSkaterTorso = FindEntryFromReference(serializableProfile?.BlueSkaterTorsoRef, "jersey_torso"),
+                blueSkaterGroin = FindEntryFromReference(serializableProfile?.BlueSkaterGroinRef, "jersey_groin"),
+                blueGoalieTorso = FindEntryFromReference(serializableProfile?.BlueGoalieTorsoRef, "jersey_torso"),
+                blueGoalieGroin = FindEntryFromReference(serializableProfile?.BlueGoalieGroinRef, "jersey_groin"),
+                redSkaterTorso = FindEntryFromReference(serializableProfile?.RedSkaterTorsoRef, "jersey_torso"),
+                redSkaterGroin = FindEntryFromReference(serializableProfile?.RedSkaterGroinRef, "jersey_groin"),
+                redGoalieTorso = FindEntryFromReference(serializableProfile?.RedGoalieTorsoRef, "jersey_torso"),
+                redGoalieGroin = FindEntryFromReference(serializableProfile?.RedGoalieGroinRef, "jersey_groin"),
                 
                 // Puck
-                puck = FindEntryFromReference(serializableProfile?.PuckRef),
+                puck = FindEntryFromReference(serializableProfile?.PuckRef, "puck"),
 
                 // Arena
                 // Use the ?? (null-coalescing) operator. If the loaded value is null, use the default.
@@ -199,7 +199,7 @@ public static class ReskinProfileManager
                                 ?? defaultProfile.glassEnabled,
                 scoreboardEnabled = serializableProfile.ScoreboardEnabled
                                 ?? defaultProfile.scoreboardEnabled,
-                ice = FindEntryFromReference(serializableProfile.IceRef),
+                ice = FindEntryFromReference(serializableProfile.IceRef, "rink_ice"),
                 iceSmoothness = serializableProfile.IceSmoothness
                     ?? defaultProfile.iceSmoothness,
 
@@ -221,7 +221,7 @@ public static class ReskinProfileManager
                     ? (Color)serializableProfile.PillarsColor
                     : defaultProfile.pillarsColor,
                 spectatorDensity =  serializableProfile.SpectatorDensity ?? defaultProfile.spectatorDensity,
-                net = FindEntryFromReference(serializableProfile?.NetRef),
+                net = FindEntryFromReference(serializableProfile?.NetRef, "net"),
 
                 // Skybox
                 skyboxAtmosphereThickness =
@@ -389,7 +389,7 @@ public static class ReskinProfileManager
     /// Finds a live ReskinEntry from the registry based on a reference.
     /// Returns null if the pack or entry is no longer installed.
     /// </summary>
-    private static ReskinRegistry.ReskinEntry FindEntryFromReference(ReskinReference reference)
+    private static ReskinRegistry.ReskinEntry FindEntryFromReference(ReskinReference reference, string type)
     {
         if (reference == null || string.IsNullOrEmpty(reference.PackId))
         {
@@ -414,7 +414,8 @@ public static class ReskinProfileManager
         }
 
         // Find the entry within that pack with the matching name
-        var entry = pack.Reskins.FirstOrDefault(e => e.Name == reference.EntryName);
+		// TODO the pack reference not saving reskinType with the ref is causing problems looking up
+        var entry = pack.Reskins.FirstOrDefault(e => e.Name == reference.EntryName && e.Type == type);
         if (entry == null)
         {
             Plugin.LogWarning($"Could not find reskin entry named '{reference.EntryName}' in pack '{pack.Name}'. The entry may have been removed from the pack.");

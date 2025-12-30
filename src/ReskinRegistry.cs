@@ -13,8 +13,8 @@ namespace ToasterReskinLoader;
 public static class ReskinRegistry
 {
     public static List<ReskinPack> reskinPacks = new List<ReskinPack>();
-    public readonly static List<string> ReskinTypes =
-        new List<string>{"stick_attacker", "stick_goalie", "net", "puck", "rink_ice", "jersey_torso", "jersey_groin" }; // , "arena"
+    private static readonly List<string> ReskinTypes =
+        new List<string>{ "stick_attacker", "stick_goalie", "net", "puck", "rink_ice", "jersey_torso", "jersey_groin" }; // , "arena"
 
     public static void ReloadPacks()
     {
