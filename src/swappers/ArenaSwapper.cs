@@ -329,8 +329,6 @@ public static class ArenaSwapper
     {
         try
         {
-            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "changing_room") return; // Do not do anything if in changing room
-            
             // middle
             GameObject barrierGameObject = GameObject.Find("Barrier");
 

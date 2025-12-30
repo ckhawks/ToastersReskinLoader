@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using HarmonyLib;
 using UnityEngine.SceneManagement;
+using ToasterReskinLoader.swappers;
+
 
 namespace ToasterReskinLoader.swappers;
 
@@ -40,7 +42,15 @@ public static class SwapperManager
                 SetStickReskinForPlayer(redPlayer);
         }
     }
+    public static void OnBlueHelmetsChanged()
+    {
+        GoalieHelmetSwapper.OnBlueHelmetsChanged();
+    }
 
+    public static void OnRedHelmetsChanged()
+    {
+        GoalieHelmetSwapper.OnRedHelmetsChanged();
+    }
     private static void SetStickReskinForPlayer(Player player)
     {
         // If we are missing a part of the player, player body, or stick
@@ -142,6 +152,8 @@ public static class SwapperManager
         public static void Postfix(PlayerBodyV2 __instance)
         {
             JerseySwapper.SetJerseyForPlayer(__instance.Player);
+            GoalieEquipmentSwapper.SetLegPadsForPlayer(__instance.Player);
+            GoalieHelmetSwapper.SetHelmetForPlayer(__instance.Player);                      
         }
     }
 
@@ -160,6 +172,10 @@ public static class SwapperManager
     public static void Setup()
     {
         global::UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+        FullArenaSwapper.Initialize();
+        // Регистрируем патчи для Changing Room
+        var harmony = new Harmony("com.toaster.reskinloader");
+        harmony.PatchAll(typeof(ChangingRoomPatcher));
     }
 
     public static void Destroy()
@@ -214,6 +230,16 @@ public static class SwapperManager
     }
     // TODO add to when players spawn to call these
 
+    public static void OnBlueLegPadsChanged()
+    {
+    GoalieEquipmentSwapper.OnBlueLegPadsChanged();
+    }
+
+    public static void OnRedLegPadsChanged()
+    {
+    GoalieEquipmentSwapper.OnRedLegPadsChanged();
+    }
+
     public static void SetAll()
     {
         if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "changing_room")
@@ -230,6 +256,14 @@ public static class SwapperManager
             ArenaSwapper.SetNetTexture();
             OnBlueJerseyChanged();
             OnRedJerseyChanged();
+            OnBlueLegPadsChanged();
+            OnRedLegPadsChanged();   
+            OnBlueHelmetsChanged();
+            OnRedHelmetsChanged();        
+            if (ReskinProfileManager.currentProfile.fullArenaEnabled)
+            {
+                FullArenaSwapper.ApplyFromProfile();
+            }
             SkyboxSwapper.UpdateSkybox();
         }
     }

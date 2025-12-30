@@ -104,7 +104,43 @@ public static class ReskinProfileManager
                     SwapperManager.OnRedJerseyChanged();
                     break;
             }
+        }   
+        else if (type == "legpad")
+        {
+            switch (slot)
+            {
+               case "blue_left":
+                   currentProfile.blueLegPadLeft = reskinEntry;
+                   GoalieEquipmentSwapper.OnBlueLegPadsChanged();
+                   break;
+               case "blue_right":
+                   currentProfile.blueLegPadRight = reskinEntry;
+                   GoalieEquipmentSwapper.OnBlueLegPadsChanged();
+                   break;
+               case "red_left":
+                   currentProfile.redLegPadLeft = reskinEntry;
+                   GoalieEquipmentSwapper.OnRedLegPadsChanged();
+                   break;
+               case "red_right":
+                   currentProfile.redLegPadRight = reskinEntry;
+                   GoalieEquipmentSwapper.OnRedLegPadsChanged();
+                   break;
+            }
         }
+        else if (type == "goalie_helmet")
+        {
+            switch (slot)
+            {
+                case "blue":
+                    currentProfile.blueGoalieHelmet = reskinEntry;
+                    GoalieHelmetSwapper.OnBlueHelmetsChanged();
+                    break;
+                case "red":
+                    currentProfile.redGoalieHelmet = reskinEntry;
+                    GoalieHelmetSwapper.OnRedHelmetsChanged();
+                    break;
+            }
+        }       
         else if (type == "rink_ice")
         {
             // We aren't using slot here
@@ -167,30 +203,44 @@ public static class ReskinProfileManager
             currentProfile = new Profile
             {
                 // Sticks
-                stickAttackerBluePersonal = FindEntryFromReference(serializableProfile?.StickAttackerBluePersonalRef, "stick_attacker"),
-                stickAttackerRedPersonal = FindEntryFromReference(serializableProfile?.StickAttackerRedPersonalRef, "stick_attacker"),
-                stickAttackerBlue = FindEntryFromReference(serializableProfile?.StickAttackerBlueRef, "stick_attacker"),
-                stickAttackerRed = FindEntryFromReference(serializableProfile?.StickAttackerRedRef, "stick_attacker"),
-                stickGoalieBluePersonal = FindEntryFromReference(serializableProfile?.StickGoalieBluePersonalRef, "stick_goalie"),
-                stickGoalieRedPersonal = FindEntryFromReference(serializableProfile?.StickGoalieRedPersonalRef, "stick_goalie"),
-                stickGoalieBlue = FindEntryFromReference(serializableProfile?.StickGoalieBlueRef, "stick_goalie"),
-                stickGoalieRed = FindEntryFromReference(serializableProfile?.StickGoalieRedRef, "stick_goalie"),
+                stickAttackerBluePersonal = FindEntryFromReference(serializableProfile?.StickAttackerBluePersonalRef),
+                stickAttackerRedPersonal = FindEntryFromReference(serializableProfile?.StickAttackerRedPersonalRef),
+                stickAttackerBlue = FindEntryFromReference(serializableProfile?.StickAttackerBlueRef),
+                stickAttackerRed = FindEntryFromReference(serializableProfile?.StickAttackerRedRef),
+                stickGoalieBluePersonal = FindEntryFromReference(serializableProfile?.StickGoalieBluePersonalRef),
+                stickGoalieRedPersonal = FindEntryFromReference(serializableProfile?.StickGoalieRedPersonalRef),
+                stickGoalieBlue = FindEntryFromReference(serializableProfile?.StickGoalieBlueRef),
+                stickGoalieRed = FindEntryFromReference(serializableProfile?.StickGoalieRedRef),
                 
                 // Jerseys
-                blueSkaterTorso = FindEntryFromReference(serializableProfile?.BlueSkaterTorsoRef, "jersey_torso"),
-                blueSkaterGroin = FindEntryFromReference(serializableProfile?.BlueSkaterGroinRef, "jersey_groin"),
-                blueGoalieTorso = FindEntryFromReference(serializableProfile?.BlueGoalieTorsoRef, "jersey_torso"),
-                blueGoalieGroin = FindEntryFromReference(serializableProfile?.BlueGoalieGroinRef, "jersey_groin"),
-                redSkaterTorso = FindEntryFromReference(serializableProfile?.RedSkaterTorsoRef, "jersey_torso"),
-                redSkaterGroin = FindEntryFromReference(serializableProfile?.RedSkaterGroinRef, "jersey_groin"),
-                redGoalieTorso = FindEntryFromReference(serializableProfile?.RedGoalieTorsoRef, "jersey_torso"),
-                redGoalieGroin = FindEntryFromReference(serializableProfile?.RedGoalieGroinRef, "jersey_groin"),
-                
+                blueSkaterTorso = FindEntryFromReference(serializableProfile?.BlueSkaterTorsoRef),
+                blueSkaterGroin = FindEntryFromReference(serializableProfile?.BlueSkaterGroinRef),
+                blueGoalieTorso = FindEntryFromReference(serializableProfile?.BlueGoalieTorsoRef),
+                blueGoalieGroin = FindEntryFromReference(serializableProfile?.BlueGoalieGroinRef),
+                redSkaterTorso = FindEntryFromReference(serializableProfile?.RedSkaterTorsoRef),
+                redSkaterGroin = FindEntryFromReference(serializableProfile?.RedSkaterGroinRef),
+                redGoalieTorso = FindEntryFromReference(serializableProfile?.RedGoalieTorsoRef),
+                redGoalieGroin = FindEntryFromReference(serializableProfile?.RedGoalieGroinRef),
+
+                blueLegPadLeft = FindEntryFromReference(serializableProfile?.BlueLegPadLeftRef),
+                blueLegPadRight = FindEntryFromReference(serializableProfile?.BlueLegPadRightRef),
+                redLegPadLeft = FindEntryFromReference(serializableProfile?.RedLegPadLeftRef),
+                redLegPadRight = FindEntryFromReference(serializableProfile?.RedLegPadRightRef),
+                blueGoalieHelmet = FindEntryFromReference(serializableProfile?.BlueGoalieHelmetRef),
+                redGoalieHelmet = FindEntryFromReference(serializableProfile?.RedGoalieHelmetRef),
                 // Puck
-                puck = FindEntryFromReference(serializableProfile?.PuckRef, "puck"),
+                puck = FindEntryFromReference(serializableProfile?.PuckRef),
 
                 // Arena
                 // Use the ?? (null-coalescing) operator. If the loaded value is null, use the default.
+                fullArenaEnabled = serializableProfile.FullArenaEnabled 
+                    ?? defaultProfile.fullArenaEnabled,
+                fullArenaBundle = serializableProfile.FullArenaBundle 
+                    ?? defaultProfile.fullArenaBundle,
+                fullArenaPrefab = serializableProfile.FullArenaPrefab 
+                    ?? defaultProfile.fullArenaPrefab,
+                fullArenaWorkshopId = serializableProfile.FullArenaWorkshopId 
+                    ?? defaultProfile.fullArenaWorkshopId,
                 crowdEnabled = serializableProfile.CrowdEnabled
                     ?? defaultProfile.crowdEnabled,
                 hangarEnabled = serializableProfile.HangarEnabled
@@ -199,7 +249,7 @@ public static class ReskinProfileManager
                                 ?? defaultProfile.glassEnabled,
                 scoreboardEnabled = serializableProfile.ScoreboardEnabled
                                 ?? defaultProfile.scoreboardEnabled,
-                ice = FindEntryFromReference(serializableProfile.IceRef, "rink_ice"),
+                ice = FindEntryFromReference(serializableProfile.IceRef),
                 iceSmoothness = serializableProfile.IceSmoothness
                     ?? defaultProfile.iceSmoothness,
 
@@ -221,7 +271,7 @@ public static class ReskinProfileManager
                     ? (Color)serializableProfile.PillarsColor
                     : defaultProfile.pillarsColor,
                 spectatorDensity =  serializableProfile.SpectatorDensity ?? defaultProfile.spectatorDensity,
-                net = FindEntryFromReference(serializableProfile?.NetRef, "net"),
+                net = FindEntryFromReference(serializableProfile?.NetRef),
 
                 // Skybox
                 skyboxAtmosphereThickness =
@@ -271,6 +321,7 @@ public static class ReskinProfileManager
                 StickGoalieRedPersonalRef = CreateReferenceFromEntry(currentProfile.stickGoalieRedPersonal),
                 StickGoalieBlueRef = CreateReferenceFromEntry(currentProfile.stickGoalieBlue),
                 StickGoalieRedRef = CreateReferenceFromEntry(currentProfile.stickGoalieRed),
+            
 
                 // Jerseys
                 BlueSkaterTorsoRef = CreateReferenceFromEntry(currentProfile.blueSkaterTorso),
@@ -282,10 +333,20 @@ public static class ReskinProfileManager
                 RedGoalieTorsoRef = CreateReferenceFromEntry(currentProfile.redGoalieTorso),
                 RedGoalieGroinRef = CreateReferenceFromEntry(currentProfile.redGoalieGroin),
                 
+                BlueLegPadLeftRef = CreateReferenceFromEntry(currentProfile.blueLegPadLeft),
+                BlueLegPadRightRef = CreateReferenceFromEntry(currentProfile.blueLegPadRight),
+                RedLegPadLeftRef = CreateReferenceFromEntry(currentProfile.redLegPadLeft),
+                RedLegPadRightRef = CreateReferenceFromEntry(currentProfile.redLegPadRight),    
+                BlueGoalieHelmetRef = CreateReferenceFromEntry(currentProfile.blueGoalieHelmet),
+                RedGoalieHelmetRef = CreateReferenceFromEntry(currentProfile.redGoalieHelmet),
                 // Puck
                 PuckRef = CreateReferenceFromEntry(currentProfile.puck),
 
                 // Arena
+                FullArenaEnabled = currentProfile.fullArenaEnabled,
+                FullArenaBundle = currentProfile.fullArenaBundle,
+                FullArenaPrefab = currentProfile.fullArenaPrefab,
+                FullArenaWorkshopId = currentProfile.fullArenaWorkshopId,
                 CrowdEnabled = currentProfile.crowdEnabled,
                 HangarEnabled = currentProfile.hangarEnabled,
                 ScoreboardEnabled = currentProfile.scoreboardEnabled,
@@ -370,7 +431,12 @@ public static class ReskinProfileManager
         if (currentProfile.ice != null) activeList.Add(currentProfile.ice);
         if (currentProfile.puck != null) activeList.Add(currentProfile.puck);
         if (currentProfile.net != null) activeList.Add(currentProfile.net);
-        
+        if (currentProfile.blueLegPadLeft != null) activeList.Add(currentProfile.blueLegPadLeft);
+        if (currentProfile.blueLegPadRight != null) activeList.Add(currentProfile.blueLegPadRight);
+        if (currentProfile.redLegPadLeft != null) activeList.Add(currentProfile.redLegPadLeft);
+        if (currentProfile.redLegPadRight != null) activeList.Add(currentProfile.redLegPadRight);
+        if (currentProfile.blueGoalieHelmet != null) activeList.Add(currentProfile.blueGoalieHelmet);
+        if (currentProfile.redGoalieHelmet != null) activeList.Add(currentProfile.redGoalieHelmet);
         if (currentProfile.blueSkaterTorso != null) activeList.Add(currentProfile.blueSkaterTorso);
         if (currentProfile.blueSkaterGroin != null) activeList.Add(currentProfile.blueSkaterGroin);
         if (currentProfile.blueGoalieTorso != null) activeList.Add(currentProfile.blueGoalieTorso);
@@ -389,7 +455,7 @@ public static class ReskinProfileManager
     /// Finds a live ReskinEntry from the registry based on a reference.
     /// Returns null if the pack or entry is no longer installed.
     /// </summary>
-    private static ReskinRegistry.ReskinEntry FindEntryFromReference(ReskinReference reference, string type)
+    private static ReskinRegistry.ReskinEntry FindEntryFromReference(ReskinReference reference)
     {
         if (reference == null || string.IsNullOrEmpty(reference.PackId))
         {
@@ -414,8 +480,7 @@ public static class ReskinProfileManager
         }
 
         // Find the entry within that pack with the matching name
-		// TODO the pack reference not saving reskinType with the ref is causing problems looking up
-        var entry = pack.Reskins.FirstOrDefault(e => e.Name == reference.EntryName && e.Type == type);
+        var entry = pack.Reskins.FirstOrDefault(e => e.Name == reference.EntryName);
         if (entry == null)
         {
             Plugin.LogWarning($"Could not find reskin entry named '{reference.EntryName}' in pack '{pack.Name}'. The entry may have been removed from the pack.");
@@ -491,11 +556,21 @@ public static class ReskinProfileManager
         public ReskinRegistry.ReskinEntry  redSkaterGroin;
         public ReskinRegistry.ReskinEntry  redGoalieTorso;
         public ReskinRegistry.ReskinEntry  redGoalieGroin;
-        
+        public ReskinRegistry.ReskinEntry blueLegPadLeft;
+        public ReskinRegistry.ReskinEntry blueLegPadRight;
+        public ReskinRegistry.ReskinEntry redLegPadLeft;
+        public ReskinRegistry.ReskinEntry redLegPadRight;
+        public ReskinRegistry.ReskinEntry blueGoalieHelmet;
+        public ReskinRegistry.ReskinEntry redGoalieHelmet;
+
         // Puck section
         public ReskinRegistry.ReskinEntry puck;
         
         // Arena section
+        public bool fullArenaEnabled = false;
+        public string fullArenaBundle = "";
+        public string fullArenaPrefab = "Arena";
+        public string fullArenaWorkshopId = ""; 
         public bool crowdEnabled = true;
         public bool hangarEnabled = true;
         public bool glassEnabled = true;
@@ -551,7 +626,7 @@ public static class ReskinProfileManager
         public ReskinReference StickAttackerRedRef { get; set; }
         [JsonProperty("stickAttackerRedPersonalRef")]
         public ReskinReference StickAttackerRedPersonalRef { get; set; }
-
+  
         [JsonProperty("stickGoalieBlueRef")]
         public ReskinReference StickGoalieBlueRef { get; set; }
         [JsonProperty("stickGoalieBluePersonalRef")]
@@ -560,7 +635,13 @@ public static class ReskinProfileManager
         public ReskinReference StickGoalieRedRef { get; set; }
         [JsonProperty("stickGoalieRedPersonalRef")]
         public ReskinReference StickGoalieRedPersonalRef { get; set; }
-        
+
+        [JsonProperty("blueGoalieHelmetRef")]
+        public ReskinReference BlueGoalieHelmetRef { get; set; }
+    
+        [JsonProperty("redGoalieHelmetRef")]
+        public ReskinReference RedGoalieHelmetRef { get; set; }
+
         [JsonProperty("blueSkaterTorsoRef")]
         public ReskinReference BlueSkaterTorsoRef { get; set; }
         [JsonProperty("blueSkaterGroinRef")]
@@ -578,7 +659,25 @@ public static class ReskinProfileManager
         [JsonProperty("redGoalieGroinRef")]
         public ReskinReference RedGoalieGroinRef { get; set; }
         
+        [JsonProperty("blueLegPadLeftRef")]
+        public ReskinReference BlueLegPadLeftRef { get; set; }
+        [JsonProperty("blueLegPadRightRef")]
+        public ReskinReference BlueLegPadRightRef { get; set; }
+        [JsonProperty("redLegPadLeftRef")]
+        public ReskinReference RedLegPadLeftRef { get; set; }
+        [JsonProperty("redLegPadRightRef")]
+        public ReskinReference RedLegPadRightRef { get; set; }    
         // ARENA
+        [JsonProperty("fullArenaEnabled")]
+        public bool? FullArenaEnabled { get; set; }
+    
+        [JsonProperty("fullArenaBundle")]
+        public string FullArenaBundle { get; set; }
+    
+        [JsonProperty("fullArenaPrefab")]
+            public string FullArenaPrefab { get; set; }
+        [JsonProperty("fullArenaWorkshopId")]
+            public string FullArenaWorkshopId { get; set; }
         [JsonProperty("crowdEnabled")]
         public bool? CrowdEnabled { get; set; }
         [JsonProperty("scoreboardEnabled")]

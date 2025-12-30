@@ -15,6 +15,7 @@ public static class SticksSection
         
         contentScrollViewContent.schedule.Execute(showStick).ExecuteLater(2);
         
+
         Label monetizationDisclaimer = new Label(
             "<size=14>Please support the developer, GAFURIX, by subscribing to the Puck Patreon and purchasing the in-game cosmetics. Please do not use Toaster's Reskin Loader as a way to circumvent supporting the game's developer.</size><br>");
         monetizationDisclaimer.style.color = Color.white;
