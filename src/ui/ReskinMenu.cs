@@ -22,8 +22,6 @@ public static class ReskinMenu
     public static ScrollView sidebarScrollView;
     public static VisualElement contentScrollViewContent;
     
-    
-    
     // menu state
     public static string[] sections = new []{"Packs", "Sticks", "Jerseys", "Goalie Equipment", "Goalie Helmets", "Pucks", "Arena", "Full Arena", "Skybox", "About" };
     // "Sounds", "Other"

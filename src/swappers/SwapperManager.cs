@@ -51,6 +51,7 @@ public static class SwapperManager
     {
         GoalieHelmetSwapper.OnRedHelmetsChanged();
     }
+    
     private static void SetStickReskinForPlayer(Player player)
     {
         // If we are missing a part of the player, player body, or stick
@@ -173,9 +174,9 @@ public static class SwapperManager
     {
         global::UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
         FullArenaSwapper.Initialize();
-        // Регистрируем патчи для Changing Room
-        var harmony = new Harmony("com.toaster.reskinloader");
-        harmony.PatchAll(typeof(ChangingRoomPatcher));
+        // // We register patches for Changing Room
+        // var harmony = new Harmony("com.toaster.reskinloader");
+        // harmony.PatchAll(typeof(ChangingRoomPatcher));
     }
 
     public static void Destroy()
@@ -260,10 +261,7 @@ public static class SwapperManager
             OnRedLegPadsChanged();   
             OnBlueHelmetsChanged();
             OnRedHelmetsChanged();        
-            if (ReskinProfileManager.currentProfile.fullArenaEnabled)
-            {
-                FullArenaSwapper.ApplyFromProfile();
-            }
+            FullArenaSwapper.ApplyFromProfile();
             SkyboxSwapper.UpdateSkybox();
         }
     }

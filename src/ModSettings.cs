@@ -6,7 +6,6 @@ namespace ToasterReskinLoader;
 public class ModSettings
 {
     public bool DebugLoggingModeEnabled { get; set; } = false;
-    public bool InfiniteStaminaEnabled { get; set; } = false;  // Новая настройка
 
     static string ConfigurationFileName = $"{Plugin.MOD_NAME}.json";
 
@@ -15,6 +14,7 @@ public class ModSettings
         var path = GetConfigPath();
         var dir = Path.GetDirectoryName(path);
 
+        // Make sure config/ directory exists
         if (!Directory.Exists(dir))
         {
             Directory.CreateDirectory(dir);

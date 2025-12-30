@@ -155,6 +155,7 @@ public static class ArenaSection
         iceSmoothnessSlider.RegisterCallback<ChangeEvent<float>>(evt =>
         {
             ReskinProfileManager.currentProfile.iceSmoothness = evt.newValue;
+            ReskinProfileManager.SaveProfile();
             IceSwapper.UpdateIceSmoothness();
         });
         iceSmoothnessSlider.RegisterCallback<PointerUpEvent>(evt =>
@@ -174,6 +175,7 @@ public static class ArenaSection
             {
                 ReskinProfileManager.currentProfile.boardsBorderTopColor =
                     newColor;
+                ReskinProfileManager.SaveProfile();
                 ArenaSwapper.UpdateBoards();
             },
             () => { ReskinProfileManager.SaveProfile(); }
@@ -189,6 +191,7 @@ public static class ArenaSection
             {
                 ReskinProfileManager.currentProfile.boardsMiddleColor =
                     newColor;
+                ReskinProfileManager.SaveProfile();
                 ArenaSwapper.UpdateBoards();
             },
             () => { ReskinProfileManager.SaveProfile(); }
@@ -203,6 +206,7 @@ public static class ArenaSection
             {
                 ReskinProfileManager.currentProfile.boardsBorderBottomColor =
                     newColor;
+                ReskinProfileManager.SaveProfile();
                 ArenaSwapper.UpdateBoards();
             },
             () => { ReskinProfileManager.SaveProfile(); }
@@ -217,6 +221,7 @@ public static class ArenaSection
             {
                 ReskinProfileManager.currentProfile.pillarsColor =
                     newColor;
+                ReskinProfileManager.SaveProfile();
                 ArenaSwapper.UpdateGlassAndPillars();
             },
             () => { ReskinProfileManager.SaveProfile(); }
@@ -230,6 +235,7 @@ public static class ArenaSection
         glassSmoothnessSlider.RegisterCallback<ChangeEvent<float>>(evt =>
         {
             ReskinProfileManager.currentProfile.glassSmoothness = evt.newValue;
+            ReskinProfileManager.SaveProfile();
             ArenaSwapper.UpdateGlassAndPillars();
         });
         glassSmoothnessSlider.RegisterCallback<PointerUpEvent>(evt =>
@@ -239,7 +245,6 @@ public static class ArenaSection
 
         glassSmoothnessRow.Add(glassSmoothnessSlider);
         contentScrollViewContent.Add(glassSmoothnessRow);
-        
         
         // GOAL NET
         List<ReskinRegistry.ReskinEntry> netReskins = ReskinRegistry.GetReskinEntriesByType("net");
@@ -283,7 +288,6 @@ public static class ArenaSection
                 spectatorDensitySlider.SetEnabled(false);
                 spectatorDensitySlider.style.opacity = 0.5f;
             }
-            
         }
     }
 }
