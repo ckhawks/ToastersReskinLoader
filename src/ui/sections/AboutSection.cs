@@ -8,7 +8,7 @@ public static class AboutSection
     public static void CreateSection(VisualElement contentScrollViewContent)
     {
         Label description = new Label();
-        description.text = $"Version: {Plugin.MOD_VERSION}<br><br>This mod was made by <b>Toaster (Stellaric)</b>.\n\nIf you need support or have questions about the mod, you can join the Toaster's Rink Discord.";
+        description.text = $"Version: {Plugin.MOD_VERSION}<br><br>This mod was made by <b>Toaster (Stellaric)</b>, with contributions from Banix.\n\nIf you need support or have questions about the mod, you can join the Toaster's Rink Discord.";
         description.style.fontSize = 14;
         
         Button discordButton = new Button

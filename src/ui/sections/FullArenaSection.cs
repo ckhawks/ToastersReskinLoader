@@ -15,16 +15,23 @@ namespace ToasterReskinLoader.ui.sections
         public static void CreateSection(VisualElement container)
         {
             Plugin.LogDebug("Creation of a full arena replacement section");
-            
-            container.Clear();
-            
+
+            // Check if SceneryChanger.dll is loaded, show banner if missing
+            if (!swappers.FullArenaSwapper.isInitialized)
+            {
+                CreateMissingDependencyBanner(container);
+                return;
+            }
+
+            // container.Clear();
+
             // Title
-            Label header = new Label("COMPLETE REPLACEMENT OF THE ARENA");
-            header.style.fontSize = 26;
-            header.style.color = new Color(1f, 0.8f, 0.2f);
-            header.style.marginBottom = 20;
-            container.Add(header);
-            
+            // Label header = new Label("COMPLETE REPLACEMENT OF THE ARENA");
+            // header.style.fontSize = 26;
+            // header.style.color = new Color(1f, 1f, 1f);
+            // header.style.marginBottom = 20;
+            // container.Add(header);
+
             // Tabs
             VisualElement tabsRow = new VisualElement();
             tabsRow.style.flexDirection = FlexDirection.Row;
@@ -270,6 +277,87 @@ namespace ToasterReskinLoader.ui.sections
                 statusLabel.text = message;
                 statusLabel.style.color = color;
             }
+        }
+
+        /// <summary>
+        /// Creates a banner informing the user that SceneryChanger.dll is required.
+        /// Shows a clickable link to the Steam Workshop to install it.
+        /// </summary>
+        private static void CreateMissingDependencyBanner(VisualElement container)
+        {
+            // Outer banner container
+            VisualElement bannerContainer = new VisualElement();
+            bannerContainer.style.backgroundColor = new StyleColor(new Color(0.4f, 0.2f, 0.2f)); // Dark red
+            bannerContainer.style.borderTopWidth = 2;
+            bannerContainer.style.borderBottomWidth = 2;
+            bannerContainer.style.borderLeftWidth = 2;
+            bannerContainer.style.borderRightWidth = 2;
+            bannerContainer.style.borderTopColor = new StyleColor(new Color(1f, 0.3f, 0.3f)); // Bright red
+            bannerContainer.style.borderBottomColor = new StyleColor(new Color(1f, 0.3f, 0.3f));
+            bannerContainer.style.borderLeftColor = new StyleColor(new Color(1f, 0.3f, 0.3f));
+            bannerContainer.style.borderRightColor = new StyleColor(new Color(1f, 0.3f, 0.3f));
+            bannerContainer.style.paddingLeft = 20;
+            bannerContainer.style.paddingRight = 20;
+            bannerContainer.style.paddingTop = 20;
+            bannerContainer.style.paddingBottom = 20;
+            bannerContainer.style.marginBottom = 30;
+            bannerContainer.style.marginTop = 10;
+
+            // Title
+            Label title = new Label("Missing Required Dependency Mod");
+            title.style.fontSize = 20;
+            title.style.color = new Color(1f, 0.5f, 0.5f);
+            title.style.marginBottom = 10;
+            bannerContainer.Add(title);
+
+            // Description
+            Label description = new Label("You need to subscribe to <b>Dem's Scenery Loader</b> to use Full Arena Replacement!");
+            description.style.fontSize = 14;
+            description.style.color = Color.white;
+            description.style.marginBottom = 15;
+            description.style.whiteSpace = WhiteSpace.Normal;
+            bannerContainer.Add(description);
+
+            // Clickable link button
+            Button workshopLink = new Button(() =>
+            {
+                const string workshopUrl = "https://steamcommunity.com/sharedfiles/filedetails/?id=3566470321";
+                // Open in Steam overlay using steam:// protocol
+                string steamOverlayUrl = $"steam://openurl/{workshopUrl}";
+                UnityEngine.Application.OpenURL(steamOverlayUrl);
+                Plugin.Log($"[FullArenaSection] Opened Steam Workshop link in overlay: {workshopUrl}");
+            });
+            workshopLink.text = "Click here to install from Steam Workshop";
+            workshopLink.style.backgroundColor = new StyleColor(new Color(0.2f, 0.5f, 0.8f)); // Blue
+            workshopLink.style.color = Color.white;
+            workshopLink.style.fontSize = 13;
+            workshopLink.style.paddingLeft = 15;
+            workshopLink.style.paddingRight = 15;
+            workshopLink.style.paddingTop = 10;
+            workshopLink.style.paddingBottom = 10;
+            workshopLink.style.height = 40;
+            workshopLink.style.unityTextAlign = TextAnchor.MiddleCenter;
+
+            // Hover effect
+            workshopLink.RegisterCallback<MouseEnterEvent>(evt =>
+            {
+                workshopLink.style.backgroundColor = new StyleColor(new Color(0.3f, 0.6f, 1f)); // Lighter blue
+            });
+            workshopLink.RegisterCallback<MouseLeaveEvent>(evt =>
+            {
+                workshopLink.style.backgroundColor = new StyleColor(new Color(0.2f, 0.5f, 0.8f)); // Back to blue
+            });
+
+            bannerContainer.Add(workshopLink);
+            // Description
+            Label description2 = new Label("You will need to <b>restart your game</b> after subscribing.");
+            description2.style.fontSize = 14;
+            description2.style.color = Color.white;
+            description2.style.marginBottom = 15;
+            description2.style.whiteSpace = WhiteSpace.Normal;
+            bannerContainer.Add(description2);
+
+            container.Add(bannerContainer);
         }
     }
 }

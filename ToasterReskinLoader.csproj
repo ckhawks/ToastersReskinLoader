@@ -3,10 +3,10 @@
   <PropertyGroup>
     <TargetFramework>net4.8</TargetFramework>
     <LangVersion>10</LangVersion>
-    <PackageId>ToasterPuckFX</PackageId>
-    <Authors>ToasterPuckFX</Authors>
-    <Company>ToasterPuckFX</Company>
-    <Product>ToasterPuckFX</Product>
+    <PackageId>ToasterReskinLoader</PackageId>
+    <Authors>ToasterReskinLoader</Authors>
+    <Company>ToasterReskinLoader</Company>
+    <Product>ToasterReskinLoader</Product>
   </PropertyGroup>
 
   <ItemGroup>

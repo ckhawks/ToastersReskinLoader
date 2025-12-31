@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using Newtonsoft.Json;
+using ToasterReskinLoader.swappers;
 using UnityEngine;
 
 namespace ToasterReskinLoader;
@@ -20,46 +21,34 @@ public static class ReskinRegistry
     {
         reskinPacks.Clear();
         LoadPacks();
+        FullArenaSwapper.ScanAvailableArenas();
     }
     
     public static void LoadPacks()
     {
-        Plugin.Log($"Loading packs...");
-        // Assembly.GetExecutingAssembly().Location
-        // This is done because for local development I need it to search a different spot
-        string execPath = Assembly.GetExecutingAssembly().Location;
-        Plugin.Log($"execPath: {execPath}");
-        if (execPath.Contains($"common"))
-        {
-            execPath = @"C:\Program Files (x86)\Steam\steamapps\workshop\content\2994020\3493628417\ToasterCrispyShadows.dll";
-        }
-        string workshopModsRoot = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(execPath)!, ".."));
-        
-        Plugin.Log($"workshopModsRoot: {workshopModsRoot}");
-        
-        Plugin.Log($"Application.dataPath: {Application.dataPath}");
+        Plugin.Log($"Loading reskin packs...");
 
-        string gameRootFolder = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
-        string localReskinFolder = Path.Combine(gameRootFolder, "reskinpacks");
-        
-        if (!Directory.Exists(localReskinFolder))
+        // Workshop packs
+        Plugin.Log($"Looking for packs in workshop: {PathManager.WorkshopRoot}");
+        if (Directory.Exists(PathManager.WorkshopRoot))
         {
-            Plugin.LogError($"Local reskin packs folder not found: {localReskinFolder}, creating it...");
-            Directory.CreateDirectory(localReskinFolder);
+            foreach (var dir in Directory.GetDirectories(PathManager.WorkshopRoot))
+            {
+                LoadPackDirectory(dir);
+            }
+        }
+        else
+        {
+            Plugin.LogWarning($"Workshop folder not found: {PathManager.WorkshopRoot}");
         }
 
-        // for each pack in the workshop mods directory
-        Plugin.Log($"Looking for reskin packs at {workshopModsRoot}...");
-        foreach (var dir in Directory.GetDirectories(workshopModsRoot))
+        // Local packs
+        Plugin.Log($"Looking for packs in: {PathManager.LocalReskinFolder}");
+        foreach (var dir in Directory.GetDirectories(PathManager.LocalReskinFolder))
         {
             LoadPackDirectory(dir);
         }
-        
-        Plugin.Log($"Looking for reskin packs at {localReskinFolder}...");
-        foreach (var dir in Directory.GetDirectories(localReskinFolder))
-        {
-            LoadPackDirectory(dir);
-        }
+
         Plugin.Log($"Loaded {reskinPacks.Count} packs");
     }
 

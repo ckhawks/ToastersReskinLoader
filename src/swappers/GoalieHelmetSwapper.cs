@@ -1,139 +1,125 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
-using HarmonyLib;
 using UnityEngine;
 
 namespace ToasterReskinLoader.swappers
 {
+    // Handles goalie helmet texture swapping.
+    // Caches original textures per player to allow resetting.
     public static class GoalieHelmetSwapper
     {
-        private static Texture originalBlueHelmet;
-        private static Texture originalRedHelmet;
-        
-        private static Dictionary<ulong, Texture> originalBlueHelmetTextures = new Dictionary<ulong, Texture>();
-        private static Dictionary<ulong, Texture> originalRedHelmetTextures = new Dictionary<ulong, Texture>();
+        // Cache of original helmet textures: key is (team, playerId)
+        private static Dictionary<(PlayerTeam, ulong), Texture> originalTextures =
+            new Dictionary<(PlayerTeam, ulong), Texture>();
 
-
+        // Gets the Renderer for a goalie helmet (searches children for "helmet" or "mask")
         private static Renderer GetHelmetRenderer(PlayerHead playerHead)
         {
             if (playerHead == null) return null;
-            
 
             var renderers = playerHead.GetComponentsInChildren<Renderer>();
+
+            // 2025-12-30 18:56:06 [ToasterReskinLoader] PlayerHead renderer: Cage
+            // 2025-12-30 18:56:06 [ToasterReskinLoader] PlayerHead renderer: Eyes
+            // 2025-12-30 18:56:06 [ToasterReskinLoader] PlayerHead renderer: Head
+            // 2025-12-30 18:56:06 [ToasterReskinLoader] PlayerHead renderer: Helmet
+            // 2025-12-30 18:56:06 [ToasterReskinLoader] PlayerHead renderer: Flag
+            // 2025-12-30 18:56:06 [ToasterReskinLoader] PlayerHead renderer: Mustache Chevron
+            // 2025-12-30 18:56:06 [ToasterReskinLoader] PlayerHead renderer: Neck Shield
+
+            // helmet = top stuff, same as skater
+            // cage = metal grate thing in front
+            // neck shield = lower part of goalie helmet
             
+            // Search for helmet/mask renderer
             foreach (var renderer in renderers)
             {
-                if (renderer.name.ToLower().Contains("helmet") || 
-                    renderer.name.ToLower().Contains("head") ||
-                    renderer.name.ToLower().Contains("mask"))
+                if (renderer.name.ToLower().Contains("helmet") || renderer.name.ToLower().Contains("mask"))
                 {
                     return renderer;
                 }
             }
-            
+
             return playerHead.GetComponent<Renderer>();
         }
 
+        // Applies helmet texture to a player
+        private static void ApplyHelmetTexture(Renderer renderer, ulong playerId, PlayerTeam team,
+            ReskinRegistry.ReskinEntry textureEntry)
+        {
+            if (renderer == null) return;
+
+            var cacheKey = (team, playerId);
+
+            // Store original if not cached yet
+            if (!originalTextures.ContainsKey(cacheKey))
+            {
+                originalTextures[cacheKey] = renderer.material.mainTexture;
+            }
+
+            // Apply custom texture or revert to original
+            if (textureEntry?.Path != null)
+            {
+                var texture = TextureManager.GetTexture(textureEntry);
+                renderer.material.SetTexture("_MainTex", texture);
+                renderer.material.SetTexture("_BaseMap", texture);
+                renderer.material.color = Color.white;
+            }
+            else
+            {
+                // Reset to original
+                renderer.material.mainTexture = originalTextures[cacheKey];
+                renderer.material.color = Color.black;
+            }
+        }
+
+        // Sets helmet for a player (only if goalie)
         public static void SetHelmetForPlayer(Player player)
         {
-            if (player == null || player.PlayerBody == null || player.PlayerBody.PlayerMesh == null)
+            // Validate player
+            if (player?.PlayerBody?.PlayerMesh == null)
             {
-                Plugin.LogDebug($"Player is missing body parts for helmet.");
+                Plugin.LogDebug("Player is missing body parts for helmet.");
                 return;
             }
 
-
+            // Only apply to goalies
             if (player.Role.Value != PlayerRole.Goalie)
-            {
                 return;
-            }
 
-            PlayerMesh playerMesh = player.PlayerBody.PlayerMesh;
+            // Only blue/red teams
             PlayerTeam team = player.Team.Value;
-
             if (team is not (PlayerTeam.Blue or PlayerTeam.Red))
-            {
                 return;
-            }
 
-
-            Renderer helmetRenderer = GetHelmetRenderer(playerMesh.PlayerHead);
-
+            // Get helmet renderer
+            Renderer helmetRenderer = GetHelmetRenderer(player.PlayerBody.PlayerMesh.PlayerHead);
             if (helmetRenderer == null)
             {
-                Plugin.LogDebug($"Could not find helmet renderer for player {player.Username.Value}");
+                Plugin.LogDebug($"Could not find helmet renderer for {player.Username.Value}");
                 return;
             }
 
+            // Apply texture based on team
             if (team == PlayerTeam.Blue)
             {
-                if (originalBlueHelmet == null)
-                {
-                    originalBlueHelmet = helmetRenderer.material.mainTexture;
-                }
-
-                if (!originalBlueHelmetTextures.ContainsKey(player.OwnerClientId))
-                {
-                    originalBlueHelmetTextures[player.OwnerClientId] = helmetRenderer.material.mainTexture;
-                }
-
-
-                if (ReskinProfileManager.currentProfile.blueGoalieHelmet != null && 
-                    ReskinProfileManager.currentProfile.blueGoalieHelmet.Path != null)
-                {
-                    helmetRenderer.material.SetTexture("_MainTex", 
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.blueGoalieHelmet));
-                    helmetRenderer.material.SetTexture("_BaseMap", 
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.blueGoalieHelmet));
-                }
-                else
-                {
-
-                    if (originalBlueHelmetTextures.ContainsKey(player.OwnerClientId))
-                    {
-                        helmetRenderer.material.mainTexture = originalBlueHelmetTextures[player.OwnerClientId];
-                    }
-                }
+                ApplyHelmetTexture(helmetRenderer, player.OwnerClientId, team,
+                    ReskinProfileManager.currentProfile.blueGoalieHelmet);
             }
-            else if (team == PlayerTeam.Red)
+            else // Red
             {
-                if (originalRedHelmet == null)
-                {
-                    originalRedHelmet = helmetRenderer.material.mainTexture;
-                }
-
-                if (!originalRedHelmetTextures.ContainsKey(player.OwnerClientId))
-                {
-                    originalRedHelmetTextures[player.OwnerClientId] = helmetRenderer.material.mainTexture;
-                }
-
-
-                if (ReskinProfileManager.currentProfile.redGoalieHelmet != null && 
-                    ReskinProfileManager.currentProfile.redGoalieHelmet.Path != null)
-                {
-                    helmetRenderer.material.SetTexture("_MainTex", 
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.redGoalieHelmet));
-                    helmetRenderer.material.SetTexture("_BaseMap", 
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.redGoalieHelmet));
-                }
-                else
-                {
-
-                    if (originalRedHelmetTextures.ContainsKey(player.OwnerClientId))
-                    {
-                        helmetRenderer.material.mainTexture = originalRedHelmetTextures[player.OwnerClientId];
-                    }
-                }
+                ApplyHelmetTexture(helmetRenderer, player.OwnerClientId, team,
+                    ReskinProfileManager.currentProfile.redGoalieHelmet);
             }
 
             Plugin.LogDebug($"Set helmet for {player.Username.Value} ({team})");
         }
 
-        public static void OnBlueHelmetsChanged()
+        // Updates helmets for all players on a team
+        private static void UpdateTeamHelmets(PlayerTeam team)
         {
-            List<Player> bluePlayers = PlayerManager.Instance.GetPlayersByTeam(PlayerTeam.Blue);
-            foreach (Player player in bluePlayers)
+            var players = PlayerManager.Instance.GetPlayersByTeam(team);
+            foreach (Player player in players)
             {
                 if (player.Role.Value == PlayerRole.Goalie)
                 {
@@ -142,16 +128,7 @@ namespace ToasterReskinLoader.swappers
             }
         }
 
-        public static void OnRedHelmetsChanged()
-        {
-            List<Player> redPlayers = PlayerManager.Instance.GetPlayersByTeam(PlayerTeam.Red);
-            foreach (Player player in redPlayers)
-            {
-                if (player.Role.Value == PlayerRole.Goalie)
-                {
-                    SetHelmetForPlayer(player);
-                }
-            }
-        }
+        public static void OnBlueHelmetsChanged() => UpdateTeamHelmets(PlayerTeam.Blue);
+        public static void OnRedHelmetsChanged() => UpdateTeamHelmets(PlayerTeam.Red);
     }
 }

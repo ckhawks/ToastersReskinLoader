@@ -1,187 +1,111 @@
 using System;
 using System.Collections.Generic;
-using HarmonyLib;
 using UnityEngine;
 
 namespace ToasterReskinLoader.swappers
 {
+    // Handles leg pad texture swapping for goalies.
+    // Caches original textures per player to allow resetting.
     public static class GoalieEquipmentSwapper
     {
-        private static Texture originalBlueLegPadLeft;
-        private static Texture originalBlueLegPadRight;
-        private static Texture originalRedLegPadLeft;
-        private static Texture originalRedLegPadRight;
-        
-        private static Dictionary<ulong, Texture> originalBlueLegPadLeftTextures = new Dictionary<ulong, Texture>();
-        private static Dictionary<ulong, Texture> originalBlueLegPadRightTextures = new Dictionary<ulong, Texture>();
-        private static Dictionary<ulong, Texture> originalRedLegPadLeftTextures = new Dictionary<ulong, Texture>();
-        private static Dictionary<ulong, Texture> originalRedLegPadRightTextures = new Dictionary<ulong, Texture>();
+        // Cache of original leg pad textures: key is (team, playerId, side)
+        private static Dictionary<(PlayerTeam, ulong, string), Texture> originalTextures =
+            new Dictionary<(PlayerTeam, ulong, string), Texture>();
 
-
+        // Gets the MeshRenderer for a leg pad, checking both component and children
         private static MeshRenderer GetLegPadRenderer(PlayerLegPad legPad)
         {
             if (legPad == null) return null;
-            
+
             MeshRenderer renderer = legPad.GetComponent<MeshRenderer>();
-            if (renderer == null)
-            {
-                renderer = legPad.GetComponentInChildren<MeshRenderer>();
-            }
-            
-            return renderer;
+            return renderer ?? legPad.GetComponentInChildren<MeshRenderer>();
         }
 
+        // Applies leg pad texture to a single side (left or right)
+        private static void ApplyLegPadTexture(MeshRenderer renderer, ulong playerId, PlayerTeam team,
+            string side, ReskinRegistry.ReskinEntry textureEntry)
+        {
+            if (renderer == null) return;
+
+            var cacheKey = (team, playerId, side);
+
+            // Store original if not cached yet
+            if (!originalTextures.ContainsKey(cacheKey))
+            {
+                originalTextures[cacheKey] = renderer.material.mainTexture;
+            }
+
+            // Apply custom texture or revert to original
+            if (textureEntry?.Path != null)
+            {
+                var texture = TextureManager.GetTexture(textureEntry);
+                renderer.material.SetTexture("_MainTex", texture);
+                renderer.material.SetTexture("_BaseMap", texture);
+                renderer.material.SetTexture("_Albedo", texture);
+                renderer.material.color = Color.white;
+            }
+            else
+            {
+                // Reset to original
+                renderer.material.mainTexture = originalTextures[cacheKey];
+                renderer.material.color = new Color(0.151f, 0.151f, 0.151f);;
+            }
+        }
+
+        // Sets leg pads for a player (only if goalie)
         public static void SetLegPadsForPlayer(Player player)
         {
-            if (player == null || player.PlayerBody == null || player.PlayerBody.PlayerMesh == null)
+            // Validate player
+            if (player?.PlayerBody?.PlayerMesh == null)
             {
-                Plugin.LogDebug($"Player is missing body parts for leg pads.");
+                Plugin.LogDebug("Player is missing body parts for leg pads.");
                 return;
             }
 
-
+            // Only apply to goalies
             if (player.Role.Value != PlayerRole.Goalie)
-            {
                 return;
-            }
 
-            PlayerMesh playerMesh = player.PlayerBody.PlayerMesh;
+            // Only blue/red teams
             PlayerTeam team = player.Team.Value;
-
             if (team is not (PlayerTeam.Blue or PlayerTeam.Red))
+                return;
+
+            // Get renderers
+            PlayerMesh playerMesh = player.PlayerBody.PlayerMesh;
+            MeshRenderer leftRenderer = GetLegPadRenderer(playerMesh.PlayerLegPadLeft);
+            MeshRenderer rightRenderer = GetLegPadRenderer(playerMesh.PlayerLegPadRight);
+
+            if (leftRenderer == null || rightRenderer == null)
             {
+                Plugin.LogDebug($"Could not find leg pad renderers for {player.Username.Value}");
                 return;
             }
 
-
-            MeshRenderer leftLegPadRenderer = GetLegPadRenderer(playerMesh.PlayerLegPadLeft);
-            MeshRenderer rightLegPadRenderer = GetLegPadRenderer(playerMesh.PlayerLegPadRight);
-
-            if (leftLegPadRenderer == null || rightLegPadRenderer == null)
-            {
-                Plugin.LogDebug($"Could not find leg pad renderers for player {player.Username.Value}");
-                return;
-            }
-
-
+            // Apply textures based on team
             if (team == PlayerTeam.Blue)
             {
-                if (originalBlueLegPadLeft == null)
-                {
-                    originalBlueLegPadLeft = leftLegPadRenderer.material.mainTexture;
-                }
-                if (originalBlueLegPadRight == null)
-                {
-                    originalBlueLegPadRight = rightLegPadRenderer.material.mainTexture;
-                }
-
-                if (!originalBlueLegPadLeftTextures.ContainsKey(player.OwnerClientId))
-                {
-                    originalBlueLegPadLeftTextures[player.OwnerClientId] = leftLegPadRenderer.material.mainTexture;
-                }
-                if (!originalBlueLegPadRightTextures.ContainsKey(player.OwnerClientId))
-                {
-                    originalBlueLegPadRightTextures[player.OwnerClientId] = rightLegPadRenderer.material.mainTexture;
-                }
-
-
-                if (ReskinProfileManager.currentProfile.blueLegPadLeft != null && 
-                    ReskinProfileManager.currentProfile.blueLegPadLeft.Path != null)
-                {
-                    leftLegPadRenderer.material.SetTexture("_MainTex", 
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.blueLegPadLeft));
-                    leftLegPadRenderer.material.SetTexture("_BaseMap", 
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.blueLegPadLeft));
-                }
-                else
-                {
-
-                    if (originalBlueLegPadLeftTextures.ContainsKey(player.OwnerClientId))
-                    {
-                        leftLegPadRenderer.material.mainTexture = originalBlueLegPadLeftTextures[player.OwnerClientId];
-                    }
-                }
-
-                if (ReskinProfileManager.currentProfile.blueLegPadRight != null && 
-                    ReskinProfileManager.currentProfile.blueLegPadRight.Path != null)
-                {
-                    rightLegPadRenderer.material.SetTexture("_MainTex", 
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.blueLegPadRight));
-                    rightLegPadRenderer.material.SetTexture("_BaseMap", 
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.blueLegPadRight));
-                }
-                else
-                {
-
-                    if (originalBlueLegPadRightTextures.ContainsKey(player.OwnerClientId))
-                    {
-                        rightLegPadRenderer.material.mainTexture = originalBlueLegPadRightTextures[player.OwnerClientId];
-                    }
-                }
+                ApplyLegPadTexture(leftRenderer, player.OwnerClientId, team, "left",
+                    ReskinProfileManager.currentProfile.blueLegPadLeft);
+                ApplyLegPadTexture(rightRenderer, player.OwnerClientId, team, "right",
+                    ReskinProfileManager.currentProfile.blueLegPadRight);
             }
-            else if (team == PlayerTeam.Red)
+            else // Red
             {
-                if (originalRedLegPadLeft == null)
-                {
-                    originalRedLegPadLeft = leftLegPadRenderer.material.mainTexture;
-                }
-                if (originalRedLegPadRight == null)
-                {
-                    originalRedLegPadRight = rightLegPadRenderer.material.mainTexture;
-                }
-
-                if (!originalRedLegPadLeftTextures.ContainsKey(player.OwnerClientId))
-                {
-                    originalRedLegPadLeftTextures[player.OwnerClientId] = leftLegPadRenderer.material.mainTexture;
-                }
-                if (!originalRedLegPadRightTextures.ContainsKey(player.OwnerClientId))
-                {
-                    originalRedLegPadRightTextures[player.OwnerClientId] = rightLegPadRenderer.material.mainTexture;
-                }
-
-
-                if (ReskinProfileManager.currentProfile.redLegPadLeft != null && 
-                    ReskinProfileManager.currentProfile.redLegPadLeft.Path != null)
-                {
-                    leftLegPadRenderer.material.SetTexture("_MainTex", 
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.redLegPadLeft));
-                    leftLegPadRenderer.material.SetTexture("_BaseMap", 
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.redLegPadLeft));
-                }
-                else
-                {
-
-                    if (originalRedLegPadLeftTextures.ContainsKey(player.OwnerClientId))
-                    {
-                        leftLegPadRenderer.material.mainTexture = originalRedLegPadLeftTextures[player.OwnerClientId];
-                    }
-                }
-
-                if (ReskinProfileManager.currentProfile.redLegPadRight != null && 
-                    ReskinProfileManager.currentProfile.redLegPadRight.Path != null)
-                {
-                    rightLegPadRenderer.material.SetTexture("_MainTex", 
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.redLegPadRight));
-                    rightLegPadRenderer.material.SetTexture("_BaseMap", 
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.redLegPadRight));
-                }
-                else
-                {
-
-                    if (originalRedLegPadRightTextures.ContainsKey(player.OwnerClientId))
-                    {
-                        rightLegPadRenderer.material.mainTexture = originalRedLegPadRightTextures[player.OwnerClientId];
-                    }
-                }
+                ApplyLegPadTexture(leftRenderer, player.OwnerClientId, team, "left",
+                    ReskinProfileManager.currentProfile.redLegPadLeft);
+                ApplyLegPadTexture(rightRenderer, player.OwnerClientId, team, "right",
+                    ReskinProfileManager.currentProfile.redLegPadRight);
             }
 
             Plugin.LogDebug($"Set leg pads for {player.Username.Value} ({team})");
         }
 
-        public static void OnBlueLegPadsChanged()
+        // Updates leg pads for all players on a team
+        private static void UpdateTeamLegPads(PlayerTeam team)
         {
-            List<Player> bluePlayers = PlayerManager.Instance.GetPlayersByTeam(PlayerTeam.Blue);
-            foreach (Player player in bluePlayers)
+            var players = PlayerManager.Instance.GetPlayersByTeam(team);
+            foreach (Player player in players)
             {
                 if (player.Role.Value == PlayerRole.Goalie)
                 {
@@ -190,16 +114,7 @@ namespace ToasterReskinLoader.swappers
             }
         }
 
-        public static void OnRedLegPadsChanged()
-        {
-            List<Player> redPlayers = PlayerManager.Instance.GetPlayersByTeam(PlayerTeam.Red);
-            foreach (Player player in redPlayers)
-            {
-                if (player.Role.Value == PlayerRole.Goalie)
-                {
-                    SetLegPadsForPlayer(player);
-                }
-            }
-        }
+        public static void OnBlueLegPadsChanged() => UpdateTeamLegPads(PlayerTeam.Blue);
+        public static void OnRedLegPadsChanged() => UpdateTeamLegPads(PlayerTeam.Red);
     }
 }
