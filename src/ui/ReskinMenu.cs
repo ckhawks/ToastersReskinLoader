@@ -23,7 +23,9 @@ public static class ReskinMenu
     public static VisualElement contentScrollViewContent;
     
     // menu state
-    public static string[] sections = new []{"Packs", "Sticks", "Jerseys", "Goalies", "Pucks", "Arena", "Full Arena", "Skybox", "About" };
+    public static string[] sections = new []{"Packs", "Sticks", "Jerseys", "Goalies", "Pucks", "Arena", 
+        // "Full Arena",
+        "Skybox", "About" };
     // "Sounds", "Other"
     public static int selectedSectionIndex = 0;
 
@@ -449,9 +451,9 @@ public static class ReskinMenu
             case "Goalies":
                 GoalieSection.CreateSection(contentScrollViewContent);
                 break;
-            case "Full Arena":
-                FullArenaSection.CreateSection(contentScrollViewContent);
-                break;
+            // case "Full Arena":
+            //     FullArenaSection.CreateSection(contentScrollViewContent);
+            //     break;
             default:
                 Label contentSectionDummyText = new Label("This section does not yet exist.");
                 contentSectionDummyText.style.fontSize = 14;

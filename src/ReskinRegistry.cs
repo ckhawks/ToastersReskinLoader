@@ -142,12 +142,15 @@ public static class ReskinRegistry
         [JsonProperty("type")]
         public string Type { get; set; }
 
-        // this is relative in JSON; we'll make it absolute in LoadPacks()
+        // Path to asset file (relative in JSON; converted to absolute in LoadPacks())
         [JsonProperty("path")]
         public string Path { get; set; }
-        
-        // Add this property. It will not be saved to/loaded from JSON.
-        // It's a runtime-only reference to the pack this entry belongs to.
+
+        // For arena type: the prefab name within the asset bundle
+        [JsonProperty("prefabName")]
+        public string PrefabName { get; set; }
+
+        // Runtime-only reference to the pack this entry belongs to
         [JsonIgnore]
         public ReskinPack ParentPack { get; set; }
     }
