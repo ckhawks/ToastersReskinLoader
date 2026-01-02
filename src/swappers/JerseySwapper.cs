@@ -19,8 +19,26 @@ public static class JerseySwapper
         .GetField("meshRendererTexturer", 
             BindingFlags.Instance | BindingFlags.NonPublic);
     static readonly FieldInfo _meshRendererField = typeof(MeshRendererTexturer)
-        .GetField("meshRenderer", 
+        .GetField("meshRenderer",
             BindingFlags.Instance | BindingFlags.NonPublic);
+
+    // Helper method to consolidate texture application logic
+    private static void ApplyJerseyTexture(MeshRenderer meshRenderer, ReskinRegistry.ReskinEntry reskinEntry, Texture originalTexture)
+    {
+        if (reskinEntry == null || reskinEntry.Path == null)
+        {
+            // Restore original texture
+            meshRenderer.material.mainTexture = originalTexture;
+        }
+        else
+        {
+            // Apply custom texture
+            var texture = TextureManager.GetTexture(reskinEntry);
+            meshRenderer.material.SetTexture("_MainTex", texture);
+            meshRenderer.material.SetTexture("_BaseMap", texture);
+        }
+    }
+
     public static void SetJerseyForPlayer(Player player)
     {
         Plugin.LogDebug($"Setting jersey for {player.Username.Value} {player.Team.Value} isReplay {player.IsReplay.Value}");
@@ -69,69 +87,24 @@ public static class JerseySwapper
 
             if (player.Role.Value == PlayerRole.Goalie)
             {
-                if (ReskinProfileManager.currentProfile.blueGoalieTorso == null ||
-                    ReskinProfileManager.currentProfile.blueGoalieTorso.Path == null)
-                {
-                    //  Restore original blue torso we saved
-                    if (originalBlueTorsoTextures.ContainsKey(player.OwnerClientId))
-                        torsoMeshRenderer.material.mainTexture = originalBlueTorsoTextures[player.OwnerClientId];   
-                }
-                else
-                {
-                    torsoMeshRenderer.material.SetTexture("_BaseMap",
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.blueGoalieTorso));
-                    torsoMeshRenderer.material.SetTexture("_MainTex",
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.blueGoalieTorso));
-                }
+                //  Apply blue goalie torso
+                if (originalBlueTorsoTextures.ContainsKey(player.OwnerClientId))
+                    ApplyJerseyTexture(torsoMeshRenderer, ReskinProfileManager.currentProfile.blueGoalieTorso, originalBlueTorsoTextures[player.OwnerClientId]);
 
-                if (ReskinProfileManager.currentProfile.blueGoalieGroin == null ||
-                    ReskinProfileManager.currentProfile.blueGoalieGroin.Path == null)
-                {
-                    //  Restore original blue groin
-                    groinMeshRenderer.material.mainTexture = originalBlueGroin;
-                }
-                else
-                {
-                    //  Set groin to custom value
-                    groinMeshRenderer.material.SetTexture("_MainTex",
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.blueGoalieGroin));
-                    groinMeshRenderer.material.SetTexture("_BaseMap",
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.blueGoalieGroin));
-                }
+                //  Apply blue goalie groin
+                ApplyJerseyTexture(groinMeshRenderer, ReskinProfileManager.currentProfile.blueGoalieGroin, originalBlueGroin);
             }
             else
             {
-                if (ReskinProfileManager.currentProfile.blueSkaterTorso == null ||
-                    ReskinProfileManager.currentProfile.blueSkaterTorso.Path == null)
+                //  Apply blue skater torso
+                if (originalBlueTorsoTextures.ContainsKey(player.OwnerClientId))
                 {
-                    //  Restore original blue torso we saved
-                    if (originalBlueTorsoTextures.ContainsKey(player.OwnerClientId))
-                        torsoMeshRenderer.material.mainTexture = originalBlueTorsoTextures[player.OwnerClientId];   
-                }
-                else
-                {
-                    Plugin.LogDebug(
-                        $"Setting blue skater torso to {ReskinProfileManager.currentProfile.blueSkaterTorso.Name}");
-                    torsoMeshRenderer.material.SetTexture("_MainTex",
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.blueSkaterTorso));
-                    torsoMeshRenderer.material.SetTexture("_BaseMap",
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.blueSkaterTorso));
+                    Plugin.LogDebug($"Setting blue skater torso to {ReskinProfileManager.currentProfile.blueSkaterTorso?.Name ?? "original"}");
+                    ApplyJerseyTexture(torsoMeshRenderer, ReskinProfileManager.currentProfile.blueSkaterTorso, originalBlueTorsoTextures[player.OwnerClientId]);
                 }
 
-                if (ReskinProfileManager.currentProfile.blueSkaterGroin == null ||
-                    ReskinProfileManager.currentProfile.blueSkaterGroin.Path == null)
-                {
-                    //  Restore original blue groin
-                    groinMeshRenderer.material.mainTexture = originalBlueGroin;
-                }
-                else
-                {
-                    //  Set groin to custom value
-                    groinMeshRenderer.material.SetTexture("_MainTex",
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.blueSkaterGroin));
-                    groinMeshRenderer.material.SetTexture("_BaseMap",
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.blueSkaterGroin));
-                }
+                //  Apply blue skater groin
+                ApplyJerseyTexture(groinMeshRenderer, ReskinProfileManager.currentProfile.blueSkaterGroin, originalBlueGroin);
             }
         } else if (team == PlayerTeam.Red)
         {
@@ -150,70 +123,21 @@ public static class JerseySwapper
             
             if (player.Role.Value == PlayerRole.Goalie)
             {
-                if (ReskinProfileManager.currentProfile.redGoalieTorso == null ||
-                    ReskinProfileManager.currentProfile.redGoalieTorso.Path == null)
-                {
-                    //  Restore original red torso we saved
-                    if (originalRedTorsoTextures.ContainsKey(player.OwnerClientId))
-                        torsoMeshRenderer.material.mainTexture = originalRedTorsoTextures[player.OwnerClientId];   
-                }
-                else
-                {
-                    torsoMeshRenderer.material.SetTexture("_MainTex",
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.redGoalieTorso));
-                    torsoMeshRenderer.material.SetTexture("_BaseMap",
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.redGoalieTorso));
-                }
+                //  Apply red goalie torso
+                if (originalRedTorsoTextures.ContainsKey(player.OwnerClientId))
+                    ApplyJerseyTexture(torsoMeshRenderer, ReskinProfileManager.currentProfile.redGoalieTorso, originalRedTorsoTextures[player.OwnerClientId]);
 
-                if (ReskinProfileManager.currentProfile.redGoalieGroin == null ||
-                    ReskinProfileManager.currentProfile.redGoalieGroin.Path == null)
-                {
-                    //  Restore original red groin
-                    groinMeshRenderer.material.mainTexture = originalRedGroin;
-                }
-                else
-                {
-                    //  Set groin to custom value
-                    groinMeshRenderer.material.SetTexture("_MainTex",
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.redGoalieGroin));
-                    groinMeshRenderer.material.SetTexture("_BaseMap",
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.redGoalieGroin));
-                }
+                //  Apply red goalie groin
+                ApplyJerseyTexture(groinMeshRenderer, ReskinProfileManager.currentProfile.redGoalieGroin, originalRedGroin);
             }
             else
             {
-                if (ReskinProfileManager.currentProfile.redSkaterTorso == null ||
-                    ReskinProfileManager.currentProfile.redSkaterTorso.Path == null)
-                {
-                    //  Restore original red torso we saved
-                    if (originalRedTorsoTextures.ContainsKey(player.OwnerClientId))
-                    {
-                        torsoMeshRenderer.material.mainTexture = originalRedTorsoTextures[player.OwnerClientId];  
-                    }
-                         
-                }
-                else
-                {
-                    torsoMeshRenderer.material.SetTexture("_MainTex",
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.redSkaterTorso));
-                    torsoMeshRenderer.material.SetTexture("_BaseMap",
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.redSkaterTorso));
-                }
-                
-                if (ReskinProfileManager.currentProfile.redSkaterGroin == null ||
-                    ReskinProfileManager.currentProfile.redSkaterGroin.Path == null)
-                {
-                    //  Restore original red groin
-                    groinMeshRenderer.material.mainTexture = originalRedGroin;
-                }
-                else
-                {
-                    //  Set groin to custom value
-                    groinMeshRenderer.material.SetTexture("_MainTex",
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.redSkaterGroin));
-                    groinMeshRenderer.material.SetTexture("_BaseMap",
-                        TextureManager.GetTexture(ReskinProfileManager.currentProfile.redSkaterGroin));
-                }
+                //  Apply red skater torso
+                if (originalRedTorsoTextures.ContainsKey(player.OwnerClientId))
+                    ApplyJerseyTexture(torsoMeshRenderer, ReskinProfileManager.currentProfile.redSkaterTorso, originalRedTorsoTextures[player.OwnerClientId]);
+
+                //  Apply red skater groin
+                ApplyJerseyTexture(groinMeshRenderer, ReskinProfileManager.currentProfile.redSkaterGroin, originalRedGroin);
             }
         }
         Plugin.LogDebug($"Set jersey for {player.Username.Value.ToString()}");

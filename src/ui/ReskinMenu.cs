@@ -22,13 +22,13 @@ public static class ReskinMenu
     public static ScrollView sidebarScrollView;
     public static VisualElement contentScrollViewContent;
     
-    
-    
     // menu state
-    public static string[] sections = new []{"Packs", "Sticks", "Jerseys", "Pucks", "Arena", "Skybox", "About" };
+    public static string[] sections = new []{"Packs", "Sticks", "Skaters", "Goalies", "Pucks", "Arena", 
+        // "Full Arena",
+        "Skybox", "About" };
     // "Sounds", "Other"
     public static int selectedSectionIndex = 0;
-    
+
     public static void Show()
     {
         // If we're in main menu, hide main menu
@@ -430,8 +430,8 @@ public static class ReskinMenu
             case "Packs":
                 PacksSection.CreateSection(contentScrollViewContent);
                 break;
-            case "Jerseys":
-                JerseysSection.CreateSection(contentScrollViewContent);
+            case "Skaters":
+                SkaterSection.CreateSection(contentScrollViewContent);
                 break;
             case "Sticks":
                 SticksSection.CreateSection(contentScrollViewContent);
@@ -448,6 +448,12 @@ public static class ReskinMenu
             case "Skybox":
                 SkyboxSection.CreateSection(contentScrollViewContent);
                 break;
+            case "Goalies":
+                GoaliesSection.CreateSection(contentScrollViewContent);
+                break;
+            // case "Full Arena":
+            //     FullArenaSection.CreateSection(contentScrollViewContent);
+            //     break;
             default:
                 Label contentSectionDummyText = new Label("This section does not yet exist.");
                 contentSectionDummyText.style.fontSize = 14;
@@ -457,7 +463,6 @@ public static class ReskinMenu
                 break;
         }
     }
-    
     public static void UpdateToSection(int sectionIndex)
     {
         ChangingRoomHelper.Scan();

@@ -16,3 +16,6 @@ If you would like to support Toaster in being able to work on this mod and other
 ## Contributing
 Pull requests are welcome and will be reviewed - I would encourage you to discuss what you'd like to add beforehand with Toaster to make sure your plans are on the same page.
 
+## Contributors
+- Toaster / Stellaric / ckhawks - Initial functionality
+- Banix - Goalie leg pad and helmet swapping, full arena swapping with Dem's Scenery Loader

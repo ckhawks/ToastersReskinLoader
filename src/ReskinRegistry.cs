@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using Newtonsoft.Json;
+using ToasterReskinLoader.swappers;
 using UnityEngine;
 
 namespace ToasterReskinLoader;
@@ -13,53 +14,41 @@ namespace ToasterReskinLoader;
 public static class ReskinRegistry
 {
     public static List<ReskinPack> reskinPacks = new List<ReskinPack>();
-    private static readonly List<string> ReskinTypes =
-        new List<string>{ "stick_attacker", "stick_goalie", "net", "puck", "rink_ice", "jersey_torso", "jersey_groin" }; // , "arena"
+    public readonly static List<string> ReskinTypes =
+        new List<string>{"stick_attacker", "stick_goalie", "net", "puck", "rink_ice", "jersey_torso", "jersey_groin", "legpad", "helmet", "goalie_mask" }; // , "arena"
 
     public static void ReloadPacks()
     {
         reskinPacks.Clear();
         LoadPacks();
+        FullArenaSwapper.ScanAvailableArenas();
     }
     
     public static void LoadPacks()
     {
-        Plugin.Log($"Loading packs...");
-        // Assembly.GetExecutingAssembly().Location
-        // This is done because for local development I need it to search a different spot
-        string execPath = Assembly.GetExecutingAssembly().Location;
-        Plugin.Log($"execPath: {execPath}");
-        if (execPath.Contains($"common"))
-        {
-            execPath = @"C:\Program Files (x86)\Steam\steamapps\workshop\content\2994020\3493628417\ToasterCrispyShadows.dll";
-        }
-        string workshopModsRoot = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(execPath)!, ".."));
-        
-        Plugin.Log($"workshopModsRoot: {workshopModsRoot}");
-        
-        Plugin.Log($"Application.dataPath: {Application.dataPath}");
+        Plugin.Log($"Loading reskin packs...");
 
-        string gameRootFolder = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
-        string localReskinFolder = Path.Combine(gameRootFolder, "reskinpacks");
-        
-        if (!Directory.Exists(localReskinFolder))
+        // Workshop packs
+        Plugin.Log($"Looking for packs in workshop: {PathManager.WorkshopRoot}");
+        if (Directory.Exists(PathManager.WorkshopRoot))
         {
-            Plugin.LogError($"Local reskin packs folder not found: {localReskinFolder}, creating it...");
-            Directory.CreateDirectory(localReskinFolder);
+            foreach (var dir in Directory.GetDirectories(PathManager.WorkshopRoot))
+            {
+                LoadPackDirectory(dir);
+            }
+        }
+        else
+        {
+            Plugin.LogWarning($"Workshop folder not found: {PathManager.WorkshopRoot}");
         }
 
-        // for each pack in the workshop mods directory
-        Plugin.Log($"Looking for reskin packs at {workshopModsRoot}...");
-        foreach (var dir in Directory.GetDirectories(workshopModsRoot))
+        // Local packs
+        Plugin.Log($"Looking for packs in: {PathManager.LocalReskinFolder}");
+        foreach (var dir in Directory.GetDirectories(PathManager.LocalReskinFolder))
         {
             LoadPackDirectory(dir);
         }
-        
-        Plugin.Log($"Looking for reskin packs at {localReskinFolder}...");
-        foreach (var dir in Directory.GetDirectories(localReskinFolder))
-        {
-            LoadPackDirectory(dir);
-        }
+
         Plugin.Log($"Loaded {reskinPacks.Count} packs");
     }
 
@@ -153,12 +142,15 @@ public static class ReskinRegistry
         [JsonProperty("type")]
         public string Type { get; set; }
 
-        // this is relative in JSON; we'll make it absolute in LoadPacks()
+        // Path to asset file (relative in JSON; converted to absolute in LoadPacks())
         [JsonProperty("path")]
         public string Path { get; set; }
-        
-        // Add this property. It will not be saved to/loaded from JSON.
-        // It's a runtime-only reference to the pack this entry belongs to.
+
+        // For arena type: the prefab name within the asset bundle
+        [JsonProperty("prefabName")]
+        public string PrefabName { get; set; }
+
+        // Runtime-only reference to the pack this entry belongs to
         [JsonIgnore]
         public ReskinPack ParentPack { get; set; }
     }

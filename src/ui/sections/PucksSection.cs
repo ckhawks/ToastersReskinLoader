@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace ToasterReskinLoader.ui.sections;
@@ -37,6 +38,7 @@ public static class PucksSection
         contentScrollViewContent.Add(puckRow);
         Label bumpMapNoticeLabel =
             new Label("<size=14>The puck's bump map will be set to a clean map when any custom reskins are selected.");
+        bumpMapNoticeLabel.style.color = new Color(0.7f, 0.7f, 0.7f);
         contentScrollViewContent.Add(bumpMapNoticeLabel);
     }
 }

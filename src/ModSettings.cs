@@ -14,7 +14,7 @@ public class ModSettings
         var path = GetConfigPath();
         var dir = Path.GetDirectoryName(path);
 
-        // 1) make sure "config/" exists
+        // Make sure config/ directory exists
         if (!Directory.Exists(dir))
         {
             Directory.CreateDirectory(dir);
@@ -27,10 +27,7 @@ public class ModSettings
             {
                 var json = File.ReadAllText(path);
                 var settings = JsonSerializer.Deserialize<ModSettings>(json,
-                    new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true
-                    });
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                 return settings ?? new ModSettings();
             }
             catch (JsonException je)
@@ -41,12 +38,7 @@ public class ModSettings
         }
         
         var defaults = new ModSettings();
-        File.WriteAllText(path,
-            JsonSerializer.Serialize(defaults, new JsonSerializerOptions
-            {
-                WriteIndented = true
-            }));
-                
+        File.WriteAllText(path, JsonSerializer.Serialize(defaults, new JsonSerializerOptions { WriteIndented = true }));
         Plugin.Log($"Config file `{path}` did not exist, created with defaults.");
         return defaults;
     }
@@ -59,11 +51,7 @@ public class ModSettings
         if (!Directory.Exists(dir))
             Directory.CreateDirectory(dir);
 
-        File.WriteAllText(path,
-            JsonSerializer.Serialize(this, new JsonSerializerOptions
-            {
-                WriteIndented = true
-            }));
+        File.WriteAllText(path, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
     }
 
     public static string GetConfigPath()
