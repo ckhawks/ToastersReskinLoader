@@ -62,12 +62,12 @@ public static class SkaterSection
         };
         jerseyGroins.Insert(0, unchangedJerseyGroinEntry);
 
-        List<ReskinRegistry.ReskinEntry> skaterHelmets = ReskinRegistry.GetReskinEntriesByType("skater_helmet");
+        List<ReskinRegistry.ReskinEntry> skaterHelmets = ReskinRegistry.GetReskinEntriesByType("helmet");
         ReskinRegistry.ReskinEntry unchangedSkaterHelmetEntry = new ReskinRegistry.ReskinEntry
         {
             Name = "Unchanged",
             Path = null,
-            Type = "skater_helmet"
+            Type = "helmet"
         };
         skaterHelmets.Insert(0, unchangedSkaterHelmetEntry);
 
@@ -143,7 +143,7 @@ public static class SkaterSection
             {
                 ReskinRegistry.ReskinEntry chosen = evt.newValue;
                 Plugin.Log($"User picked ID={chosen.Path}, Name={chosen.Name}");
-                ReskinProfileManager.SetSelectedReskinInCurrentProfile(chosen, "skater_helmet", "blue");
+                ReskinProfileManager.SetSelectedReskinInCurrentProfile(chosen, "helmet", "skater_blue");
                 // Enable/disable color sliders based on whether "Unchanged" is selected
                 SetColorSliderEnabled(blueSkaterHelmetColorSection, chosen.Path == null);
             })
@@ -231,7 +231,7 @@ public static class SkaterSection
             {
                 ReskinRegistry.ReskinEntry chosen = evt.newValue;
                 Plugin.Log($"User picked ID={chosen.Path}, Name={chosen.Name}");
-                ReskinProfileManager.SetSelectedReskinInCurrentProfile(chosen, "skater_helmet", "red");
+                ReskinProfileManager.SetSelectedReskinInCurrentProfile(chosen, "helmet", "skater_red");
                 // Enable/disable color sliders based on whether "Unchanged" is selected
                 SetColorSliderEnabled(redSkaterHelmetColorSection, chosen.Path == null);
             })

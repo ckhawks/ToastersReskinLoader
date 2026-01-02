@@ -127,17 +127,25 @@ public static class ReskinProfileManager
                    break;
             }
         }
-        else if (type == "goalie_helmet")
+        else if (type == "helmet")
         {
             switch (slot)
             {
-                case "blue":
+                case "goalie_blue":
                     currentProfile.blueGoalieHelmet = reskinEntry;
                     GoalieHelmetSwapper.OnBlueHelmetsChanged();
                     break;
-                case "red":
+                case "goalie_red":
                     currentProfile.redGoalieHelmet = reskinEntry;
                     GoalieHelmetSwapper.OnRedHelmetsChanged();
+                    break;
+                case "skater_blue":
+                    currentProfile.blueSkaterHelmet = reskinEntry;
+                    swappers.SkaterHelmetSwapper.OnBlueHelmetsChanged();
+                    break;
+                case "skater_red":
+                    currentProfile.redSkaterHelmet = reskinEntry;
+                    swappers.SkaterHelmetSwapper.OnRedHelmetsChanged();
                     break;
             }
         }
@@ -152,20 +160,6 @@ public static class ReskinProfileManager
                 case "red":
                     currentProfile.redGoalieMask = reskinEntry;
                     GoalieHelmetSwapper.OnRedMasksChanged();
-                    break;
-            }
-        }
-        else if (type == "skater_helmet")
-        {
-            switch (slot)
-            {
-                case "blue":
-                    currentProfile.blueSkaterHelmet = reskinEntry;
-                    swappers.SkaterHelmetSwapper.OnBlueHelmetsChanged();
-                    break;
-                case "red":
-                    currentProfile.redSkaterHelmet = reskinEntry;
-                    swappers.SkaterHelmetSwapper.OnRedHelmetsChanged();
                     break;
             }
         }
@@ -260,8 +254,8 @@ public static class ReskinProfileManager
                 redLegPadDefaultColor = serializableProfile.RedLegPadDefaultColor != null
                     ? (Color)serializableProfile.RedLegPadDefaultColor
                     : defaultProfile.redLegPadDefaultColor,
-                blueGoalieHelmet = FindEntryFromReference(serializableProfile?.BlueGoalieHelmetRef, "goalie_helmet"),
-                redGoalieHelmet = FindEntryFromReference(serializableProfile?.RedGoalieHelmetRef, "goalie_helmet"),
+                blueGoalieHelmet = FindEntryFromReference(serializableProfile?.BlueGoalieHelmetRef, "helmet"),
+                redGoalieHelmet = FindEntryFromReference(serializableProfile?.RedGoalieHelmetRef, "helmet"),
                 blueGoalieHelmetColor = serializableProfile.BlueGoalieHelmetColor != null
                     ? (Color)serializableProfile.BlueGoalieHelmetColor
                     : defaultProfile.blueGoalieHelmetColor,
@@ -282,8 +276,8 @@ public static class ReskinProfileManager
                 redGoalieCageColor = serializableProfile.RedGoalieCageColor != null
                     ? (Color)serializableProfile.RedGoalieCageColor
                     : defaultProfile.redGoalieCageColor,
-                blueSkaterHelmet = FindEntryFromReference(serializableProfile?.BlueSkaterHelmetRef, "skater_helmet"),
-                redSkaterHelmet = FindEntryFromReference(serializableProfile?.RedSkaterHelmetRef, "skater_helmet"),
+                blueSkaterHelmet = FindEntryFromReference(serializableProfile?.BlueSkaterHelmetRef, "helmet"),
+                redSkaterHelmet = FindEntryFromReference(serializableProfile?.RedSkaterHelmetRef, "helmet"),
                 blueSkaterHelmetColor = serializableProfile.BlueSkaterHelmetColor != null
                     ? (Color)serializableProfile.BlueSkaterHelmetColor
                     : defaultProfile.blueSkaterHelmetColor,
@@ -561,6 +555,7 @@ public static class ReskinProfileManager
         // Find the entry within that pack with the matching name
         // TODO the pack reference not saving reskinType with the ref is causing problems looking up
         var entry = pack.Reskins.FirstOrDefault(e => e.Name == reference.EntryName && e.Type == type);
+
         if (entry == null)
         {
             Plugin.LogWarning($"Could not find reskin entry named '{reference.EntryName}' in pack '{pack.Name}'. The entry may have been removed from the pack.");

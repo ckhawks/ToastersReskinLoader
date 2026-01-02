@@ -267,21 +267,21 @@ public static class GoaliesSection
             headgearColorsContainer.Clear();
 
             // HELMET SECTION
-            var helmetEntries = ReskinRegistry.GetReskinEntriesByType("goalie_helmet");
+            var helmetEntries = ReskinRegistry.GetReskinEntriesByType("helmet");
             if (helmetEntries.Count > 0)
             {
                 ReskinRegistry.ReskinEntry unchangedEntry = new ReskinRegistry.ReskinEntry
                 {
                     Name = "Unchanged",
                     Path = null,
-                    Type = "goalie_helmet"
+                    Type = "helmet"
                 };
 
                 List<ReskinRegistry.ReskinEntry> helmetOptions = new List<ReskinRegistry.ReskinEntry> { unchangedEntry };
                 helmetOptions.AddRange(helmetEntries);
 
                 // Helmet dropdown - store reference
-                helmetDropdown = CreateHeadgearDropdownRow(headgearColorsContainer, "Helmet", "goalie_helmet", team, helmetOptions);
+                helmetDropdown = CreateHeadgearDropdownRow(headgearColorsContainer, "Helmet", "helmet", team, helmetOptions);
 
                 // Helmet Color
                 var helmetColorSection = UITools.CreateColorConfigurationRow(
@@ -428,7 +428,9 @@ public static class GoaliesSection
             {
                 ReskinRegistry.ReskinEntry chosen = evt.newValue;
                 Plugin.Log($"User picked {type} for {team}: {chosen.Name}");
-                ReskinProfileManager.SetSelectedReskinInCurrentProfile(chosen, type, team);
+                // For helmet type, encode goalie context in slot
+                string slot = (type == "helmet") ? $"goalie_{team}" : team;
+                ReskinProfileManager.SetSelectedReskinInCurrentProfile(chosen, type, slot);
             })
         );
 
@@ -436,7 +438,7 @@ public static class GoaliesSection
 
         // Get current selection based on type and team
         ReskinRegistry.ReskinEntry currentEntry = null;
-        if (type == "goalie_helmet")
+        if (type == "helmet")
             currentEntry = team == "blue" ? ReskinProfileManager.currentProfile.blueGoalieHelmet : ReskinProfileManager.currentProfile.redGoalieHelmet;
         else if (type == "goalie_mask")
             currentEntry = team == "blue" ? ReskinProfileManager.currentProfile.blueGoalieMask : ReskinProfileManager.currentProfile.redGoalieMask;

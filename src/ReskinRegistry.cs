@@ -15,7 +15,7 @@ public static class ReskinRegistry
 {
     public static List<ReskinPack> reskinPacks = new List<ReskinPack>();
     public readonly static List<string> ReskinTypes =
-        new List<string>{"stick_attacker", "stick_goalie", "net", "puck", "rink_ice", "jersey_torso", "jersey_groin", "legpad", "goalie_helmet", "skater_helmet", "goalie_mask" }; // , "arena"
+        new List<string>{"stick_attacker", "stick_goalie", "net", "puck", "rink_ice", "jersey_torso", "jersey_groin", "legpad", "helmet", "goalie_mask" }; // , "arena"
 
     public static void ReloadPacks()
     {
