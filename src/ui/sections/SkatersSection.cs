@@ -159,6 +159,21 @@ public static class SkaterSection
         SetColorSliderEnabled(blueSkaterHelmetColorSection, blueSkaterHelmetDropdown.value.Path == null);
         contentScrollViewContent.Add(blueSkaterHelmetColorSection);
 
+        // Lettering color
+        var blueLetteringColorSection = UITools.CreateColorConfigurationRow(
+            "Blue Lettering Color",
+            ReskinProfileManager.currentProfile.blueSkaterLetteringColor,
+            false,
+            newColor =>
+            {
+                ReskinProfileManager.currentProfile.blueSkaterLetteringColor = newColor;
+                PlayerTextSwapper.OnBlueSkaterLetteringColorChanged();
+                ReskinProfileManager.SaveProfile();
+            },
+            () => { ReskinProfileManager.SaveProfile(); }
+        );
+        contentScrollViewContent.Add(blueLetteringColorSection);
+
         // RED TEAM
         Label redTeamTitle = new Label("Red");
         redTeamTitle.style.fontSize = 24;
@@ -246,5 +261,20 @@ public static class SkaterSection
         // Set initial enabled state
         SetColorSliderEnabled(redSkaterHelmetColorSection, redSkaterHelmetDropdown.value.Path == null);
         contentScrollViewContent.Add(redSkaterHelmetColorSection);
+
+        // Lettering color
+        var redLetteringColorSection = UITools.CreateColorConfigurationRow(
+            "Red Lettering Color",
+            ReskinProfileManager.currentProfile.redSkaterLetteringColor,
+            false,
+            newColor =>
+            {
+                ReskinProfileManager.currentProfile.redSkaterLetteringColor = newColor;
+                PlayerTextSwapper.OnRedSkaterLetteringColorChanged();
+                ReskinProfileManager.SaveProfile();
+            },
+            () => { ReskinProfileManager.SaveProfile(); }
+        );
+        contentScrollViewContent.Add(redLetteringColorSection);
     }
 }

@@ -141,6 +141,9 @@ public static class JerseySwapper
             }
         }
         Plugin.LogDebug($"Set jersey for {player.Username.Value.ToString()}");
+
+        // Prototype: Test player text color customization
+        PlayerTextSwapper.SetPlayerTextColors(player);
     }
 
     // [HarmonyPatch(typeof(PlayerMesh), nameof(PlayerMesh.SetJersey))]

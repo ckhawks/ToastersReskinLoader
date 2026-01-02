@@ -386,6 +386,29 @@ public static class GoaliesSection
                 () => { ReskinProfileManager.SaveProfile(); }
             );
             headgearColorsContainer.Add(cageColorSection);
+
+            // LETTERING COLOR SECTION
+            var letteringColorSection = UITools.CreateColorConfigurationRow(
+                "Lettering Color",
+                team == "blue" ? ReskinProfileManager.currentProfile.blueGoalieLetteringColor : ReskinProfileManager.currentProfile.redGoalieLetteringColor,
+                false,
+                newColor =>
+                {
+                    if (team == "blue")
+                    {
+                        ReskinProfileManager.currentProfile.blueGoalieLetteringColor = newColor;
+                        PlayerTextSwapper.OnBlueGoalieLetteringColorChanged();
+                    }
+                    else
+                    {
+                        ReskinProfileManager.currentProfile.redGoalieLetteringColor = newColor;
+                        PlayerTextSwapper.OnRedGoalieLetteringColorChanged();
+                    }
+                    ReskinProfileManager.SaveProfile();
+                },
+                () => { ReskinProfileManager.SaveProfile(); }
+            );
+            headgearColorsContainer.Add(letteringColorSection);
         }
 
         // Create color sections for the first time
