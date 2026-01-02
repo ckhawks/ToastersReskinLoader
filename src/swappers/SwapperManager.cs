@@ -154,7 +154,8 @@ public static class SwapperManager
         {
             JerseySwapper.SetJerseyForPlayer(__instance.Player);
             GoalieEquipmentSwapper.SetLegPadsForPlayer(__instance.Player);
-            GoalieHelmetSwapper.SetHelmetForPlayer(__instance.Player);                      
+            GoalieHelmetSwapper.SetHeadgearForPlayer(__instance.Player);
+            SkaterHelmetSwapper.SetHelmetForPlayer(__instance.Player);
         }
     }
 

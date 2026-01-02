@@ -26,6 +26,7 @@ public static class PacksSection
             UITools.CreateConfigurationLabel($"{ReskinRegistry.reskinPacks.Count} pack{(ReskinRegistry.reskinPacks.Count == 1 ? "" : "s")} loaded");
         
         packsNumberLabel.style.marginBottom = 16;
+        packsNumberLabel.style.color = new Color(0.7f, 0.7f, 0.7f);
         sectionTitleGroup.Add(packsNumberLabel);
         
         

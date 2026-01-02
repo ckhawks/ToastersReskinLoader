@@ -140,7 +140,35 @@ public static class ReskinProfileManager
                     GoalieHelmetSwapper.OnRedHelmetsChanged();
                     break;
             }
-        }       
+        }
+        else if (type == "goalie_mask")
+        {
+            switch (slot)
+            {
+                case "blue":
+                    currentProfile.blueGoalieMask = reskinEntry;
+                    GoalieHelmetSwapper.OnBlueMasksChanged();
+                    break;
+                case "red":
+                    currentProfile.redGoalieMask = reskinEntry;
+                    GoalieHelmetSwapper.OnRedMasksChanged();
+                    break;
+            }
+        }
+        else if (type == "skater_helmet")
+        {
+            switch (slot)
+            {
+                case "blue":
+                    currentProfile.blueSkaterHelmet = reskinEntry;
+                    swappers.SkaterHelmetSwapper.OnBlueHelmetsChanged();
+                    break;
+                case "red":
+                    currentProfile.redSkaterHelmet = reskinEntry;
+                    swappers.SkaterHelmetSwapper.OnRedHelmetsChanged();
+                    break;
+            }
+        }
         else if (type == "rink_ice")
         {
             // We aren't using slot here
@@ -234,6 +262,34 @@ public static class ReskinProfileManager
                     : defaultProfile.redLegPadDefaultColor,
                 blueGoalieHelmet = FindEntryFromReference(serializableProfile?.BlueGoalieHelmetRef, "goalie_helmet"),
                 redGoalieHelmet = FindEntryFromReference(serializableProfile?.RedGoalieHelmetRef, "goalie_helmet"),
+                blueGoalieHelmetColor = serializableProfile.BlueGoalieHelmetColor != null
+                    ? (Color)serializableProfile.BlueGoalieHelmetColor
+                    : defaultProfile.blueGoalieHelmetColor,
+                redGoalieHelmetColor = serializableProfile.RedGoalieHelmetColor != null
+                    ? (Color)serializableProfile.RedGoalieHelmetColor
+                    : defaultProfile.redGoalieHelmetColor,
+                blueGoalieMask = FindEntryFromReference(serializableProfile?.BlueGoalieMaskRef, "goalie_mask"),
+                redGoalieMask = FindEntryFromReference(serializableProfile?.RedGoalieMaskRef, "goalie_mask"),
+                blueGoalieMaskColor = serializableProfile.BlueGoalieMaskColor != null
+                    ? (Color)serializableProfile.BlueGoalieMaskColor
+                    : defaultProfile.blueGoalieMaskColor,
+                redGoalieMaskColor = serializableProfile.RedGoalieMaskColor != null
+                    ? (Color)serializableProfile.RedGoalieMaskColor
+                    : defaultProfile.redGoalieMaskColor,
+                blueGoalieCageColor = serializableProfile.BlueGoalieCageColor != null
+                    ? (Color)serializableProfile.BlueGoalieCageColor
+                    : defaultProfile.blueGoalieCageColor,
+                redGoalieCageColor = serializableProfile.RedGoalieCageColor != null
+                    ? (Color)serializableProfile.RedGoalieCageColor
+                    : defaultProfile.redGoalieCageColor,
+                blueSkaterHelmet = FindEntryFromReference(serializableProfile?.BlueSkaterHelmetRef, "skater_helmet"),
+                redSkaterHelmet = FindEntryFromReference(serializableProfile?.RedSkaterHelmetRef, "skater_helmet"),
+                blueSkaterHelmetColor = serializableProfile.BlueSkaterHelmetColor != null
+                    ? (Color)serializableProfile.BlueSkaterHelmetColor
+                    : defaultProfile.blueSkaterHelmetColor,
+                redSkaterHelmetColor = serializableProfile.RedSkaterHelmetColor != null
+                    ? (Color)serializableProfile.RedSkaterHelmetColor
+                    : defaultProfile.redSkaterHelmetColor,
                 // Puck
                 puck = FindEntryFromReference(serializableProfile?.PuckRef, "puck"),
 
@@ -347,7 +403,19 @@ public static class ReskinProfileManager
                 RedLegPadDefaultColor = new SerializableColor(currentProfile.redLegPadDefaultColor),
                 BlueGoalieHelmetRef = CreateReferenceFromEntry(currentProfile.blueGoalieHelmet),
                 RedGoalieHelmetRef = CreateReferenceFromEntry(currentProfile.redGoalieHelmet),
-                
+                BlueGoalieHelmetColor = new SerializableColor(currentProfile.blueGoalieHelmetColor),
+                RedGoalieHelmetColor = new SerializableColor(currentProfile.redGoalieHelmetColor),
+                BlueGoalieMaskRef = CreateReferenceFromEntry(currentProfile.blueGoalieMask),
+                RedGoalieMaskRef = CreateReferenceFromEntry(currentProfile.redGoalieMask),
+                BlueGoalieMaskColor = new SerializableColor(currentProfile.blueGoalieMaskColor),
+                RedGoalieMaskColor = new SerializableColor(currentProfile.redGoalieMaskColor),
+                BlueGoalieCageColor = new SerializableColor(currentProfile.blueGoalieCageColor),
+                RedGoalieCageColor = new SerializableColor(currentProfile.redGoalieCageColor),
+                BlueSkaterHelmetRef = CreateReferenceFromEntry(currentProfile.blueSkaterHelmet),
+                RedSkaterHelmetRef = CreateReferenceFromEntry(currentProfile.redSkaterHelmet),
+                BlueSkaterHelmetColor = new SerializableColor(currentProfile.blueSkaterHelmetColor),
+                RedSkaterHelmetColor = new SerializableColor(currentProfile.redSkaterHelmetColor),
+
                 // Puck
                 PuckRef = CreateReferenceFromEntry(currentProfile.puck),
 
@@ -576,6 +644,21 @@ public static class ReskinProfileManager
         public Color redLegPadDefaultColor = new Color(0.151f, 0.151f, 0.151f, 1f);
         public ReskinRegistry.ReskinEntry blueGoalieHelmet;
         public ReskinRegistry.ReskinEntry redGoalieHelmet;
+        public Color blueGoalieHelmetColor = Color.black;
+        public Color redGoalieHelmetColor = Color.black;
+
+        public ReskinRegistry.ReskinEntry blueGoalieMask;
+        public ReskinRegistry.ReskinEntry redGoalieMask;
+        public Color blueGoalieMaskColor = Color.black;
+        public Color redGoalieMaskColor = Color.black;
+
+        public Color blueGoalieCageColor = new Color(0.708f, 0.708f, 0.708f, 1f);
+        public Color redGoalieCageColor = new Color(0.708f, 0.708f, 0.708f, 1f);
+
+        public ReskinRegistry.ReskinEntry blueSkaterHelmet;
+        public ReskinRegistry.ReskinEntry redSkaterHelmet;
+        public Color blueSkaterHelmetColor = Color.black;
+        public Color redSkaterHelmetColor = Color.black;
 
         // Puck section
         public ReskinRegistry.ReskinEntry puck;
@@ -685,6 +768,34 @@ public static class ReskinProfileManager
         public SerializableColor BlueLegPadDefaultColor { get; set; }
         [JsonProperty("redLegPadDefaultColor")]
         public SerializableColor RedLegPadDefaultColor { get; set; }
+
+        [JsonProperty("blueGoalieHelmetColor")]
+        public SerializableColor BlueGoalieHelmetColor { get; set; }
+        [JsonProperty("redGoalieHelmetColor")]
+        public SerializableColor RedGoalieHelmetColor { get; set; }
+
+        [JsonProperty("blueGoalieMaskRef")]
+        public ReskinReference BlueGoalieMaskRef { get; set; }
+        [JsonProperty("redGoalieMaskRef")]
+        public ReskinReference RedGoalieMaskRef { get; set; }
+        [JsonProperty("blueGoalieMaskColor")]
+        public SerializableColor BlueGoalieMaskColor { get; set; }
+        [JsonProperty("redGoalieMaskColor")]
+        public SerializableColor RedGoalieMaskColor { get; set; }
+
+        [JsonProperty("blueGoalieCageColor")]
+        public SerializableColor BlueGoalieCageColor { get; set; }
+        [JsonProperty("redGoalieCageColor")]
+        public SerializableColor RedGoalieCageColor { get; set; }
+
+        [JsonProperty("blueSkaterHelmetRef")]
+        public ReskinReference BlueSkaterHelmetRef { get; set; }
+        [JsonProperty("redSkaterHelmetRef")]
+        public ReskinReference RedSkaterHelmetRef { get; set; }
+        [JsonProperty("blueSkaterHelmetColor")]
+        public SerializableColor BlueSkaterHelmetColor { get; set; }
+        [JsonProperty("redSkaterHelmetColor")]
+        public SerializableColor RedSkaterHelmetColor { get; set; }
 
         // ARENA
         [JsonProperty("fullArenaEnabled")]
