@@ -18,6 +18,26 @@ public static class StickSwapper
     
     // private static Dictionary<ulong, Texture> originalTextures = new Dictionary<ulong, Texture>();
 
+    // Helper method to apply texture to stick based on role
+    private static void ApplyStickTexture(MeshRenderer stickMeshRenderer, SerializedDictionary<string, Material> stickMaterialMap, Texture2D texture, PlayerRole role)
+    {
+        // Select material based on role
+        if (role == PlayerRole.Attacker)
+            stickMeshRenderer.material = stickMaterialMap["red_beta_attacker"];
+        else if (role == PlayerRole.Goalie)
+            stickMeshRenderer.material = stickMaterialMap["red_beta_goalie"];
+
+        stickMeshRenderer.material.SetTexture("_Texture", texture);
+        Plugin.LogDebug("Texture applied to property: _Texture");
+
+        // Ensure the renderer is enabled
+        if (!stickMeshRenderer.enabled)
+        {
+            Plugin.LogError("stickMeshRenderer is disabled. Enabling it.");
+            stickMeshRenderer.enabled = true;
+        }
+    }
+
     // This is only used for the changing room stick because it will only be used to set reskins, not the original skins
     public static void SetStickMeshTexture(StickMesh stickMesh, ReskinRegistry.ReskinEntry reskin, PlayerRole role) 
     {
@@ -51,21 +71,8 @@ public static class StickSwapper
 
             SerializedDictionary<string, Material> stickMaterialMap =
                 (SerializedDictionary<string, Material>)_stickMaterialMapField.GetValue(stickMesh);
-            
-            if (role == PlayerRole.Attacker)
-                stickMeshRenderer.material = stickMaterialMap["red_beta_attacker"];
-            if (role == PlayerRole.Goalie)
-                stickMeshRenderer.material = stickMaterialMap["red_beta_goalie"];
-            
-            stickMeshRenderer.material.SetTexture("_Texture", texture2D);
-            Plugin.LogDebug("Texture applied to property: _Texture");
 
-            // Ensure the renderer is enabled
-            if (!stickMeshRenderer.enabled)
-            {
-                Plugin.LogError("stickMeshRenderer is disabled. Enabling it.");
-                stickMeshRenderer.enabled = true;
-            }
+            ApplyStickTexture(stickMeshRenderer, stickMaterialMap, texture2D, role);
 
             Plugin.LogDebug("Texture applied to stick GameObject!");
             return;
@@ -122,54 +129,8 @@ public static class StickSwapper
             //     Plugin.Log($"Material value: {pair.Value.name} - {pair.Value}");
             //     // if (pair.Key.Contains(search))
             // }
-            
-            if (stick.Player.Role.Value == PlayerRole.Attacker)
-                stickMeshRenderer.material = stickMaterialMap["red_beta_attacker"];
-            if (stick.Player.Role.Value == PlayerRole.Goalie)
-                stickMeshRenderer.material = stickMaterialMap["red_beta_goalie"];
 
-            // string search = ;
-            
-
-            // // This worked but only when someone had the stick in the world already
-            // Material redBetaMaterial = FindMaterialByRendererScan("Stick Red Beta Attacker");
-            // if (redBetaMaterial != null)
-            // {
-            //     Debug.Log("Found material: " + redBetaMaterial.name);
-            //     // Use the material
-            // }
-            // else
-            // {
-            //     Debug.LogError("Material 'Stick Attacker Red Beta' not found in Resources!");
-            //     return false;
-            // }
-            //
-            // stickMeshRenderer.material = redBetaMaterial;
-
-            // // Dynamically find the texture property
-            // string texturePropertyName = SwapperUtils.FindTextureProperty(stickMeshRenderer.material);
-            // if (texturePropertyName == null)
-            // {
-            //     Plugin.LogError("No texture property found in the shader.");
-            //     return false;
-            // }
-
-            // Save the player's original texture in case we need to switch back to it
-            // if (!originalTextures.ContainsKey(player.OwnerClientId))
-            //     originalTextures.Add(player.OwnerClientId, stickMeshRenderer.material.GetTexture(texturePropertyName));
-
-            // Apply the texture to the found property
-            // stickMeshRenderer.material.SetTexture(texturePropertyName, texture2D);
-            // Plugin.Log($"Texture applied to property: {texturePropertyName}");
-            stickMeshRenderer.material.SetTexture("_Texture", texture2D);
-            Plugin.LogDebug("Texture applied to property: _Texture");
-
-            // Ensure the renderer is enabled
-            if (!stickMeshRenderer.enabled)
-            {
-                Plugin.LogError("stickMeshRenderer is disabled. Enabling it.");
-                stickMeshRenderer.enabled = true;
-            }
+            ApplyStickTexture(stickMeshRenderer, stickMaterialMap, texture2D, stick.Player.Role.Value);
 
             Plugin.LogDebug("Texture applied to stick GameObject!");
             return;
