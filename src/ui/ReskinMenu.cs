@@ -23,7 +23,7 @@ public static class ReskinMenu
     public static VisualElement contentScrollViewContent;
     
     // menu state
-    public static string[] sections = new []{"Packs", "Sticks", "Skaters", "Goalies", "Pucks", "Arena", 
+    public static string[] sections = new []{"Packs", "Sticks", "Tapes", "Skaters", "Goalies", "Pucks", "Arena",
         // "Full Arena",
         "Skybox", "About" };
     // "Sounds", "Other"
@@ -450,6 +450,9 @@ public static class ReskinMenu
                 break;
             case "Goalies":
                 GoaliesSection.CreateSection(contentScrollViewContent);
+                break;
+            case "Tapes":
+                TapesSection.CreateSection(contentScrollViewContent);
                 break;
             // case "Full Arena":
             //     FullArenaSection.CreateSection(contentScrollViewContent);

@@ -12,6 +12,7 @@ public static class PuckSwapper
     private static Texture originalTexture;
     private static Texture originalBumpMap;
     private static readonly int BaseMap = Shader.PropertyToID("_BaseMap");
+    private static System.Random random = new System.Random();
 
     public static string puckBumpMapPath = "";
 
@@ -74,12 +75,32 @@ public static class PuckSwapper
         TextureManager.GetTextureFromFilePath(puckBumpMapPath);
     }
 
+    /// <summary>
+    /// Gets a random puck from the randomizer list.
+    /// If randomizer list is empty, returns null to use original/default texture.
+    /// </summary>
+    private static ReskinRegistry.ReskinEntry GetPuckForRandomizer()
+    {
+        var puckList = ReskinProfileManager.currentProfile.puckList;
+
+        // If puck list has entries, pick a random one
+        if (puckList != null && puckList.Count > 0)
+        {
+            int randomIndex = random.Next(puckList.Count);
+            return puckList[randomIndex];
+        }
+
+        // If list is empty, return null to use original/default texture
+        return null;
+    }
+
     public static void SetAllPucksTextures()
     {
         List<Puck> pucks = PuckManager.Instance.GetPucks();
         foreach (Puck puck in pucks)
         {
-            SetPuckTexture(puck, ReskinProfileManager.currentProfile.puck);
+            var puckTexture = GetPuckForRandomizer();
+            SetPuckTexture(puck, puckTexture);
         }
         Plugin.LogDebug($"Updated all pucks to have correct texture.");
     }
@@ -90,7 +111,8 @@ public static class PuckSwapper
         [HarmonyPostfix]
         public static void Postfix(Puck __instance)
         {
-            SetPuckTexture(__instance, ReskinProfileManager.currentProfile.puck);
+            var puckTexture = GetPuckForRandomizer();
+            SetPuckTexture(__instance, puckTexture);
         }
     }
 }

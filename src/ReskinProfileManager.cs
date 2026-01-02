@@ -182,6 +182,51 @@ public static class ReskinProfileManager
         SaveProfile();
     }
 
+    /// <summary>
+    /// Adds a puck to the randomizer list.
+    /// </summary>
+    public static void AddPuckToRandomizer(ReskinRegistry.ReskinEntry puck)
+    {
+        if (puck == null) return;
+
+        // Avoid duplicates
+        if (!currentProfile.puckList.Any(p => p.Name == puck.Name && p.ParentPack?.UniqueId == puck.ParentPack?.UniqueId))
+        {
+            currentProfile.puckList.Add(puck);
+            SaveProfile();
+            PuckSwapper.SetAllPucksTextures();
+        }
+    }
+
+    /// <summary>
+    /// Removes a puck from the randomizer list.
+    /// </summary>
+    public static void RemovePuckFromRandomizer(ReskinRegistry.ReskinEntry puck)
+    {
+        if (puck == null) return;
+
+        var toRemove = currentProfile.puckList.FirstOrDefault(p =>
+            p.Name == puck.Name && p.ParentPack?.UniqueId == puck.ParentPack?.UniqueId);
+
+        if (toRemove != null)
+        {
+            currentProfile.puckList.Remove(toRemove);
+            SaveProfile();
+            PuckSwapper.SetAllPucksTextures();
+        }
+    }
+
+    /// <summary>
+    /// Checks if a puck is in the randomizer list.
+    /// </summary>
+    public static bool IsPuckInRandomizer(ReskinRegistry.ReskinEntry puck)
+    {
+        if (puck == null) return false;
+
+        return currentProfile.puckList.Any(p =>
+            p.Name == puck.Name && p.ParentPack?.UniqueId == puck.ParentPack?.UniqueId);
+    }
+
     public static void LoadProfile()
     {
         string profilesFolder = Path.Combine(Path.GetFullPath(Path.Combine(Application.dataPath, "..")), "reskinprofiles");
@@ -284,8 +329,21 @@ public static class ReskinProfileManager
                 redSkaterHelmetColor = serializableProfile.RedSkaterHelmetColor != null
                     ? (Color)serializableProfile.RedSkaterHelmetColor
                     : defaultProfile.redSkaterHelmetColor,
+                blueSkaterLetteringColor = serializableProfile.BlueSkaterLetteringColor != null
+                    ? (Color)serializableProfile.BlueSkaterLetteringColor
+                    : defaultProfile.blueSkaterLetteringColor,
+                redSkaterLetteringColor = serializableProfile.RedSkaterLetteringColor != null
+                    ? (Color)serializableProfile.RedSkaterLetteringColor
+                    : defaultProfile.redSkaterLetteringColor,
+                blueGoalieLetteringColor = serializableProfile.BlueGoalieLetteringColor != null
+                    ? (Color)serializableProfile.BlueGoalieLetteringColor
+                    : defaultProfile.blueGoalieLetteringColor,
+                redGoalieLetteringColor = serializableProfile.RedGoalieLetteringColor != null
+                    ? (Color)serializableProfile.RedGoalieLetteringColor
+                    : defaultProfile.redGoalieLetteringColor,
                 // Puck
                 puck = FindEntryFromReference(serializableProfile?.PuckRef, "puck"),
+                puckList = LoadPuckList(serializableProfile),
 
                 // Arena
                 // Use the ?? (null-coalescing) operator. If the loaded value is null, use the default.
@@ -329,6 +387,55 @@ public static class ReskinProfileManager
                 spectatorDensity =  serializableProfile.SpectatorDensity ?? defaultProfile.spectatorDensity,
                 net = FindEntryFromReference(serializableProfile?.NetRef, "net"),
 
+                // Stick Tape
+                blueSkaterBladeTapeMode = serializableProfile.BlueSkaterBladeTapeMode ?? defaultProfile.blueSkaterBladeTapeMode,
+                blueSkaterBladeTape = FindEntryFromReference(serializableProfile?.BlueSkaterBladeTapeRef, "tape_attacker_blade"),
+                blueSkaterBladeTapeColor = serializableProfile.BlueSkaterBladeTapeColor != null
+                    ? (Color)serializableProfile.BlueSkaterBladeTapeColor
+                    : defaultProfile.blueSkaterBladeTapeColor,
+
+                blueSkaterShaftTapeMode = serializableProfile.BlueSkaterShaftTapeMode ?? defaultProfile.blueSkaterShaftTapeMode,
+                blueSkaterShaftTape = FindEntryFromReference(serializableProfile?.BlueSkaterShaftTapeRef, "tape_attacker_shaft"),
+                blueSkaterShaftTapeColor = serializableProfile.BlueSkaterShaftTapeColor != null
+                    ? (Color)serializableProfile.BlueSkaterShaftTapeColor
+                    : defaultProfile.blueSkaterShaftTapeColor,
+
+                blueGoalieBladeTapeMode = serializableProfile.BlueGoalieBladeTapeMode ?? defaultProfile.blueGoalieBladeTapeMode,
+                blueGoalieBladeTape = FindEntryFromReference(serializableProfile?.BlueGoalieBladeTapeRef, "tape_goalie_blade"),
+                blueGoalieBladeTapeColor = serializableProfile.BlueGoalieBladeTapeColor != null
+                    ? (Color)serializableProfile.BlueGoalieBladeTapeColor
+                    : defaultProfile.blueGoalieBladeTapeColor,
+
+                blueGoalieShaftTapeMode = serializableProfile.BlueGoalieShaftTapeMode ?? defaultProfile.blueGoalieShaftTapeMode,
+                blueGoalieShaftTape = FindEntryFromReference(serializableProfile?.BlueGoalieShaftTapeRef, "tape_goalie_shaft"),
+                blueGoalieShaftTapeColor = serializableProfile.BlueGoalieShaftTapeColor != null
+                    ? (Color)serializableProfile.BlueGoalieShaftTapeColor
+                    : defaultProfile.blueGoalieShaftTapeColor,
+
+                redSkaterBladeTapeMode = serializableProfile.RedSkaterBladeTapeMode ?? defaultProfile.redSkaterBladeTapeMode,
+                redSkaterBladeTape = FindEntryFromReference(serializableProfile?.RedSkaterBladeTapeRef, "tape_attacker_blade"),
+                redSkaterBladeTapeColor = serializableProfile.RedSkaterBladeTapeColor != null
+                    ? (Color)serializableProfile.RedSkaterBladeTapeColor
+                    : defaultProfile.redSkaterBladeTapeColor,
+
+                redSkaterShaftTapeMode = serializableProfile.RedSkaterShaftTapeMode ?? defaultProfile.redSkaterShaftTapeMode,
+                redSkaterShaftTape = FindEntryFromReference(serializableProfile?.RedSkaterShaftTapeRef, "tape_attacker_shaft"),
+                redSkaterShaftTapeColor = serializableProfile.RedSkaterShaftTapeColor != null
+                    ? (Color)serializableProfile.RedSkaterShaftTapeColor
+                    : defaultProfile.redSkaterShaftTapeColor,
+
+                redGoalieBladeTapeMode = serializableProfile.RedGoalieBladeTapeMode ?? defaultProfile.redGoalieBladeTapeMode,
+                redGoalieBladeTape = FindEntryFromReference(serializableProfile?.RedGoalieBladeTapeRef, "tape_goalie_blade"),
+                redGoalieBladeTapeColor = serializableProfile.RedGoalieBladeTapeColor != null
+                    ? (Color)serializableProfile.RedGoalieBladeTapeColor
+                    : defaultProfile.redGoalieBladeTapeColor,
+
+                redGoalieShaftTapeMode = serializableProfile.RedGoalieShaftTapeMode ?? defaultProfile.redGoalieShaftTapeMode,
+                redGoalieShaftTape = FindEntryFromReference(serializableProfile?.RedGoalieShaftTapeRef, "tape_goalie_shaft"),
+                redGoalieShaftTapeColor = serializableProfile.RedGoalieShaftTapeColor != null
+                    ? (Color)serializableProfile.RedGoalieShaftTapeColor
+                    : defaultProfile.redGoalieShaftTapeColor,
+
                 // Skybox
                 skyboxAtmosphereThickness =
                     serializableProfile.SkyboxAtmosphereThickness
@@ -359,6 +466,40 @@ public static class ReskinProfileManager
             Plugin.LogError($"Failed to load reskin profile: {ex.Message}. Creating a new default profile.");
             currentProfile = new Profile(); // Fallback to a default profile on error
         }
+    }
+
+    /// <summary>
+    /// Loads the puck list from serializable profile, with backwards compatibility migration.
+    /// If the new puckListRef exists, use it. Otherwise, migrate the old single puck entry.
+    /// </summary>
+    private static List<ReskinRegistry.ReskinEntry> LoadPuckList(SerializableProfile serializableProfile)
+    {
+        var puckList = new List<ReskinRegistry.ReskinEntry>();
+
+        // If new puckListRef exists, load from it
+        if (serializableProfile?.PuckListRef != null && serializableProfile.PuckListRef.Count > 0)
+        {
+            foreach (var puckRef in serializableProfile.PuckListRef)
+            {
+                var entry = FindEntryFromReference(puckRef, "puck");
+                if (entry != null)
+                {
+                    puckList.Add(entry);
+                }
+            }
+        }
+        // Else if old single puck entry exists, migrate it to the list
+        else if (serializableProfile?.PuckRef != null)
+        {
+            var oldPuck = FindEntryFromReference(serializableProfile.PuckRef, "puck");
+            if (oldPuck != null)
+            {
+                puckList.Add(oldPuck);
+                Plugin.Log("Migrated old single puck entry to new puck randomizer list");
+            }
+        }
+
+        return puckList;
     }
 
     public static void SaveProfile()
@@ -409,9 +550,14 @@ public static class ReskinProfileManager
                 RedSkaterHelmetRef = CreateReferenceFromEntry(currentProfile.redSkaterHelmet),
                 BlueSkaterHelmetColor = new SerializableColor(currentProfile.blueSkaterHelmetColor),
                 RedSkaterHelmetColor = new SerializableColor(currentProfile.redSkaterHelmetColor),
+                BlueSkaterLetteringColor = new SerializableColor(currentProfile.blueSkaterLetteringColor),
+                RedSkaterLetteringColor = new SerializableColor(currentProfile.redSkaterLetteringColor),
+                BlueGoalieLetteringColor = new SerializableColor(currentProfile.blueGoalieLetteringColor),
+                RedGoalieLetteringColor = new SerializableColor(currentProfile.redGoalieLetteringColor),
 
                 // Puck
                 PuckRef = CreateReferenceFromEntry(currentProfile.puck),
+                PuckListRef = currentProfile.puckList.Select(p => CreateReferenceFromEntry(p)).ToList(),
 
                 // Full arena
                 FullArenaEnabled = currentProfile.fullArenaEnabled,
@@ -433,7 +579,40 @@ public static class ReskinProfileManager
                 PillarsColor = new SerializableColor(currentProfile.pillarsColor),
                 SpectatorDensity = currentProfile.spectatorDensity,
                 NetRef = CreateReferenceFromEntry(currentProfile.net),
-                
+
+                // Stick Tape
+                BlueSkaterBladeTapeMode = currentProfile.blueSkaterBladeTapeMode,
+                BlueSkaterBladeTapeRef = CreateReferenceFromEntry(currentProfile.blueSkaterBladeTape),
+                BlueSkaterBladeTapeColor = new SerializableColor(currentProfile.blueSkaterBladeTapeColor),
+
+                BlueSkaterShaftTapeMode = currentProfile.blueSkaterShaftTapeMode,
+                BlueSkaterShaftTapeRef = CreateReferenceFromEntry(currentProfile.blueSkaterShaftTape),
+                BlueSkaterShaftTapeColor = new SerializableColor(currentProfile.blueSkaterShaftTapeColor),
+
+                BlueGoalieBladeTapeMode = currentProfile.blueGoalieBladeTapeMode,
+                BlueGoalieBladeTapeRef = CreateReferenceFromEntry(currentProfile.blueGoalieBladeTape),
+                BlueGoalieBladeTapeColor = new SerializableColor(currentProfile.blueGoalieBladeTapeColor),
+
+                BlueGoalieShaftTapeMode = currentProfile.blueGoalieShaftTapeMode,
+                BlueGoalieShaftTapeRef = CreateReferenceFromEntry(currentProfile.blueGoalieShaftTape),
+                BlueGoalieShaftTapeColor = new SerializableColor(currentProfile.blueGoalieShaftTapeColor),
+
+                RedSkaterBladeTapeMode = currentProfile.redSkaterBladeTapeMode,
+                RedSkaterBladeTapeRef = CreateReferenceFromEntry(currentProfile.redSkaterBladeTape),
+                RedSkaterBladeTapeColor = new SerializableColor(currentProfile.redSkaterBladeTapeColor),
+
+                RedSkaterShaftTapeMode = currentProfile.redSkaterShaftTapeMode,
+                RedSkaterShaftTapeRef = CreateReferenceFromEntry(currentProfile.redSkaterShaftTape),
+                RedSkaterShaftTapeColor = new SerializableColor(currentProfile.redSkaterShaftTapeColor),
+
+                RedGoalieBladeTapeMode = currentProfile.redGoalieBladeTapeMode,
+                RedGoalieBladeTapeRef = CreateReferenceFromEntry(currentProfile.redGoalieBladeTape),
+                RedGoalieBladeTapeColor = new SerializableColor(currentProfile.redGoalieBladeTapeColor),
+
+                RedGoalieShaftTapeMode = currentProfile.redGoalieShaftTapeMode,
+                RedGoalieShaftTapeRef = CreateReferenceFromEntry(currentProfile.redGoalieShaftTape),
+                RedGoalieShaftTapeColor = new SerializableColor(currentProfile.redGoalieShaftTapeColor),
+
                 // Skybox
                 SkyboxAtmosphereThickness = currentProfile.skyboxAtmosphereThickness,
                 SkyboxExposure = currentProfile.skyboxExposure,
@@ -503,6 +682,14 @@ public static class ReskinProfileManager
         if (currentProfile.stickGoalieRedPersonal != null) activeList.Add(currentProfile.stickGoalieRedPersonal);
         if (currentProfile.ice != null) activeList.Add(currentProfile.ice);
         if (currentProfile.puck != null) activeList.Add(currentProfile.puck);
+        // Add all pucks from puck randomizer list
+        if (currentProfile.puckList != null)
+        {
+            foreach (var puck in currentProfile.puckList)
+            {
+                if (puck != null) activeList.Add(puck);
+            }
+        }
         if (currentProfile.net != null) activeList.Add(currentProfile.net);
         if (currentProfile.blueLegPadLeft != null) activeList.Add(currentProfile.blueLegPadLeft);
         if (currentProfile.blueLegPadRight != null) activeList.Add(currentProfile.blueLegPadRight);
@@ -655,9 +842,16 @@ public static class ReskinProfileManager
         public Color blueSkaterHelmetColor = Color.black;
         public Color redSkaterHelmetColor = Color.black;
 
+        // Lettering colors (default: white)
+        public Color blueSkaterLetteringColor = new Color(1f, 1f, 1f, 1f);
+        public Color redSkaterLetteringColor = new Color(1f, 1f, 1f, 1f);
+        public Color blueGoalieLetteringColor = new Color(1f, 1f, 1f, 1f);
+        public Color redGoalieLetteringColor = new Color(1f, 1f, 1f, 1f);
+
         // Puck section
-        public ReskinRegistry.ReskinEntry puck;
-        
+        public ReskinRegistry.ReskinEntry puck; // Kept for backwards compatibility
+        public List<ReskinRegistry.ReskinEntry> puckList = new List<ReskinRegistry.ReskinEntry>();
+
         // Arena section
         public bool fullArenaEnabled = false;
         public string fullArenaBundle = "";
@@ -676,7 +870,44 @@ public static class ReskinProfileManager
         public float glassSmoothness = 1f;
         public float spectatorDensity = 0.25f;
         public ReskinRegistry.ReskinEntry net;
-        
+
+        // Stick Tape Customization
+        // Blue Team Skater
+        public string blueSkaterBladeTapeMode = "Unchanged";
+        public ReskinRegistry.ReskinEntry blueSkaterBladeTape;
+        public Color blueSkaterBladeTapeColor = Color.white;
+
+        public string blueSkaterShaftTapeMode = "Unchanged";
+        public ReskinRegistry.ReskinEntry blueSkaterShaftTape;
+        public Color blueSkaterShaftTapeColor = Color.white;
+
+        // Blue Team Goalie
+        public string blueGoalieBladeTapeMode = "Unchanged";
+        public ReskinRegistry.ReskinEntry blueGoalieBladeTape;
+        public Color blueGoalieBladeTapeColor = Color.white;
+
+        public string blueGoalieShaftTapeMode = "Unchanged";
+        public ReskinRegistry.ReskinEntry blueGoalieShaftTape;
+        public Color blueGoalieShaftTapeColor = Color.white;
+
+        // Red Team Skater
+        public string redSkaterBladeTapeMode = "Unchanged";
+        public ReskinRegistry.ReskinEntry redSkaterBladeTape;
+        public Color redSkaterBladeTapeColor = Color.white;
+
+        public string redSkaterShaftTapeMode = "Unchanged";
+        public ReskinRegistry.ReskinEntry redSkaterShaftTape;
+        public Color redSkaterShaftTapeColor = Color.white;
+
+        // Red Team Goalie
+        public string redGoalieBladeTapeMode = "Unchanged";
+        public ReskinRegistry.ReskinEntry redGoalieBladeTape;
+        public Color redGoalieBladeTapeColor = Color.white;
+
+        public string redGoalieShaftTapeMode = "Unchanged";
+        public ReskinRegistry.ReskinEntry redGoalieShaftTape;
+        public Color redGoalieShaftTapeColor = Color.white;
+
         // Skybox section
         public float skyboxAtmosphereThickness = 1;
         public float skyboxExposure = 1.3f;
@@ -792,6 +1023,15 @@ public static class ReskinProfileManager
         [JsonProperty("redSkaterHelmetColor")]
         public SerializableColor RedSkaterHelmetColor { get; set; }
 
+        [JsonProperty("blueSkaterLetteringColor")]
+        public SerializableColor BlueSkaterLetteringColor { get; set; }
+        [JsonProperty("redSkaterLetteringColor")]
+        public SerializableColor RedSkaterLetteringColor { get; set; }
+        [JsonProperty("blueGoalieLetteringColor")]
+        public SerializableColor BlueGoalieLetteringColor { get; set; }
+        [JsonProperty("redGoalieLetteringColor")]
+        public SerializableColor RedGoalieLetteringColor { get; set; }
+
         // ARENA
         [JsonProperty("fullArenaEnabled")]
         public bool? FullArenaEnabled { get; set; }
@@ -833,10 +1073,69 @@ public static class ReskinProfileManager
         [JsonProperty("netRef")]
         public ReskinReference NetRef { get; set; }
 
+        // STICK TAPE
+        [JsonProperty("blueSkaterBladeTapeMode")]
+        public string BlueSkaterBladeTapeMode { get; set; }
+        [JsonProperty("blueSkaterBladeTapeRef")]
+        public ReskinReference BlueSkaterBladeTapeRef { get; set; }
+        [JsonProperty("blueSkaterBladeTapeColor")]
+        public SerializableColor BlueSkaterBladeTapeColor { get; set; }
+
+        [JsonProperty("blueSkaterShaftTapeMode")]
+        public string BlueSkaterShaftTapeMode { get; set; }
+        [JsonProperty("blueSkaterShaftTapeRef")]
+        public ReskinReference BlueSkaterShaftTapeRef { get; set; }
+        [JsonProperty("blueSkaterShaftTapeColor")]
+        public SerializableColor BlueSkaterShaftTapeColor { get; set; }
+
+        [JsonProperty("blueGoalieBladeTapeMode")]
+        public string BlueGoalieBladeTapeMode { get; set; }
+        [JsonProperty("blueGoalieBladeTapeRef")]
+        public ReskinReference BlueGoalieBladeTapeRef { get; set; }
+        [JsonProperty("blueGoalieBladeTapeColor")]
+        public SerializableColor BlueGoalieBladeTapeColor { get; set; }
+
+        [JsonProperty("blueGoalieShaftTapeMode")]
+        public string BlueGoalieShaftTapeMode { get; set; }
+        [JsonProperty("blueGoalieShaftTapeRef")]
+        public ReskinReference BlueGoalieShaftTapeRef { get; set; }
+        [JsonProperty("blueGoalieShaftTapeColor")]
+        public SerializableColor BlueGoalieShaftTapeColor { get; set; }
+
+        [JsonProperty("redSkaterBladeTapeMode")]
+        public string RedSkaterBladeTapeMode { get; set; }
+        [JsonProperty("redSkaterBladeTapeRef")]
+        public ReskinReference RedSkaterBladeTapeRef { get; set; }
+        [JsonProperty("redSkaterBladeTapeColor")]
+        public SerializableColor RedSkaterBladeTapeColor { get; set; }
+
+        [JsonProperty("redSkaterShaftTapeMode")]
+        public string RedSkaterShaftTapeMode { get; set; }
+        [JsonProperty("redSkaterShaftTapeRef")]
+        public ReskinReference RedSkaterShaftTapeRef { get; set; }
+        [JsonProperty("redSkaterShaftTapeColor")]
+        public SerializableColor RedSkaterShaftTapeColor { get; set; }
+
+        [JsonProperty("redGoalieBladeTapeMode")]
+        public string RedGoalieBladeTapeMode { get; set; }
+        [JsonProperty("redGoalieBladeTapeRef")]
+        public ReskinReference RedGoalieBladeTapeRef { get; set; }
+        [JsonProperty("redGoalieBladeTapeColor")]
+        public SerializableColor RedGoalieBladeTapeColor { get; set; }
+
+        [JsonProperty("redGoalieShaftTapeMode")]
+        public string RedGoalieShaftTapeMode { get; set; }
+        [JsonProperty("redGoalieShaftTapeRef")]
+        public ReskinReference RedGoalieShaftTapeRef { get; set; }
+        [JsonProperty("redGoalieShaftTapeColor")]
+        public SerializableColor RedGoalieShaftTapeColor { get; set; }
+
         // PUCKS
         [JsonProperty("puckRef")]
         public ReskinReference PuckRef { get; set; }
-        
+        [JsonProperty("puckListRef")]
+        public List<ReskinReference> PuckListRef { get; set; } = new List<ReskinReference>();
+
         // SKYBOX
         [JsonProperty("skyboxAtmosphereThickness")]
         public float? SkyboxAtmosphereThickness { get; set; }

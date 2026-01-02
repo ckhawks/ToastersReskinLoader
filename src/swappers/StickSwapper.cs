@@ -133,6 +133,9 @@ public static class StickSwapper
             ApplyStickTexture(stickMeshRenderer, stickMaterialMap, texture2D, stick.Player.Role.Value);
 
             Plugin.LogDebug("Texture applied to stick GameObject!");
+            
+            // Prototype: Test stick tape colors
+            StickTapeSwapper.SetStickTapeColors(stick);
             return;
         }
         catch (Exception ex)
