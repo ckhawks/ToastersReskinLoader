@@ -1,4 +1,7 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using ToasterReskinLoader.swappers;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -59,6 +62,114 @@ public static class GoalieSection
         // RED TEAM
         CreateLegPadDropdownRow(contentScrollViewContent, "Red Left", "red_left", legPadOptions);
         CreateLegPadDropdownRow(contentScrollViewContent, "Red Right", "red_right", legPadOptions);
+
+        // Add spacing before color settings
+        VisualElement colorSpacer = new VisualElement();
+        colorSpacer.style.height = 20;
+        contentScrollViewContent.Add(colorSpacer);
+
+        CreateLegPadColorUI(contentScrollViewContent);
+    }
+
+    // Creates the color UI and reset button for leg pads
+    private static void CreateLegPadColorUI(VisualElement contentScrollViewContent)
+    {
+        // Default Color Settings
+        Label defaultColorsTitle = new Label("Default Pad Colors");
+        defaultColorsTitle.style.fontSize = 16;
+        defaultColorsTitle.style.color = new Color(1f, 1f, 1f);
+        defaultColorsTitle.style.marginBottom = 5;
+        contentScrollViewContent.Add(defaultColorsTitle);
+
+        Label defaultColorsDescription = new Label("These colors are used when the pad setting is set to Unchanged.");
+        defaultColorsDescription.style.fontSize = 12;
+        defaultColorsDescription.style.color = new Color(0.6f, 0.6f, 0.6f);
+        defaultColorsDescription.style.marginBottom = 15;
+        contentScrollViewContent.Add(defaultColorsDescription);
+
+        // Blue Team Default Color
+        var blueLegPadColorSection = UITools.CreateColorConfigurationRow(
+            "Blue Team",
+            ReskinProfileManager.currentProfile.blueLegPadDefaultColor,
+            false,
+            newColor =>
+            {
+                ReskinProfileManager.currentProfile.blueLegPadDefaultColor = newColor;
+                ReskinProfileManager.SaveProfile();
+                GoalieEquipmentSwapper.OnBlueLegPadColorChanged();
+            },
+            () => { ReskinProfileManager.SaveProfile(); }
+        );
+        contentScrollViewContent.Add(blueLegPadColorSection);
+
+        // Red Team Default Color
+        var redLegPadColorSection = UITools.CreateColorConfigurationRow(
+            "Red Team",
+            ReskinProfileManager.currentProfile.redLegPadDefaultColor,
+            false,
+            newColor =>
+            {
+                ReskinProfileManager.currentProfile.redLegPadDefaultColor = newColor;
+                ReskinProfileManager.SaveProfile();
+                GoalieEquipmentSwapper.OnRedLegPadColorChanged();
+            },
+            () => { ReskinProfileManager.SaveProfile(); }
+        );
+        contentScrollViewContent.Add(redLegPadColorSection);
+
+        // Reset Button
+        Button resetButton = new Button
+        {
+            text = "Reset colors to default",
+            style =
+            {
+                backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f)),
+                unityTextAlign = TextAnchor.MiddleLeft,
+                fontSize = 18,
+                marginTop = 8,
+                paddingTop = 8,
+                paddingBottom = 8,
+                paddingLeft = 15
+            }
+        };
+        UITools.AddHoverEffectsForButton(resetButton);
+        resetButton.RegisterCallback<ClickEvent>(evt =>
+        {
+            Plugin.Log("Resetting leg pad colors to default");
+            GoalieEquipmentSwapper.ResetLegPadColorsToDefault();
+
+            // Find and remove the spacer and all color UI elements
+            var elementsToRemove = new List<VisualElement>();
+            bool foundSpacer = false;
+            foreach (var element in contentScrollViewContent.Children())
+            {
+                // Find the spacer that precedes the color UI
+                if (!foundSpacer && element is VisualElement ve &&
+                    ve.style.height == 20 &&
+                    !ve.Children().Any())
+                {
+                    // This is likely our colorSpacer, start removing from here
+                    foundSpacer = true;
+                    elementsToRemove.Add(element);
+                }
+                else if (foundSpacer)
+                {
+                    elementsToRemove.Add(element);
+                }
+            }
+
+            foreach (var element in elementsToRemove)
+            {
+                contentScrollViewContent.Remove(element);
+            }
+
+            // Recreate the spacer and color UI with the reset values
+            VisualElement newColorSpacer = new VisualElement();
+            newColorSpacer.style.height = 20;
+            contentScrollViewContent.Add(newColorSpacer);
+            CreateLegPadColorUI(contentScrollViewContent);
+        });
+        contentScrollViewContent.Add(resetButton);
     }
 
     // Helper to create a single leg pad dropdown row

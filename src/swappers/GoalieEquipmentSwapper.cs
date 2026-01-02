@@ -23,7 +23,7 @@ namespace ToasterReskinLoader.swappers
 
         // Applies leg pad texture to a single side (left or right)
         private static void ApplyLegPadTexture(MeshRenderer renderer, ulong playerId, PlayerTeam team,
-            string side, ReskinRegistry.ReskinEntry textureEntry)
+            string side, ReskinRegistry.ReskinEntry textureEntry, Color defaultColor)
         {
             if (renderer == null) return;
 
@@ -46,9 +46,9 @@ namespace ToasterReskinLoader.swappers
             }
             else
             {
-                // Reset to original
+                // Reset to original with the configured default color
                 renderer.material.mainTexture = originalTextures[cacheKey];
-                renderer.material.color = new Color(0.151f, 0.151f, 0.151f);;
+                renderer.material.color = defaultColor;
             }
         }
 
@@ -86,16 +86,20 @@ namespace ToasterReskinLoader.swappers
             if (team == PlayerTeam.Blue)
             {
                 ApplyLegPadTexture(leftRenderer, player.OwnerClientId, team, "left",
-                    ReskinProfileManager.currentProfile.blueLegPadLeft);
+                    ReskinProfileManager.currentProfile.blueLegPadLeft,
+                    ReskinProfileManager.currentProfile.blueLegPadDefaultColor);
                 ApplyLegPadTexture(rightRenderer, player.OwnerClientId, team, "right",
-                    ReskinProfileManager.currentProfile.blueLegPadRight);
+                    ReskinProfileManager.currentProfile.blueLegPadRight,
+                    ReskinProfileManager.currentProfile.blueLegPadDefaultColor);
             }
             else // Red
             {
                 ApplyLegPadTexture(leftRenderer, player.OwnerClientId, team, "left",
-                    ReskinProfileManager.currentProfile.redLegPadLeft);
+                    ReskinProfileManager.currentProfile.redLegPadLeft,
+                    ReskinProfileManager.currentProfile.redLegPadDefaultColor);
                 ApplyLegPadTexture(rightRenderer, player.OwnerClientId, team, "right",
-                    ReskinProfileManager.currentProfile.redLegPadRight);
+                    ReskinProfileManager.currentProfile.redLegPadRight,
+                    ReskinProfileManager.currentProfile.redLegPadDefaultColor);
             }
 
             Plugin.LogDebug($"Set leg pads for {player.Username.Value} ({team})");
@@ -116,5 +120,19 @@ namespace ToasterReskinLoader.swappers
 
         public static void OnBlueLegPadsChanged() => UpdateTeamLegPads(PlayerTeam.Blue);
         public static void OnRedLegPadsChanged() => UpdateTeamLegPads(PlayerTeam.Red);
+
+        public static void OnBlueLegPadColorChanged() => UpdateTeamLegPads(PlayerTeam.Blue);
+        public static void OnRedLegPadColorChanged() => UpdateTeamLegPads(PlayerTeam.Red);
+
+        // Resets both blue and red leg pad colors to default
+        public static void ResetLegPadColorsToDefault()
+        {
+            ReskinProfileManager.currentProfile.blueLegPadDefaultColor = new Color(0.151f, 0.151f, 0.151f, 1f);
+            ReskinProfileManager.currentProfile.redLegPadDefaultColor = new Color(0.151f, 0.151f, 0.151f, 1f);
+            ReskinProfileManager.SaveProfile();
+
+            UpdateTeamLegPads(PlayerTeam.Blue);
+            UpdateTeamLegPads(PlayerTeam.Red);
+        }
     }
 }

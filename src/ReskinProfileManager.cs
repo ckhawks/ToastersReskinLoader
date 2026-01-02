@@ -226,6 +226,12 @@ public static class ReskinProfileManager
                 blueLegPadRight = FindEntryFromReference(serializableProfile?.BlueLegPadRightRef, "legpad"),
                 redLegPadLeft = FindEntryFromReference(serializableProfile?.RedLegPadLeftRef, "legpad"),
                 redLegPadRight = FindEntryFromReference(serializableProfile?.RedLegPadRightRef, "legpad"),
+                blueLegPadDefaultColor = serializableProfile.BlueLegPadDefaultColor != null
+                    ? (Color)serializableProfile.BlueLegPadDefaultColor
+                    : defaultProfile.blueLegPadDefaultColor,
+                redLegPadDefaultColor = serializableProfile.RedLegPadDefaultColor != null
+                    ? (Color)serializableProfile.RedLegPadDefaultColor
+                    : defaultProfile.redLegPadDefaultColor,
                 blueGoalieHelmet = FindEntryFromReference(serializableProfile?.BlueGoalieHelmetRef, "goalie_helmet"),
                 redGoalieHelmet = FindEntryFromReference(serializableProfile?.RedGoalieHelmetRef, "goalie_helmet"),
                 // Puck
@@ -332,11 +338,13 @@ public static class ReskinProfileManager
                 RedGoalieTorsoRef = CreateReferenceFromEntry(currentProfile.redGoalieTorso),
                 RedGoalieGroinRef = CreateReferenceFromEntry(currentProfile.redGoalieGroin),
                 
-                // Goalie pads and helmet 
+                // Goalie pads and helmet
                 BlueLegPadLeftRef = CreateReferenceFromEntry(currentProfile.blueLegPadLeft),
                 BlueLegPadRightRef = CreateReferenceFromEntry(currentProfile.blueLegPadRight),
                 RedLegPadLeftRef = CreateReferenceFromEntry(currentProfile.redLegPadLeft),
-                RedLegPadRightRef = CreateReferenceFromEntry(currentProfile.redLegPadRight),    
+                RedLegPadRightRef = CreateReferenceFromEntry(currentProfile.redLegPadRight),
+                BlueLegPadDefaultColor = new SerializableColor(currentProfile.blueLegPadDefaultColor),
+                RedLegPadDefaultColor = new SerializableColor(currentProfile.redLegPadDefaultColor),
                 BlueGoalieHelmetRef = CreateReferenceFromEntry(currentProfile.blueGoalieHelmet),
                 RedGoalieHelmetRef = CreateReferenceFromEntry(currentProfile.redGoalieHelmet),
                 
@@ -564,6 +572,8 @@ public static class ReskinProfileManager
         public ReskinRegistry.ReskinEntry blueLegPadRight;
         public ReskinRegistry.ReskinEntry redLegPadLeft;
         public ReskinRegistry.ReskinEntry redLegPadRight;
+        public Color blueLegPadDefaultColor = new Color(0.151f, 0.151f, 0.151f, 1f);
+        public Color redLegPadDefaultColor = new Color(0.151f, 0.151f, 0.151f, 1f);
         public ReskinRegistry.ReskinEntry blueGoalieHelmet;
         public ReskinRegistry.ReskinEntry redGoalieHelmet;
 
@@ -670,7 +680,12 @@ public static class ReskinProfileManager
         [JsonProperty("redLegPadLeftRef")]
         public ReskinReference RedLegPadLeftRef { get; set; }
         [JsonProperty("redLegPadRightRef")]
-        public ReskinReference RedLegPadRightRef { get; set; }    
+        public ReskinReference RedLegPadRightRef { get; set; }
+        [JsonProperty("blueLegPadDefaultColor")]
+        public SerializableColor BlueLegPadDefaultColor { get; set; }
+        [JsonProperty("redLegPadDefaultColor")]
+        public SerializableColor RedLegPadDefaultColor { get; set; }
+
         // ARENA
         [JsonProperty("fullArenaEnabled")]
         public bool? FullArenaEnabled { get; set; }
