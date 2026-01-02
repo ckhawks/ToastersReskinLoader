@@ -182,6 +182,51 @@ public static class ReskinProfileManager
         SaveProfile();
     }
 
+    /// <summary>
+    /// Adds a puck to the randomizer list.
+    /// </summary>
+    public static void AddPuckToRandomizer(ReskinRegistry.ReskinEntry puck)
+    {
+        if (puck == null) return;
+
+        // Avoid duplicates
+        if (!currentProfile.puckList.Any(p => p.Name == puck.Name && p.ParentPack?.UniqueId == puck.ParentPack?.UniqueId))
+        {
+            currentProfile.puckList.Add(puck);
+            SaveProfile();
+            PuckSwapper.SetAllPucksTextures();
+        }
+    }
+
+    /// <summary>
+    /// Removes a puck from the randomizer list.
+    /// </summary>
+    public static void RemovePuckFromRandomizer(ReskinRegistry.ReskinEntry puck)
+    {
+        if (puck == null) return;
+
+        var toRemove = currentProfile.puckList.FirstOrDefault(p =>
+            p.Name == puck.Name && p.ParentPack?.UniqueId == puck.ParentPack?.UniqueId);
+
+        if (toRemove != null)
+        {
+            currentProfile.puckList.Remove(toRemove);
+            SaveProfile();
+            PuckSwapper.SetAllPucksTextures();
+        }
+    }
+
+    /// <summary>
+    /// Checks if a puck is in the randomizer list.
+    /// </summary>
+    public static bool IsPuckInRandomizer(ReskinRegistry.ReskinEntry puck)
+    {
+        if (puck == null) return false;
+
+        return currentProfile.puckList.Any(p =>
+            p.Name == puck.Name && p.ParentPack?.UniqueId == puck.ParentPack?.UniqueId);
+    }
+
     public static void LoadProfile()
     {
         string profilesFolder = Path.Combine(Path.GetFullPath(Path.Combine(Application.dataPath, "..")), "reskinprofiles");
@@ -286,6 +331,7 @@ public static class ReskinProfileManager
                     : defaultProfile.redSkaterHelmetColor,
                 // Puck
                 puck = FindEntryFromReference(serializableProfile?.PuckRef, "puck"),
+                puckList = LoadPuckList(serializableProfile),
 
                 // Arena
                 // Use the ?? (null-coalescing) operator. If the loaded value is null, use the default.
@@ -361,6 +407,40 @@ public static class ReskinProfileManager
         }
     }
 
+    /// <summary>
+    /// Loads the puck list from serializable profile, with backwards compatibility migration.
+    /// If the new puckListRef exists, use it. Otherwise, migrate the old single puck entry.
+    /// </summary>
+    private static List<ReskinRegistry.ReskinEntry> LoadPuckList(SerializableProfile serializableProfile)
+    {
+        var puckList = new List<ReskinRegistry.ReskinEntry>();
+
+        // If new puckListRef exists, load from it
+        if (serializableProfile?.PuckListRef != null && serializableProfile.PuckListRef.Count > 0)
+        {
+            foreach (var puckRef in serializableProfile.PuckListRef)
+            {
+                var entry = FindEntryFromReference(puckRef, "puck");
+                if (entry != null)
+                {
+                    puckList.Add(entry);
+                }
+            }
+        }
+        // Else if old single puck entry exists, migrate it to the list
+        else if (serializableProfile?.PuckRef != null)
+        {
+            var oldPuck = FindEntryFromReference(serializableProfile.PuckRef, "puck");
+            if (oldPuck != null)
+            {
+                puckList.Add(oldPuck);
+                Plugin.Log("Migrated old single puck entry to new puck randomizer list");
+            }
+        }
+
+        return puckList;
+    }
+
     public static void SaveProfile()
     {
         try
@@ -412,6 +492,7 @@ public static class ReskinProfileManager
 
                 // Puck
                 PuckRef = CreateReferenceFromEntry(currentProfile.puck),
+                PuckListRef = currentProfile.puckList.Select(p => CreateReferenceFromEntry(p)).ToList(),
 
                 // Full arena
                 FullArenaEnabled = currentProfile.fullArenaEnabled,
@@ -503,6 +584,14 @@ public static class ReskinProfileManager
         if (currentProfile.stickGoalieRedPersonal != null) activeList.Add(currentProfile.stickGoalieRedPersonal);
         if (currentProfile.ice != null) activeList.Add(currentProfile.ice);
         if (currentProfile.puck != null) activeList.Add(currentProfile.puck);
+        // Add all pucks from puck randomizer list
+        if (currentProfile.puckList != null)
+        {
+            foreach (var puck in currentProfile.puckList)
+            {
+                if (puck != null) activeList.Add(puck);
+            }
+        }
         if (currentProfile.net != null) activeList.Add(currentProfile.net);
         if (currentProfile.blueLegPadLeft != null) activeList.Add(currentProfile.blueLegPadLeft);
         if (currentProfile.blueLegPadRight != null) activeList.Add(currentProfile.blueLegPadRight);
@@ -656,8 +745,9 @@ public static class ReskinProfileManager
         public Color redSkaterHelmetColor = Color.black;
 
         // Puck section
-        public ReskinRegistry.ReskinEntry puck;
-        
+        public ReskinRegistry.ReskinEntry puck; // Kept for backwards compatibility
+        public List<ReskinRegistry.ReskinEntry> puckList = new List<ReskinRegistry.ReskinEntry>();
+
         // Arena section
         public bool fullArenaEnabled = false;
         public string fullArenaBundle = "";
@@ -836,7 +926,9 @@ public static class ReskinProfileManager
         // PUCKS
         [JsonProperty("puckRef")]
         public ReskinReference PuckRef { get; set; }
-        
+        [JsonProperty("puckListRef")]
+        public List<ReskinReference> PuckListRef { get; set; } = new List<ReskinReference>();
+
         // SKYBOX
         [JsonProperty("skyboxAtmosphereThickness")]
         public float? SkyboxAtmosphereThickness { get; set; }
