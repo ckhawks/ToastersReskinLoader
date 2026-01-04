@@ -9,7 +9,7 @@ public static class JerseySwapper
 {
     private static Texture originalBlueGroin;
     private static Texture originalRedGroin;
-    private static Dictionary<ulong, Texture> originalBlueTorsoTextures = new Dictionary<ulong, Texture>(); // TODO clear this when leave server
+    private static Dictionary<ulong, Texture> originalBlueTorsoTextures = new Dictionary<ulong, Texture>();
     private static Dictionary<ulong, Texture> originalRedTorsoTextures = new Dictionary<ulong, Texture>();
     
     static readonly FieldInfo _meshRendererTexturerTorsoField = typeof(PlayerTorso)
@@ -22,6 +22,12 @@ public static class JerseySwapper
         .GetField("meshRenderer",
             BindingFlags.Instance | BindingFlags.NonPublic);
 
+    public static void ClearJerseyCache()
+    {
+        originalBlueTorsoTextures.Clear();
+        originalRedTorsoTextures.Clear();
+    }
+    
     // Helper method to consolidate texture application logic
     private static void ApplyJerseyTexture(MeshRenderer meshRenderer, ReskinRegistry.ReskinEntry reskinEntry, Texture originalTexture)
     {

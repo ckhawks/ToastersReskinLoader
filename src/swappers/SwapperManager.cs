@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using HarmonyLib;
 using UnityEngine.SceneManagement;
 using ToasterReskinLoader.swappers;
-
+using ToasterReskinLoader.ui.sections;
 
 namespace ToasterReskinLoader.swappers;
 
@@ -190,6 +190,12 @@ public static class SwapperManager
         Plugin.Log($"OnSceneLoaded: {scene.name}");
         if (scene.name.Equals("changing_room"))
         {
+            StickTapeSwapper.ClearTapeCache();
+            JerseySwapper.ClearJerseyCache();
+            GoalieEquipmentSwapper.ClearEquipmentCache();
+            GoalieHelmetSwapper.ClearHelmetCache();
+            SkaterHelmetSwapper.ClearHelmetCache();
+            Plugin.Log($"Local player caches reset from switching to changing room");
         }
         else
         {
@@ -234,12 +240,12 @@ public static class SwapperManager
 
     public static void OnBlueLegPadsChanged()
     {
-    GoalieEquipmentSwapper.OnBlueLegPadsChanged();
+        GoalieEquipmentSwapper.OnBlueLegPadsChanged();
     }
 
     public static void OnRedLegPadsChanged()
     {
-    GoalieEquipmentSwapper.OnRedLegPadsChanged();
+        GoalieEquipmentSwapper.OnRedLegPadsChanged();
     }
 
     public static void SetAll()

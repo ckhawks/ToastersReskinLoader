@@ -39,7 +39,7 @@ public static class GoaliesSection
         description.style.fontSize = 14;
         description.style.marginBottom = 8;
         contentScrollViewContent.Add(description);
-        
+
         // Get all reskin entries upfront
         List<ReskinRegistry.ReskinEntry> jerseyTorsos = ReskinRegistry.GetReskinEntriesByType("jersey_torso");
         ReskinRegistry.ReskinEntry unchangedJerseyTorsoEntry = new ReskinRegistry.ReskinEntry
@@ -75,7 +75,8 @@ public static class GoaliesSection
         blueTeamTitle.style.color = Color.white;
         contentScrollViewContent.Add(blueTeamTitle);
 
-        CreateGoalieJerseyUI(contentScrollViewContent, "Blue", "blue", jerseyTorsos, jerseyGroins, unchangedJerseyTorsoEntry, unchangedJerseyGroinEntry);
+        CreateGoalieJerseyUI(contentScrollViewContent, "Blue", "blue", jerseyTorsos, jerseyGroins,
+            unchangedJerseyTorsoEntry, unchangedJerseyGroinEntry);
         CreateTeamLegPadsUI(contentScrollViewContent, "blue", legPadOptions);
         CreateTeamHeadgearUI(contentScrollViewContent, "blue");
 
@@ -90,7 +91,8 @@ public static class GoaliesSection
         redTeamTitle.style.color = Color.white;
         contentScrollViewContent.Add(redTeamTitle);
 
-        CreateGoalieJerseyUI(contentScrollViewContent, "Red", "red", jerseyTorsos, jerseyGroins, unchangedJerseyTorsoEntry, unchangedJerseyGroinEntry);
+        CreateGoalieJerseyUI(contentScrollViewContent, "Red", "red", jerseyTorsos, jerseyGroins,
+            unchangedJerseyTorsoEntry, unchangedJerseyGroinEntry);
         CreateTeamLegPadsUI(contentScrollViewContent, "red", legPadOptions);
         CreateTeamHeadgearUI(contentScrollViewContent, "red");
     }
@@ -114,7 +116,10 @@ public static class GoaliesSection
             })
         );
         torsoDropdown.choices = jerseyTorsos;
-        torsoDropdown.value = (teamSlot == "blue" ? ReskinProfileManager.currentProfile.blueGoalieTorso : ReskinProfileManager.currentProfile.redGoalieTorso) ?? unchangedTorsoEntry;
+        torsoDropdown.value =
+            (teamSlot == "blue"
+                ? ReskinProfileManager.currentProfile.blueGoalieTorso
+                : ReskinProfileManager.currentProfile.redGoalieTorso) ?? unchangedTorsoEntry;
         torsoRow.Add(torsoDropdown);
         contentScrollViewContent.Add(torsoRow);
 
@@ -132,20 +137,27 @@ public static class GoaliesSection
             })
         );
         groinDropdown.choices = jerseyGroins;
-        groinDropdown.value = (teamSlot == "blue" ? ReskinProfileManager.currentProfile.blueGoalieGroin : ReskinProfileManager.currentProfile.redGoalieGroin) ?? unchangedGroinEntry;
+        groinDropdown.value =
+            (teamSlot == "blue"
+                ? ReskinProfileManager.currentProfile.blueGoalieGroin
+                : ReskinProfileManager.currentProfile.redGoalieGroin) ?? unchangedGroinEntry;
         groinRow.Add(groinDropdown);
         contentScrollViewContent.Add(groinRow);
     }
 
     // Creates leg pads UI for a team
-    private static void CreateTeamLegPadsUI(VisualElement contentScrollViewContent, string team, List<ReskinRegistry.ReskinEntry> legPadOptions)
+    private static void CreateTeamLegPadsUI(VisualElement contentScrollViewContent, string team,
+        List<ReskinRegistry.ReskinEntry> legPadOptions)
     {
         // Store references to leg pad dropdowns to track "Unchanged" state
-        List<PopupField<ReskinRegistry.ReskinEntry>> legPadDropdowns = new List<PopupField<ReskinRegistry.ReskinEntry>>();
+        List<PopupField<ReskinRegistry.ReskinEntry>> legPadDropdowns =
+            new List<PopupField<ReskinRegistry.ReskinEntry>>();
 
         // Leg Pad Dropdowns - with tracking
-        legPadDropdowns.Add(CreateLegPadDropdownRowWithReference(contentScrollViewContent, $"{(team == "blue" ? "Blue" : "Red")} Left Pad", $"{team}_left", legPadOptions));
-        legPadDropdowns.Add(CreateLegPadDropdownRowWithReference(contentScrollViewContent, $"{(team == "blue" ? "Blue" : "Red")} Right Pad", $"{team}_right", legPadOptions));
+        legPadDropdowns.Add(CreateLegPadDropdownRowWithReference(contentScrollViewContent,
+            $"{(team == "blue" ? "Blue" : "Red")} Left Pad", $"{team}_left", legPadOptions));
+        legPadDropdowns.Add(CreateLegPadDropdownRowWithReference(contentScrollViewContent,
+            $"{(team == "blue" ? "Blue" : "Red")} Right Pad", $"{team}_right", legPadOptions));
 
         // Container for color sections so we can recreate them on reset
         VisualElement legPadColorsContainer = new VisualElement();
@@ -227,7 +239,8 @@ public static class GoaliesSection
     }
 
     // Helper to create leg pad dropdown row and return the dropdown reference
-    private static PopupField<ReskinRegistry.ReskinEntry> CreateLegPadDropdownRowWithReference(VisualElement contentScrollViewContent, string labelText, string slot, List<ReskinRegistry.ReskinEntry> options)
+    private static PopupField<ReskinRegistry.ReskinEntry> CreateLegPadDropdownRowWithReference(
+        VisualElement contentScrollViewContent, string labelText, string slot, List<ReskinRegistry.ReskinEntry> options)
     {
         VisualElement row = UITools.CreateConfigurationRow();
         row.Add(UITools.CreateConfigurationLabel(labelText));
@@ -268,106 +281,110 @@ public static class GoaliesSection
 
             // HELMET SECTION
             var helmetEntries = ReskinRegistry.GetReskinEntriesByType("helmet");
-            if (helmetEntries.Count > 0)
+            ReskinRegistry.ReskinEntry unchangedEntry = new ReskinRegistry.ReskinEntry
             {
-                ReskinRegistry.ReskinEntry unchangedEntry = new ReskinRegistry.ReskinEntry
+                Name = "Unchanged",
+                Path = null,
+                Type = "helmet"
+            };
+
+            List<ReskinRegistry.ReskinEntry> helmetOptions = new List<ReskinRegistry.ReskinEntry> { unchangedEntry };
+            helmetOptions.AddRange(helmetEntries);
+
+            // Helmet dropdown - store reference
+            helmetDropdown =
+                CreateHeadgearDropdownRow(headgearColorsContainer, "Helmet", "helmet", team, helmetOptions);
+
+            // Helmet Color
+            var helmetColorSection = UITools.CreateColorConfigurationRow(
+                "Helmet Color (Unchanged)",
+                team == "blue"
+                    ? ReskinProfileManager.currentProfile.blueGoalieHelmetColor
+                    : ReskinProfileManager.currentProfile.redGoalieHelmetColor,
+                false,
+                newColor =>
                 {
-                    Name = "Unchanged",
-                    Path = null,
-                    Type = "helmet"
-                };
-
-                List<ReskinRegistry.ReskinEntry> helmetOptions = new List<ReskinRegistry.ReskinEntry> { unchangedEntry };
-                helmetOptions.AddRange(helmetEntries);
-
-                // Helmet dropdown - store reference
-                helmetDropdown = CreateHeadgearDropdownRow(headgearColorsContainer, "Helmet", "helmet", team, helmetOptions);
-
-                // Helmet Color
-                var helmetColorSection = UITools.CreateColorConfigurationRow(
-                    "Helmet Color (Unchanged)",
-                    team == "blue" ? ReskinProfileManager.currentProfile.blueGoalieHelmetColor : ReskinProfileManager.currentProfile.redGoalieHelmetColor,
-                    false,
-                    newColor =>
+                    if (team == "blue")
                     {
-                        if (team == "blue")
-                        {
-                            ReskinProfileManager.currentProfile.blueGoalieHelmetColor = newColor;
-                            GoalieHelmetSwapper.OnBlueHelmetColorChanged();
-                        }
-                        else
-                        {
-                            ReskinProfileManager.currentProfile.redGoalieHelmetColor = newColor;
-                            GoalieHelmetSwapper.OnRedHelmetColorChanged();
-                        }
-                        ReskinProfileManager.SaveProfile();
-                    },
-                    () => { ReskinProfileManager.SaveProfile(); }
-                );
-                // Set initial enabled state and register callback
-                SetColorSliderEnabled(helmetColorSection, helmetDropdown.value.Path == null);
-                helmetDropdown.RegisterCallback<ChangeEvent<ReskinRegistry.ReskinEntry>>(
-                    new EventCallback<ChangeEvent<ReskinRegistry.ReskinEntry>>(evt =>
+                        ReskinProfileManager.currentProfile.blueGoalieHelmetColor = newColor;
+                        GoalieHelmetSwapper.OnBlueHelmetColorChanged();
+                    }
+                    else
                     {
-                        SetColorSliderEnabled(helmetColorSection, evt.newValue.Path == null);
-                    })
-                );
-                headgearColorsContainer.Add(helmetColorSection);
-            }
+                        ReskinProfileManager.currentProfile.redGoalieHelmetColor = newColor;
+                        GoalieHelmetSwapper.OnRedHelmetColorChanged();
+                    }
+
+                    ReskinProfileManager.SaveProfile();
+                },
+                () => { ReskinProfileManager.SaveProfile(); }
+            );
+            // Set initial enabled state and register callback
+            SetColorSliderEnabled(helmetColorSection, helmetDropdown.value.Path == null);
+            helmetDropdown.RegisterCallback<ChangeEvent<ReskinRegistry.ReskinEntry>>(
+                new EventCallback<ChangeEvent<ReskinRegistry.ReskinEntry>>(evt =>
+                {
+                    SetColorSliderEnabled(helmetColorSection, evt.newValue.Path == null);
+                })
+            );
+            headgearColorsContainer.Add(helmetColorSection);
 
             // MASK SECTION
             var maskEntries = ReskinRegistry.GetReskinEntriesByType("goalie_mask");
-            if (maskEntries.Count > 0)
+            ReskinRegistry.ReskinEntry unchangedEntry2 = new ReskinRegistry.ReskinEntry
             {
-                ReskinRegistry.ReskinEntry unchangedEntry = new ReskinRegistry.ReskinEntry
+                Name = "Unchanged",
+                Path = null,
+                Type = "goalie_mask"
+            };
+
+            List<ReskinRegistry.ReskinEntry> maskOptions = new List<ReskinRegistry.ReskinEntry> { unchangedEntry2 };
+            maskOptions.AddRange(maskEntries);
+
+            // Mask dropdown - store reference
+            maskDropdown = CreateHeadgearDropdownRow(headgearColorsContainer, "Mask (Neck Shield)", "goalie_mask", team,
+                maskOptions);
+
+            // Mask Color
+            var maskColorSection = UITools.CreateColorConfigurationRow(
+                "Mask Color (Unchanged)",
+                team == "blue"
+                    ? ReskinProfileManager.currentProfile.blueGoalieMaskColor
+                    : ReskinProfileManager.currentProfile.redGoalieMaskColor,
+                false,
+                newColor =>
                 {
-                    Name = "Unchanged",
-                    Path = null,
-                    Type = "goalie_mask"
-                };
-
-                List<ReskinRegistry.ReskinEntry> maskOptions = new List<ReskinRegistry.ReskinEntry> { unchangedEntry };
-                maskOptions.AddRange(maskEntries);
-
-                // Mask dropdown - store reference
-                maskDropdown = CreateHeadgearDropdownRow(headgearColorsContainer, "Mask (Neck Shield)", "goalie_mask", team, maskOptions);
-
-                // Mask Color
-                var maskColorSection = UITools.CreateColorConfigurationRow(
-                    "Mask Color (Unchanged)",
-                    team == "blue" ? ReskinProfileManager.currentProfile.blueGoalieMaskColor : ReskinProfileManager.currentProfile.redGoalieMaskColor,
-                    false,
-                    newColor =>
+                    if (team == "blue")
                     {
-                        if (team == "blue")
-                        {
-                            ReskinProfileManager.currentProfile.blueGoalieMaskColor = newColor;
-                            GoalieHelmetSwapper.OnBlueMaskColorChanged();
-                        }
-                        else
-                        {
-                            ReskinProfileManager.currentProfile.redGoalieMaskColor = newColor;
-                            GoalieHelmetSwapper.OnRedMaskColorChanged();
-                        }
-                        ReskinProfileManager.SaveProfile();
-                    },
-                    () => { ReskinProfileManager.SaveProfile(); }
-                );
-                // Set initial enabled state and register callback
-                SetColorSliderEnabled(maskColorSection, maskDropdown.value.Path == null);
-                maskDropdown.RegisterCallback<ChangeEvent<ReskinRegistry.ReskinEntry>>(
-                    new EventCallback<ChangeEvent<ReskinRegistry.ReskinEntry>>(evt =>
+                        ReskinProfileManager.currentProfile.blueGoalieMaskColor = newColor;
+                        GoalieHelmetSwapper.OnBlueMaskColorChanged();
+                    }
+                    else
                     {
-                        SetColorSliderEnabled(maskColorSection, evt.newValue.Path == null);
-                    })
-                );
-                headgearColorsContainer.Add(maskColorSection);
-            }
+                        ReskinProfileManager.currentProfile.redGoalieMaskColor = newColor;
+                        GoalieHelmetSwapper.OnRedMaskColorChanged();
+                    }
+
+                    ReskinProfileManager.SaveProfile();
+                },
+                () => { ReskinProfileManager.SaveProfile(); }
+            );
+            // Set initial enabled state and register callback
+            SetColorSliderEnabled(maskColorSection, maskDropdown.value.Path == null);
+            maskDropdown.RegisterCallback<ChangeEvent<ReskinRegistry.ReskinEntry>>(
+                new EventCallback<ChangeEvent<ReskinRegistry.ReskinEntry>>(evt =>
+                {
+                    SetColorSliderEnabled(maskColorSection, evt.newValue.Path == null);
+                })
+            );
+            headgearColorsContainer.Add(maskColorSection);
 
             // CAGE SECTION (color only - always enabled)
             var cageColorSection = UITools.CreateColorConfigurationRow(
                 "Cage Color",
-                team == "blue" ? ReskinProfileManager.currentProfile.blueGoalieCageColor : ReskinProfileManager.currentProfile.redGoalieCageColor,
+                team == "blue"
+                    ? ReskinProfileManager.currentProfile.blueGoalieCageColor
+                    : ReskinProfileManager.currentProfile.redGoalieCageColor,
                 false,
                 newColor =>
                 {
@@ -381,6 +398,7 @@ public static class GoaliesSection
                         ReskinProfileManager.currentProfile.redGoalieCageColor = newColor;
                         GoalieHelmetSwapper.OnRedCageColorChanged();
                     }
+
                     ReskinProfileManager.SaveProfile();
                 },
                 () => { ReskinProfileManager.SaveProfile(); }
@@ -390,7 +408,9 @@ public static class GoaliesSection
             // LETTERING COLOR SECTION
             var letteringColorSection = UITools.CreateColorConfigurationRow(
                 "Lettering Color",
-                team == "blue" ? ReskinProfileManager.currentProfile.blueGoalieLetteringColor : ReskinProfileManager.currentProfile.redGoalieLetteringColor,
+                team == "blue"
+                    ? ReskinProfileManager.currentProfile.blueGoalieLetteringColor
+                    : ReskinProfileManager.currentProfile.redGoalieLetteringColor,
                 false,
                 newColor =>
                 {
@@ -404,6 +424,7 @@ public static class GoaliesSection
                         ReskinProfileManager.currentProfile.redGoalieLetteringColor = newColor;
                         PlayerTextSwapper.OnRedGoalieLetteringColorChanged();
                     }
+
                     ReskinProfileManager.SaveProfile();
                 },
                 () => { ReskinProfileManager.SaveProfile(); }
@@ -440,7 +461,9 @@ public static class GoaliesSection
     }
 
     // Helper to create a headgear dropdown row and return the dropdown reference
-    private static PopupField<ReskinRegistry.ReskinEntry> CreateHeadgearDropdownRow(VisualElement contentScrollViewContent, string labelText, string type, string team, List<ReskinRegistry.ReskinEntry> options)
+    private static PopupField<ReskinRegistry.ReskinEntry> CreateHeadgearDropdownRow(
+        VisualElement contentScrollViewContent, string labelText, string type, string team,
+        List<ReskinRegistry.ReskinEntry> options)
     {
         VisualElement row = UITools.CreateConfigurationRow();
         row.Add(UITools.CreateConfigurationLabel(labelText));
@@ -462,9 +485,13 @@ public static class GoaliesSection
         // Get current selection based on type and team
         ReskinRegistry.ReskinEntry currentEntry = null;
         if (type == "helmet")
-            currentEntry = team == "blue" ? ReskinProfileManager.currentProfile.blueGoalieHelmet : ReskinProfileManager.currentProfile.redGoalieHelmet;
+            currentEntry = team == "blue"
+                ? ReskinProfileManager.currentProfile.blueGoalieHelmet
+                : ReskinProfileManager.currentProfile.redGoalieHelmet;
         else if (type == "goalie_mask")
-            currentEntry = team == "blue" ? ReskinProfileManager.currentProfile.blueGoalieMask : ReskinProfileManager.currentProfile.redGoalieMask;
+            currentEntry = team == "blue"
+                ? ReskinProfileManager.currentProfile.blueGoalieMask
+                : ReskinProfileManager.currentProfile.redGoalieMask;
 
         dropdown.value = currentEntry ?? options[0];
         row.Add(dropdown);
@@ -474,7 +501,8 @@ public static class GoaliesSection
     }
 
     // Helper to create a single leg pad dropdown row
-    private static void CreateLegPadDropdownRow(VisualElement contentScrollViewContent, string labelText, string slot, List<ReskinRegistry.ReskinEntry> options)
+    private static void CreateLegPadDropdownRow(VisualElement contentScrollViewContent, string labelText, string slot,
+        List<ReskinRegistry.ReskinEntry> options)
     {
         VisualElement row = UITools.CreateConfigurationRow();
         row.Add(UITools.CreateConfigurationLabel(labelText));

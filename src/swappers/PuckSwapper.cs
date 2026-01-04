@@ -9,17 +9,18 @@ namespace ToasterReskinLoader.swappers;
 
 public static class PuckSwapper
 {
-    private static Texture originalTexture;
-    private static Texture originalBumpMap;
+    private static Texture _originalTexture;
+    private static Texture _originalBumpMap;
+    private static string _puckBumpMapPath = "";
     private static readonly int BaseMap = Shader.PropertyToID("_BaseMap");
-    private static System.Random random = new System.Random();
+    private static System.Random _random = new System.Random();
 
-    public static string puckBumpMapPath = "";
-
-    public static void SetPuckTexture(Puck puck, ReskinRegistry.ReskinEntry reskinEntry)
+    // Set a specific Puck to a specific ReskinEntry (can be null)
+    private static void SetPuckTexture(Puck puck, ReskinRegistry.ReskinEntry reskinEntry)
     {
         try
         {
+            // Get puck's MeshRenderer from its class
             // TODO fix this
             MeshRenderer puckMeshRenderer =
                 puck.gameObject.transform.Find("puck").Find("Puck").GetComponent<MeshRenderer>();
@@ -28,35 +29,29 @@ public static class PuckSwapper
             {
                 Debug.LogError("No MeshRenderer found on GameObject Puck.");
             }
-
-            // string texturePropertyName = SwapperUtils.FindTextureProperty(puckMeshRenderer.material);
-            // if (texturePropertyName == null)
-            // {
-            //     Plugin.LogError("No texture property found in the shader.");
-            //     return;
-            // }
-
-            if (originalTexture == null)
+            
+            // these should only run on the first go around setting the puck from vanilla->custom
+            if (_originalTexture == null)
             {
-                originalTexture = puckMeshRenderer.material.GetTexture("_BaseMap");
+                _originalTexture = puckMeshRenderer.material.GetTexture("_BaseMap");
             }
-
-            if (originalBumpMap == null)
+            if (_originalBumpMap == null)
             {
-                originalBumpMap = puckMeshRenderer.material.GetTexture("_BumpMap");
+                _originalBumpMap = puckMeshRenderer.material.GetTexture("_BumpMap");
             }
-
-            // If setting to unchanged,
+            
             if (reskinEntry.Path == null)
             {
-                puckMeshRenderer.material.SetTexture(BaseMap, originalTexture);
-                puckMeshRenderer.material.SetTexture("_BumpMap", originalBumpMap);
+                // If ReskinEntry is null, make it the original puck again
+                puckMeshRenderer.material.SetTexture(BaseMap, _originalTexture);
+                puckMeshRenderer.material.SetTexture("_BumpMap", _originalBumpMap);
                 // Plugin.Log("Original texture applied to property: _BaseMap");
             }
             else
             {
+                // ReskinEntry has values, set puck to custom texture
                 puckMeshRenderer.material.SetTexture(BaseMap, TextureManager.GetTexture(reskinEntry));
-                puckMeshRenderer.material.SetTexture("_BumpMap", TextureManager.GetTextureFromFilePath(puckBumpMapPath));
+                puckMeshRenderer.material.SetTexture("_BumpMap", TextureManager.GetTextureFromFilePath(_puckBumpMapPath));
                 // Plugin.Log("Texture applied to property: _BaseMap");
             }
 
@@ -71,8 +66,8 @@ public static class PuckSwapper
     public static void GetBumpMapPathAndLoad()
     {
         // string workshopModsRoot = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(execPath)!, ".."));
-        puckBumpMapPath = Path.Combine(Path.GetFullPath(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)), "puck_normal.png");
-        TextureManager.GetTextureFromFilePath(puckBumpMapPath);
+        _puckBumpMapPath = Path.Combine(Path.GetFullPath(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)), "puck_normal.png");
+        TextureManager.GetTextureFromFilePath(_puckBumpMapPath);
     }
 
     /// <summary>
@@ -86,7 +81,7 @@ public static class PuckSwapper
         // If puck list has entries, pick a random one
         if (puckList != null && puckList.Count > 0)
         {
-            int randomIndex = random.Next(puckList.Count);
+            int randomIndex = _random.Next(puckList.Count);
             return puckList[randomIndex];
         }
 
@@ -94,6 +89,7 @@ public static class PuckSwapper
         return null;
     }
 
+    // Set all puck textures; called when Puck reskin settings are changed
     public static void SetAllPucksTextures()
     {
         List<Puck> pucks = PuckManager.Instance.GetPucks();
@@ -105,6 +101,7 @@ public static class PuckSwapper
         Plugin.LogDebug($"Updated all pucks to have correct texture.");
     }
     
+    // Whenever a new puck spawns, set its texture 
     [HarmonyPatch(typeof(Puck), "OnNetworkPostSpawn")]
     public static class PuckOnNetworkPostSpawn
     {

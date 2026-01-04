@@ -12,6 +12,8 @@ namespace ToasterReskinLoader.swappers
         private static Dictionary<(PlayerTeam, ulong), Texture> originalTextures =
             new Dictionary<(PlayerTeam, ulong), Texture>();
 
+        public static void ClearHelmetCache() => originalTextures.Clear();
+        
         // Gets the Renderer for a skater helmet
         private static Renderer GetHelmetRenderer(PlayerHead playerHead)
         {

@@ -22,6 +22,13 @@ public static class StickTapeSwapper
     private static Dictionary<(ulong, string), Color> originalColors =
         new Dictionary<(ulong, string), Color>();
 
+    // Called when scene changes out of level1(rink)
+    public static void ClearTapeCache()
+    {
+        originalShaders.Clear();
+        originalColors.Clear();
+    }
+    
     // Helper method to apply texture to tape renderer (swaps to URP Lit and preserves detail maps)
     private static void ApplyTapeTexture(MeshRenderer renderer, Texture texture)
     {
@@ -540,18 +547,22 @@ public static class StickTapeSwapper
             Plugin.LogError($"Error setting stick tape: {ex.Message}");
         }
     }
-
-    // Legacy method for backwards compatibility - redirects to new method
-    public static void SetStickTapeColors(Stick stick)
-    {
-        SetStickTapeForPlayer(stick);
-    }
-
+    
     // Helper to get the local player's stick
     private static Stick GetLocalPlayerStick()
     {
         try
         {
+            PlayerManager pm = PlayerManager.Instance;
+            Player localPlayer = pm.GetLocalPlayer();
+
+            if (localPlayer != null && localPlayer.Stick != null && localPlayer.PlayerBody != null && localPlayer.PlayerBody.PlayerMesh != null)
+            {
+                Plugin.LogDebug($"Found local player via GetLocalPlayer: {localPlayer.Username.Value}");
+                return localPlayer.Stick;
+            }
+            
+            // search using IsLocalPlayer and IsOwner
             var players = UnityEngine.Object.FindObjectsByType<Player>(FindObjectsSortMode.None);
 
             // Try to find the local player using various methods
@@ -586,16 +597,16 @@ public static class StickTapeSwapper
                 }
             }
 
-            // Fallback: if no player was marked as local, just return the first valid stick
-            // This handles single-player or test scenarios
-            foreach (var player in players)
-            {
-                if (player?.Stick != null && player.PlayerBody != null && player.PlayerBody.PlayerMesh != null)
-                {
-                    Plugin.LogDebug($"No IsLocalPlayer/IsOwner found, using first available player: {player.Username.Value}");
-                    return player.Stick;
-                }
-            }
+            // // Fallback: if no player was marked as local, just return the first valid stick
+            // // This handles single-player or test scenarios
+            // foreach (var player in players)
+            // {
+            //     if (player?.Stick != null && player.PlayerBody != null && player.PlayerBody.PlayerMesh != null)
+            //     {
+            //         Plugin.LogDebug($"No IsLocalPlayer/IsOwner found, using first available player: {player.Username.Value}");
+            //         return player.Stick;
+            //     }
+            // }
         }
         catch (Exception ex)
         {

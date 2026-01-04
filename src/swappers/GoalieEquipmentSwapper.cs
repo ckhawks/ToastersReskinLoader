@@ -12,6 +12,8 @@ namespace ToasterReskinLoader.swappers
         private static Dictionary<(PlayerTeam, ulong, string), Texture> originalTextures =
             new Dictionary<(PlayerTeam, ulong, string), Texture>();
 
+        public static void ClearEquipmentCache() => originalTextures.Clear();
+        
         // Gets the MeshRenderer for a leg pad, checking both component and children
         private static MeshRenderer GetLegPadRenderer(PlayerLegPad legPad)
         {

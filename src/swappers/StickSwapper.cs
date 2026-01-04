@@ -16,6 +16,8 @@ public static class StickSwapper
         .GetField("stickMaterialMap", 
             BindingFlags.Instance | BindingFlags.NonPublic);
     
+    
+    // TODO cache the original texture for sticks so we can switch it back. Make sure to clear it on level change in SwapperManager
     // private static Dictionary<ulong, Texture> originalTextures = new Dictionary<ulong, Texture>();
 
     // Helper method to apply texture to stick based on role
@@ -135,8 +137,8 @@ public static class StickSwapper
             Plugin.LogDebug("Texture applied to stick GameObject!");
             
             // Prototype: Test stick tape colors
-            StickTapeSwapper.SetStickTapeColors(stick);
-            return;
+            // StickTapeSwapper.SetStickTapeForPlayer(stick);
+            // return;
         }
         catch (Exception ex)
         {
