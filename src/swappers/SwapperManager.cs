@@ -168,6 +168,8 @@ public static class SwapperManager
         {
             Plugin.LogDebug($"Stick.UpdateStick");
             SetStickReskinForPlayer(__instance.Player);
+            if (__instance.Player.IsLocalPlayer)
+                StickTapeSwapper.SetStickTapeForPlayer(__instance.Player.Stick);
         }
     }
 

@@ -653,14 +653,14 @@ public static class ReskinProfileManager
         // PuckSwapper.SetAllPucksTextures();
         // Add calls for other swappers here...
         
-        Plugin.Log($"Loading active reskins textures to memory...");
+        Plugin.Log($"Loading {activeReskins.Count} active reskins textures to memory...");
         foreach (ReskinRegistry.ReskinEntry reskinEntry in activeReskins)
         {
             TextureManager.GetTexture(reskinEntry);
         }
 
         PuckSwapper.GetBumpMapPathAndLoad();
-        Plugin.Log($"Loaded active reskins textures to memory!");
+        Plugin.Log($"Loaded {activeReskins.Count} active reskins textures to memory!");
     }
     
     /// <summary>

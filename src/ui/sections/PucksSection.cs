@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -16,8 +17,18 @@ public static class PucksSection
             Type = "puck"
         };
 
-        // Create separate list for dropdown (without default entry)
-        List<ReskinRegistry.ReskinEntry> dropdownPuckReskins = new List<ReskinRegistry.ReskinEntry>(allPuckReskins);
+        // Create separate list for dropdown - filter out pucks already in the active list
+        List<ReskinRegistry.ReskinEntry> dropdownPuckReskins = new List<ReskinRegistry.ReskinEntry>();
+        var activePucks = ReskinProfileManager.currentProfile.puckList ?? new List<ReskinRegistry.ReskinEntry>();
+
+        foreach (var puck in allPuckReskins)
+        {
+            // Only add to dropdown if not already in active list
+            if (!activePucks.Any(p => p?.Path == puck.Path))
+            {
+                dropdownPuckReskins.Add(puck);
+            }
+        }
 
         // Title
         Label title = new Label("Puck Randomizer");
@@ -68,7 +79,9 @@ public static class PucksSection
             if (chosen != null && chosen.Path != null) // Don't add null entries
             {
                 ReskinProfileManager.AddPuckToRandomizer(chosen);
-                puckDropdown.value = dropdownPuckReskins.Count > 0 ? dropdownPuckReskins[0] : defaultEntry;
+                // Rebuild dropdown to exclude newly added puck
+                RefreshPuckDropdown(puckDropdown);
+                puckDropdown.value = puckDropdown.choices.Count > 0 ? puckDropdown.choices[0] : defaultEntry;
                 RefreshRandomizerList(contentScrollViewContent, dropdownPuckReskins);
             }
         });
@@ -89,6 +102,24 @@ public static class PucksSection
         bumpMapNoticeLabel.style.fontSize = 12;
         bumpMapNoticeLabel.style.marginTop = 16;
         contentScrollViewContent.Add(bumpMapNoticeLabel);
+    }
+
+    private static void RefreshPuckDropdown(PopupField<ReskinRegistry.ReskinEntry> puckDropdown)
+    {
+        List<ReskinRegistry.ReskinEntry> allPuckReskins = ReskinRegistry.GetReskinEntriesByType("puck");
+        var activePucks = ReskinProfileManager.currentProfile.puckList ?? new List<ReskinRegistry.ReskinEntry>();
+
+        // Rebuild dropdown choices to exclude pucks in active list
+        List<ReskinRegistry.ReskinEntry> dropdownPuckReskins = new List<ReskinRegistry.ReskinEntry>();
+        foreach (var puck in allPuckReskins)
+        {
+            if (!activePucks.Any(p => p?.Path == puck.Path))
+            {
+                dropdownPuckReskins.Add(puck);
+            }
+        }
+
+        puckDropdown.choices = dropdownPuckReskins;
     }
 
     private static void RefreshRandomizerList(VisualElement contentScrollViewContent, List<ReskinRegistry.ReskinEntry> puckReskins)
@@ -147,6 +178,8 @@ public static class PucksSection
             removeButton.RegisterCallback<ClickEvent>(evt =>
             {
                 ReskinProfileManager.RemovePuckFromRandomizer(puck);
+                // Note: RefreshPuckDropdown would need access to the dropdown from here
+                // For now, the UI will update on next section refresh
                 RefreshRandomizerList(contentScrollViewContent, puckReskins);
             });
             puckItemRow.Add(removeButton);

@@ -17,10 +17,11 @@ public static class StickTapeSwapper
             BindingFlags.Instance | BindingFlags.NonPublic);
 
     // Cache original shader (same for all tape parts on a player) and colors for restoration
+    // Colors are cached by (playerId, team, role, tapePart) since vanilla colors differ by team/role
     private static Dictionary<ulong, Shader> originalShaders =
         new Dictionary<ulong, Shader>();
-    private static Dictionary<(ulong, string), Color> originalColors =
-        new Dictionary<(ulong, string), Color>();
+    private static Dictionary<(ulong, PlayerTeam, PlayerRole, string), Color> originalColors =
+        new Dictionary<(ulong, PlayerTeam, PlayerRole, string), Color>();
 
     // Called when scene changes out of level1(rink)
     public static void ClearTapeCache()
@@ -360,6 +361,8 @@ public static class StickTapeSwapper
     private static void ApplyTapeCustomization(
         MeshRenderer renderer,
         ulong playerId,
+        PlayerTeam team,
+        PlayerRole role,
         string tapePart,
         string mode,
         ReskinRegistry.ReskinEntry textureEntry,
@@ -367,7 +370,7 @@ public static class StickTapeSwapper
     {
         if (renderer == null) return;
 
-        var colorCacheKey = (playerId, tapePart);
+        var colorCacheKey = (playerId, team, role, tapePart);
         Material mat = renderer.material;
 
         // Cache original shader once per player (same for all tape parts)
@@ -377,11 +380,11 @@ public static class StickTapeSwapper
             Plugin.LogDebug($"Cached original shader for player {playerId}: {mat.shader.name}");
         }
 
-        // Cache original color per tape part
+        // Cache original color per (player, team, role, tapePart) since vanilla colors differ
         if (!originalColors.ContainsKey(colorCacheKey))
         {
             originalColors[colorCacheKey] = mat.color;
-            Plugin.LogDebug($"Cached original color for player {playerId} {tapePart}: {mat.color}");
+            Plugin.LogDebug($"Cached original color for player {playerId} {team} {role} {tapePart}: {mat.color}");
         }
 
         // Apply based on mode
@@ -449,8 +452,8 @@ public static class StickTapeSwapper
             StickMesh stickMesh = stick.StickMesh;
 
             // Get renderers via reflection
-            var bladeTapeRenderer = (MeshRenderer)_bladeTapeMeshRendererField.GetValue(stickMesh);
-            var shaftTapeRenderer = (MeshRenderer)_shaftTapeMeshRendererField.GetValue(stickMesh);
+            MeshRenderer bladeTapeRenderer = (MeshRenderer) _bladeTapeMeshRendererField.GetValue(stickMesh);
+            MeshRenderer shaftTapeRenderer = (MeshRenderer) _shaftTapeMeshRendererField.GetValue(stickMesh);
 
             // Determine which profile entries to use based on team + role
             if (team == PlayerTeam.Blue)
@@ -460,6 +463,8 @@ public static class StickTapeSwapper
                     ApplyTapeCustomization(
                         bladeTapeRenderer,
                         stick.Player.OwnerClientId,
+                        team,
+                        role,
                         "blade",
                         ReskinProfileManager.currentProfile.blueGoalieBladeTapeMode ?? "Unchanged",
                         ReskinProfileManager.currentProfile.blueGoalieBladeTape,
@@ -469,17 +474,20 @@ public static class StickTapeSwapper
                     ApplyTapeCustomization(
                         shaftTapeRenderer,
                         stick.Player.OwnerClientId,
+                        team,
+                        role,
                         "shaft",
                         ReskinProfileManager.currentProfile.blueGoalieShaftTapeMode ?? "Unchanged",
                         ReskinProfileManager.currentProfile.blueGoalieShaftTape,
                         ReskinProfileManager.currentProfile.blueGoalieShaftTapeColor
                     );
-                }
-                else // Skater
+                } else if (role == PlayerRole.Attacker) // Skater
                 {
                     ApplyTapeCustomization(
                         bladeTapeRenderer,
                         stick.Player.OwnerClientId,
+                        team,
+                        role,
                         "blade",
                         ReskinProfileManager.currentProfile.blueSkaterBladeTapeMode ?? "Unchanged",
                         ReskinProfileManager.currentProfile.blueSkaterBladeTape,
@@ -489,6 +497,8 @@ public static class StickTapeSwapper
                     ApplyTapeCustomization(
                         shaftTapeRenderer,
                         stick.Player.OwnerClientId,
+                        team,
+                        role,
                         "shaft",
                         ReskinProfileManager.currentProfile.blueSkaterShaftTapeMode ?? "Unchanged",
                         ReskinProfileManager.currentProfile.blueSkaterShaftTape,
@@ -503,6 +513,8 @@ public static class StickTapeSwapper
                     ApplyTapeCustomization(
                         bladeTapeRenderer,
                         stick.Player.OwnerClientId,
+                        team,
+                        role,
                         "blade",
                         ReskinProfileManager.currentProfile.redGoalieBladeTapeMode ?? "Unchanged",
                         ReskinProfileManager.currentProfile.redGoalieBladeTape,
@@ -512,17 +524,20 @@ public static class StickTapeSwapper
                     ApplyTapeCustomization(
                         shaftTapeRenderer,
                         stick.Player.OwnerClientId,
+                        team,
+                        role,
                         "shaft",
                         ReskinProfileManager.currentProfile.redGoalieShaftTapeMode ?? "Unchanged",
                         ReskinProfileManager.currentProfile.redGoalieShaftTape,
                         ReskinProfileManager.currentProfile.redGoalieShaftTapeColor
                     );
-                }
-                else // Skater
+                } else if (role == PlayerRole.Attacker) // Skater
                 {
                     ApplyTapeCustomization(
                         bladeTapeRenderer,
                         stick.Player.OwnerClientId,
+                        team,
+                        role,
                         "blade",
                         ReskinProfileManager.currentProfile.redSkaterBladeTapeMode ?? "Unchanged",
                         ReskinProfileManager.currentProfile.redSkaterBladeTape,
@@ -532,6 +547,8 @@ public static class StickTapeSwapper
                     ApplyTapeCustomization(
                         shaftTapeRenderer,
                         stick.Player.OwnerClientId,
+                        team,
+                        role,
                         "shaft",
                         ReskinProfileManager.currentProfile.redSkaterShaftTapeMode ?? "Unchanged",
                         ReskinProfileManager.currentProfile.redSkaterShaftTape,
