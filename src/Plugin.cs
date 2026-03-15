@@ -11,7 +11,7 @@ namespace ToasterReskinLoader;
 public class Plugin : IPuckMod
 {
     public static string MOD_NAME = "ToasterReskinLoader";
-    public static string MOD_VERSION = "1.2.5";
+    public static string MOD_VERSION = "1.2.6";
     public static string MOD_GUID = "pw.stellaric.toaster.reskinloader";
 
     static readonly Harmony harmony = new Harmony(MOD_GUID);
@@ -48,11 +48,16 @@ public class Plugin : IPuckMod
                 ReskinProfileManager.LoadProfile();
                 Plugin.Log($"Profile is loaded!");
 
+                // 2.5 Migrate any existing PuckFX settings into the profile
+                //     (only runs if PuckFX config exists and profile has default PuckFX values)
+                PuckFXMigrator.TryMigrate();
+
                 // 3. Finally, apply the loaded settings to the game.
                 ReskinProfileManager.LoadTexturesForActiveReskins();
                 Plugin.Log($"Profile is applied!");
                 
                 SwapperManager.Setup();
+                PuckFXSwapper.SetupPuckOutline();
                 ChangingRoomHelper.Scan();
                 ReskinMenuAccessButtons.Setup();
             }

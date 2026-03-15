@@ -457,6 +457,51 @@ public static class ReskinProfileManager
                     serializableProfile.SkyboxSkyTint != null
                         ? (Color)serializableProfile.SkyboxSkyTint
                         : defaultProfile.skyboxSkyTint,
+
+                // Puck FX
+                puckFXOutlineColor =
+                    serializableProfile.PuckFXOutlineColor != null
+                        ? (Color)serializableProfile.PuckFXOutlineColor
+                        : defaultProfile.puckFXOutlineColor,
+                puckFXOutlineKernelSize =
+                    serializableProfile.PuckFXOutlineKernelSize
+                    ?? defaultProfile.puckFXOutlineKernelSize,
+                puckFXElevationIndicatorColor =
+                    serializableProfile.PuckFXElevationIndicatorColor != null
+                        ? (Color)serializableProfile.PuckFXElevationIndicatorColor
+                        : defaultProfile.puckFXElevationIndicatorColor,
+                puckFXVerticalityLineColor =
+                    serializableProfile.PuckFXVerticalityLineColor != null
+                        ? (Color)serializableProfile.PuckFXVerticalityLineColor
+                        : defaultProfile.puckFXVerticalityLineColor,
+                puckFXVerticalityLineStartAlpha =
+                    serializableProfile.PuckFXVerticalityLineStartAlpha
+                    ?? defaultProfile.puckFXVerticalityLineStartAlpha,
+                puckFXVerticalityLineEndAlpha =
+                    serializableProfile.PuckFXVerticalityLineEndAlpha
+                    ?? defaultProfile.puckFXVerticalityLineEndAlpha,
+                puckFXTrailEnabled =
+                    serializableProfile.PuckFXTrailEnabled
+                    ?? defaultProfile.puckFXTrailEnabled,
+                puckFXTrailColor =
+                    serializableProfile.PuckFXTrailColor != null
+                        ? (Color)serializableProfile.PuckFXTrailColor
+                        : defaultProfile.puckFXTrailColor,
+                puckFXTrailStartWidth =
+                    serializableProfile.PuckFXTrailStartWidth
+                    ?? defaultProfile.puckFXTrailStartWidth,
+                puckFXTrailEndWidth =
+                    serializableProfile.PuckFXTrailEndWidth
+                    ?? defaultProfile.puckFXTrailEndWidth,
+                puckFXTrailLifetime =
+                    serializableProfile.PuckFXTrailLifetime
+                    ?? defaultProfile.puckFXTrailLifetime,
+                puckFXTrailStartAlpha =
+                    serializableProfile.PuckFXTrailStartAlpha
+                    ?? defaultProfile.puckFXTrailStartAlpha,
+                puckFXTrailEndAlpha =
+                    serializableProfile.PuckFXTrailEndAlpha
+                    ?? defaultProfile.puckFXTrailEndAlpha,
             };
 
             Plugin.Log("Reskin profile loaded successfully.");
@@ -620,7 +665,22 @@ public static class ReskinProfileManager
                 SkyboxSunSize = currentProfile.skyboxSunSize,
                 SkyboxSunSizeConvergence = currentProfile.skyboxSunSizeConvergence,
                 SkyboxGroundColor = new SerializableColor(currentProfile.skyboxGroundColor),
-                SkyboxSkyTint = new SerializableColor(currentProfile.skyboxSkyTint)
+                SkyboxSkyTint = new SerializableColor(currentProfile.skyboxSkyTint),
+
+                // Puck FX
+                PuckFXOutlineColor = new SerializableColor(currentProfile.puckFXOutlineColor),
+                PuckFXOutlineKernelSize = currentProfile.puckFXOutlineKernelSize,
+                PuckFXElevationIndicatorColor = new SerializableColor(currentProfile.puckFXElevationIndicatorColor),
+                PuckFXVerticalityLineColor = new SerializableColor(currentProfile.puckFXVerticalityLineColor),
+                PuckFXVerticalityLineStartAlpha = currentProfile.puckFXVerticalityLineStartAlpha,
+                PuckFXVerticalityLineEndAlpha = currentProfile.puckFXVerticalityLineEndAlpha,
+                PuckFXTrailEnabled = currentProfile.puckFXTrailEnabled,
+                PuckFXTrailColor = new SerializableColor(currentProfile.puckFXTrailColor),
+                PuckFXTrailStartWidth = currentProfile.puckFXTrailStartWidth,
+                PuckFXTrailEndWidth = currentProfile.puckFXTrailEndWidth,
+                PuckFXTrailLifetime = currentProfile.puckFXTrailLifetime,
+                PuckFXTrailStartAlpha = currentProfile.puckFXTrailStartAlpha,
+                PuckFXTrailEndAlpha = currentProfile.puckFXTrailEndAlpha
             };
 
             string json = JsonConvert.SerializeObject(serializableProfile, Formatting.Indented);
@@ -796,7 +856,36 @@ public static class ReskinProfileManager
         // Apply the changes to the game world.
         swappers.SkyboxSwapper.UpdateSkybox();
     }
-    
+
+    /// <summary>
+    /// Resets only the Puck FX-related properties of the current profile
+    /// to their default values and saves the profile.
+    /// </summary>
+    public static void ResetPuckFXToDefault()
+    {
+        Plugin.Log("Resetting Puck FX settings to their default values.");
+
+        var defaultValues = new Profile();
+
+        currentProfile.puckFXOutlineColor = defaultValues.puckFXOutlineColor;
+        currentProfile.puckFXOutlineKernelSize = defaultValues.puckFXOutlineKernelSize;
+        currentProfile.puckFXElevationIndicatorColor = defaultValues.puckFXElevationIndicatorColor;
+        currentProfile.puckFXVerticalityLineColor = defaultValues.puckFXVerticalityLineColor;
+        currentProfile.puckFXVerticalityLineStartAlpha = defaultValues.puckFXVerticalityLineStartAlpha;
+        currentProfile.puckFXVerticalityLineEndAlpha = defaultValues.puckFXVerticalityLineEndAlpha;
+        currentProfile.puckFXTrailEnabled = defaultValues.puckFXTrailEnabled;
+        currentProfile.puckFXTrailColor = defaultValues.puckFXTrailColor;
+        currentProfile.puckFXTrailStartWidth = defaultValues.puckFXTrailStartWidth;
+        currentProfile.puckFXTrailEndWidth = defaultValues.puckFXTrailEndWidth;
+        currentProfile.puckFXTrailLifetime = defaultValues.puckFXTrailLifetime;
+        currentProfile.puckFXTrailStartAlpha = defaultValues.puckFXTrailStartAlpha;
+        currentProfile.puckFXTrailEndAlpha = defaultValues.puckFXTrailEndAlpha;
+
+        SaveProfile();
+
+        swappers.PuckFXSwapper.SetupPuckOutline();
+    }
+
     public class Profile
     {
         // Sticks section
@@ -916,6 +1005,21 @@ public static class ReskinProfileManager
         public float skyboxSunSizeConvergence = 5;
         public Color skyboxGroundColor = new Color(0.369f, 0.349f, 0.341f, 1f);
         public Color skyboxSkyTint = new Color(0.5f, 0.5f, 0.5f, 1f);
+
+        // Puck FX section
+        public Color puckFXOutlineColor = Color.white;
+        public int puckFXOutlineKernelSize = 1;
+        public Color puckFXElevationIndicatorColor = new Color(0f, 0f, 0f, 1f);
+        public Color puckFXVerticalityLineColor = new Color(0f, 0f, 0f, 0.8f);
+        public float puckFXVerticalityLineStartAlpha = 0.5f;
+        public float puckFXVerticalityLineEndAlpha = 1f;
+        public bool puckFXTrailEnabled = false;
+        public Color puckFXTrailColor = Color.black;
+        public float puckFXTrailStartWidth = 0.1f;
+        public float puckFXTrailEndWidth = 0f;
+        public float puckFXTrailLifetime = 0.6f;
+        public float puckFXTrailStartAlpha = 0f;
+        public float puckFXTrailEndAlpha = 1f;
     } 
     
     /// <summary>
@@ -1151,6 +1255,34 @@ public static class ReskinProfileManager
         public SerializableColor SkyboxGroundColor { get; set; }
         [JsonProperty("skyboxSkyTint")]
         public SerializableColor SkyboxSkyTint { get; set; }
+
+        // PUCK FX
+        [JsonProperty("puckFXOutlineColor")]
+        public SerializableColor PuckFXOutlineColor { get; set; }
+        [JsonProperty("puckFXOutlineKernelSize")]
+        public int? PuckFXOutlineKernelSize { get; set; }
+        [JsonProperty("puckFXElevationIndicatorColor")]
+        public SerializableColor PuckFXElevationIndicatorColor { get; set; }
+        [JsonProperty("puckFXVerticalityLineColor")]
+        public SerializableColor PuckFXVerticalityLineColor { get; set; }
+        [JsonProperty("puckFXVerticalityLineStartAlpha")]
+        public float? PuckFXVerticalityLineStartAlpha { get; set; }
+        [JsonProperty("puckFXVerticalityLineEndAlpha")]
+        public float? PuckFXVerticalityLineEndAlpha { get; set; }
+        [JsonProperty("puckFXTrailEnabled")]
+        public bool? PuckFXTrailEnabled { get; set; }
+        [JsonProperty("puckFXTrailColor")]
+        public SerializableColor PuckFXTrailColor { get; set; }
+        [JsonProperty("puckFXTrailStartWidth")]
+        public float? PuckFXTrailStartWidth { get; set; }
+        [JsonProperty("puckFXTrailEndWidth")]
+        public float? PuckFXTrailEndWidth { get; set; }
+        [JsonProperty("puckFXTrailLifetime")]
+        public float? PuckFXTrailLifetime { get; set; }
+        [JsonProperty("puckFXTrailStartAlpha")]
+        public float? PuckFXTrailStartAlpha { get; set; }
+        [JsonProperty("puckFXTrailEndAlpha")]
+        public float? PuckFXTrailEndAlpha { get; set; }
     }
 }
 
