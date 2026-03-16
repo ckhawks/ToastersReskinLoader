@@ -62,7 +62,7 @@ public static class SwapperManager
         Plugin.LogDebug($"player.Role {player.Role.Value.ToString()}");
 
         bool isReplayLocalPlayer = player.IsReplay.Value &&
-                                   PlayerManager.Instance.GetLocalPlayer().OwnerClientId == player.OwnerClientId - 1337UL;
+                                   PlayerManager.Instance.GetLocalPlayer()?.OwnerClientId == player.OwnerClientId - 1337UL;
 
         switch (player.Team.Value)
         {

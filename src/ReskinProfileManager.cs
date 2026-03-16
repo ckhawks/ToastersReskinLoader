@@ -769,8 +769,18 @@ public static class ReskinProfileManager
         if (currentProfile.redSkaterGroin != null) activeList.Add(currentProfile.redSkaterGroin);
         if (currentProfile.redGoalieTorso != null) activeList.Add(currentProfile.redGoalieTorso);
         if (currentProfile.redGoalieGroin != null) activeList.Add(currentProfile.redGoalieGroin);
-        
-        // Add other profile entries here as you expand
+        if (currentProfile.blueGoalieMask != null) activeList.Add(currentProfile.blueGoalieMask);
+        if (currentProfile.redGoalieMask != null) activeList.Add(currentProfile.redGoalieMask);
+        if (currentProfile.blueSkaterHelmet != null) activeList.Add(currentProfile.blueSkaterHelmet);
+        if (currentProfile.redSkaterHelmet != null) activeList.Add(currentProfile.redSkaterHelmet);
+        if (currentProfile.blueSkaterBladeTape != null) activeList.Add(currentProfile.blueSkaterBladeTape);
+        if (currentProfile.blueSkaterShaftTape != null) activeList.Add(currentProfile.blueSkaterShaftTape);
+        if (currentProfile.blueGoalieBladeTape != null) activeList.Add(currentProfile.blueGoalieBladeTape);
+        if (currentProfile.blueGoalieShaftTape != null) activeList.Add(currentProfile.blueGoalieShaftTape);
+        if (currentProfile.redSkaterBladeTape != null) activeList.Add(currentProfile.redSkaterBladeTape);
+        if (currentProfile.redSkaterShaftTape != null) activeList.Add(currentProfile.redSkaterShaftTape);
+        if (currentProfile.redGoalieBladeTape != null) activeList.Add(currentProfile.redGoalieBladeTape);
+        if (currentProfile.redGoalieShaftTape != null) activeList.Add(currentProfile.redGoalieShaftTape);
 
         return activeList;
     }
