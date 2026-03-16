@@ -57,7 +57,7 @@ public class Plugin : IPuckMod
                 Plugin.Log($"Profile is applied!");
                 
                 SwapperManager.Setup();
-                PuckFXSwapper.SetupPuckOutline();
+                PuckFXSwapper.ApplyAll();
                 ChangingRoomHelper.Scan();
                 ReskinMenuAccessButtons.Setup();
             }

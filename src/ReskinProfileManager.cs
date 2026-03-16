@@ -502,6 +502,9 @@ public static class ReskinProfileManager
                 puckFXTrailEndAlpha =
                     serializableProfile.PuckFXTrailEndAlpha
                     ?? defaultProfile.puckFXTrailEndAlpha,
+                puckFXSilhouetteColor = serializableProfile.PuckFXSilhouetteColor != null
+                    ? (Color)serializableProfile.PuckFXSilhouetteColor
+                    : defaultProfile.puckFXSilhouetteColor,
             };
 
             Plugin.Log("Reskin profile loaded successfully.");
@@ -680,7 +683,8 @@ public static class ReskinProfileManager
                 PuckFXTrailEndWidth = currentProfile.puckFXTrailEndWidth,
                 PuckFXTrailLifetime = currentProfile.puckFXTrailLifetime,
                 PuckFXTrailStartAlpha = currentProfile.puckFXTrailStartAlpha,
-                PuckFXTrailEndAlpha = currentProfile.puckFXTrailEndAlpha
+                PuckFXTrailEndAlpha = currentProfile.puckFXTrailEndAlpha,
+                PuckFXSilhouetteColor = new SerializableColor(currentProfile.puckFXSilhouetteColor)
             };
 
             string json = JsonConvert.SerializeObject(serializableProfile, Formatting.Indented);
@@ -880,10 +884,11 @@ public static class ReskinProfileManager
         currentProfile.puckFXTrailLifetime = defaultValues.puckFXTrailLifetime;
         currentProfile.puckFXTrailStartAlpha = defaultValues.puckFXTrailStartAlpha;
         currentProfile.puckFXTrailEndAlpha = defaultValues.puckFXTrailEndAlpha;
+        currentProfile.puckFXSilhouetteColor = defaultValues.puckFXSilhouetteColor;
 
         SaveProfile();
 
-        swappers.PuckFXSwapper.SetupPuckOutline();
+        swappers.PuckFXSwapper.ApplyAll();
     }
 
     public class Profile
@@ -1020,7 +1025,8 @@ public static class ReskinProfileManager
         public float puckFXTrailLifetime = 0.6f;
         public float puckFXTrailStartAlpha = 0f;
         public float puckFXTrailEndAlpha = 1f;
-    } 
+        public Color puckFXSilhouetteColor = new Color(1f, 1f, 1f, 0.502f);
+    }
     
     /// <summary>
     /// A lightweight, serializable reference to a specific reskin entry.
@@ -1283,6 +1289,8 @@ public static class ReskinProfileManager
         public float? PuckFXTrailStartAlpha { get; set; }
         [JsonProperty("puckFXTrailEndAlpha")]
         public float? PuckFXTrailEndAlpha { get; set; }
+        [JsonProperty("puckFXSilhouetteColor")]
+        public SerializableColor PuckFXSilhouetteColor { get; set; }
     }
 }
 

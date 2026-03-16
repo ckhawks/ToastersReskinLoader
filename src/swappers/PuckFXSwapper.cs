@@ -4,6 +4,7 @@ using System.Reflection;
 using HarmonyLib;
 using Linework.SoftOutline;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 using Object = UnityEngine.Object;
 
 namespace ToasterReskinLoader.swappers;
@@ -260,6 +261,79 @@ public static class PuckFXSwapper
         catch (Exception e)
         {
             Plugin.LogError($"Error applying trail to existing pucks: {e.Message}");
+        }
+
+        // Apply silhouette color
+        UpdatePuckSilhouetteColor();
+    }
+
+    static readonly FieldInfo _universalRendererDataField = typeof(PostProcessingManager)
+        .GetField("universalRendererData",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
+    /// <summary>
+    /// Applies the puck silhouette (obstructed puck) color.
+    /// The "Obstructed Puck" is a RenderObjects feature whose overrideMaterial
+    /// uses the URP/Unlit shader with a _BaseColor property.
+    /// </summary>
+    public static void UpdatePuckSilhouetteColor()
+    {
+        try
+        {
+            PostProcessingManager ppm = PostProcessingManager.Instance;
+            if (ppm == null)
+            {
+                Plugin.LogWarning("PostProcessingManager.Instance is null, cannot set puck silhouette color.");
+                return;
+            }
+
+            var rendererData = (UniversalRendererData)_universalRendererDataField.GetValue(ppm);
+            if (rendererData == null)
+            {
+                Plugin.LogWarning("universalRendererData is null, cannot set puck silhouette color.");
+                return;
+            }
+
+            var feature = rendererData.rendererFeatures.Find(x => x.name == "Obstructed Puck");
+            if (feature == null)
+            {
+                Plugin.LogWarning("'Obstructed Puck' renderer feature not found.");
+                return;
+            }
+
+            // The feature is a RenderObjects; get its settings.overrideMaterial
+            var settingsField = feature.GetType().GetField("settings",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (settingsField == null)
+            {
+                Plugin.LogWarning("Could not find 'settings' field on RenderObjects feature.");
+                return;
+            }
+
+            var settings = settingsField.GetValue(feature);
+            var overrideMaterialField = settings.GetType().GetField("overrideMaterial",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (overrideMaterialField == null)
+            {
+                Plugin.LogWarning("Could not find 'overrideMaterial' field on RenderObjects settings.");
+                return;
+            }
+
+            Material mat = (Material)overrideMaterialField.GetValue(settings);
+            if (mat == null)
+            {
+                Plugin.LogWarning("Obstructed Puck override material is null.");
+                return;
+            }
+
+            var profile = ReskinProfileManager.currentProfile;
+            Color color = profile.puckFXSilhouetteColor;
+            mat.SetColor("_BaseColor", color);
+            mat.color = color;
+        }
+        catch (Exception e)
+        {
+            Plugin.LogError($"Error updating puck silhouette color: {e.Message}");
         }
     }
 

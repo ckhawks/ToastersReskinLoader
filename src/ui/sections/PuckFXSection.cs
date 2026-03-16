@@ -147,6 +147,19 @@ public static class PuckFXSection
         silhouetteEnabledRow.Add(silhouetteEnabledToggle);
         contentScrollViewContent.Add(silhouetteEnabledRow);
 
+        var silhouetteColorRow = UITools.CreateColorConfigurationRow(
+            "Silhouette Color",
+            ReskinProfileManager.currentProfile.puckFXSilhouetteColor,
+            true,
+            newColor =>
+            {
+                ReskinProfileManager.currentProfile.puckFXSilhouetteColor = newColor;
+                PuckFXSwapper.ApplyAll();
+            },
+            () => { ReskinProfileManager.SaveProfile(); }
+        );
+        contentScrollViewContent.Add(silhouetteColorRow);
+
         // --- Puck Trail ---
         Label trailHeader = UITools.CreateConfigurationLabel("<b>Puck Trail</b>");
         trailHeader.style.marginTop = 16;

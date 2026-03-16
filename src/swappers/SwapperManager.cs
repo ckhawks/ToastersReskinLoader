@@ -272,7 +272,7 @@ public static class SwapperManager
             OnRedHelmetsChanged();        
             FullArenaSwapper.ApplyFromProfile();
             SkyboxSwapper.UpdateSkybox();
-            PuckFXSwapper.SetupPuckOutline();
+            PuckFXSwapper.ApplyAll();
         }
     }
 }
