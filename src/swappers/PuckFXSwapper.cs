@@ -11,9 +11,7 @@ namespace ToasterReskinLoader.swappers;
 
 public static class PuckFXSwapper
 {
-    public static string LastServerName = "Unknown";
     public static bool IsPHLServer = false;
-    static bool _phlToastShown = false;
     static readonly FieldInfo _puckElevationIndicatorField = typeof(PuckElevationIndicatorController)
         .GetField("puckElevationIndicator",
             BindingFlags.Instance | BindingFlags.NonPublic);
@@ -387,42 +385,37 @@ public static class PuckFXSwapper
         }
     }
 
-    // Harmony patch: capture server name when clicking a server in the browser
-    [HarmonyPatch(typeof(ConnectionManagerController), "Event_Client_OnServerBrowserClickServer")]
-    public static class OnServerBrowserClickServerPatch
-    {
-        [HarmonyPrefix]
-        public static void Prefix(Dictionary<string, object> message)
-        {
-            ServerBrowserServer server = (ServerBrowserServer)message["serverBrowserServer"];
-            LastServerName = server.name;
-        }
-    }
-
-    // Harmony patch: detect PHL servers on connect and show toast if trail is blocked
-    [HarmonyPatch(typeof(ConnectionManagerController), "Event_OnClientConnected")]
-    public static class OnClientConnectedPatch
+    // Harmony patch: detect PHL servers when server config is received (fires before pucks spawn)
+    [HarmonyPatch(typeof(ServerManager), "Server_ServerConfigurationRpc")]
+    public static class ServerConfigurationPatch
     {
         [HarmonyPostfix]
-        public static void Postfix(Dictionary<string, object> message)
+        public static void Postfix(Server server)
         {
-            Plugin.LogDebug("Connected to: " + LastServerName);
-            IsPHLServer = LastServerName.Contains("PHL Official") || LastServerName.Contains("PHL Pickup");
+            string serverName = server.Name.ToString();
+            Plugin.LogDebug("Server configuration received: " + serverName);
+            IsPHLServer = serverName.Contains("PHL Official") || serverName.Contains("PHL Pickup");
+
+            // Re-apply trail state to any pucks that already spawned before this RPC
+            try
+            {
+                List<Puck> pucks = PuckManager.Instance.GetPucks();
+                foreach (Puck puck in pucks)
+                {
+                    UpdatePuckTrail(puck);
+                }
+            }
+            catch (Exception e)
+            {
+                Plugin.LogDebug($"Could not update trails on existing pucks: {e.Message}");
+            }
 
             if (IsPHLServer && ReskinProfileManager.currentProfile.puckFXTrailEnabled)
             {
-                if (!_phlToastShown)
-                {
-                    UIToastManager.Instance.ShowToast(
-                        "Puck Trail Disabled",
-                        "Puck trail is disabled on PHL Official/Pickup servers because it is too scary.",
-                        5f);
-                    _phlToastShown = true;
-                }
-            }
-            else
-            {
-                _phlToastShown = false;
+                UIToastManager.Instance.ShowToast(
+                    "Puck Trail Disabled",
+                    "Puck trail is disabled on PHL Official/Pickup servers.",
+                    5f);
             }
         }
     }
