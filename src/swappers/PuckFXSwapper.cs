@@ -11,6 +11,9 @@ namespace ToasterReskinLoader.swappers;
 
 public static class PuckFXSwapper
 {
+    public static string LastServerName = "Unknown";
+    public static bool IsPHLServer = false;
+    static bool _phlToastShown = false;
     static readonly FieldInfo _puckElevationIndicatorField = typeof(PuckElevationIndicatorController)
         .GetField("puckElevationIndicator",
             BindingFlags.Instance | BindingFlags.NonPublic);
@@ -171,6 +174,23 @@ public static class PuckFXSwapper
                 return;
             }
 
+            if (IsPHLServer && profile.puckFXTrailEnabled)
+            {
+                // Ensure trail is off on PHL servers
+                GameObject puckRoot = puck.gameObject;
+                Transform trailTransform = puckRoot.transform.FindChild("Trail");
+                if (trailTransform != null)
+                {
+                    TrailRenderer tr = trailTransform.gameObject.GetComponent<TrailRenderer>();
+                    if (tr != null)
+                    {
+                        tr.enabled = false;
+                        tr.emitting = false;
+                    }
+                }
+                return;
+            }
+
             GameObject puckRootGameObject = puck.gameObject;
             Transform trailGameObjectTransform = puckRootGameObject.transform.FindChild("Trail");
             if (trailGameObjectTransform == null)
@@ -249,13 +269,20 @@ public static class PuckFXSwapper
             Plugin.LogError($"Error applying verticality line to existing pucks: {e.Message}");
         }
 
-        // Apply trail settings to all active pucks
+        // Apply trail settings to all active pucks (skipped on PHL servers)
         try
         {
-            List<Puck> pucks = PuckManager.Instance.GetPucks();
-            foreach (Puck puck in pucks)
+            if (IsPHLServer && ReskinProfileManager.currentProfile.puckFXTrailEnabled)
             {
-                UpdatePuckTrail(puck);
+                Plugin.Log("Puck trail is disabled on PHL Official/Pickup servers.");
+            }
+            else
+            {
+                List<Puck> pucks = PuckManager.Instance.GetPucks();
+                foreach (Puck puck in pucks)
+                {
+                    UpdatePuckTrail(puck);
+                }
             }
         }
         catch (Exception e)
@@ -357,6 +384,46 @@ public static class PuckFXSwapper
         public static void Postfix(PuckManager __instance, Puck puck)
         {
             UpdatePuckTrail(puck);
+        }
+    }
+
+    // Harmony patch: capture server name when clicking a server in the browser
+    [HarmonyPatch(typeof(ConnectionManagerController), "Event_Client_OnServerBrowserClickServer")]
+    public static class OnServerBrowserClickServerPatch
+    {
+        [HarmonyPrefix]
+        public static void Prefix(Dictionary<string, object> message)
+        {
+            ServerBrowserServer server = (ServerBrowserServer)message["serverBrowserServer"];
+            LastServerName = server.name;
+        }
+    }
+
+    // Harmony patch: detect PHL servers on connect and show toast if trail is blocked
+    [HarmonyPatch(typeof(ConnectionManagerController), "Event_OnClientConnected")]
+    public static class OnClientConnectedPatch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Dictionary<string, object> message)
+        {
+            Plugin.LogDebug("Connected to: " + LastServerName);
+            IsPHLServer = LastServerName.Contains("PHL Official") || LastServerName.Contains("PHL Pickup");
+
+            if (IsPHLServer && ReskinProfileManager.currentProfile.puckFXTrailEnabled)
+            {
+                if (!_phlToastShown)
+                {
+                    UIToastManager.Instance.ShowToast(
+                        "Puck Trail Disabled",
+                        "Puck trail is disabled on PHL Official/Pickup servers because it is too scary.",
+                        5f);
+                    _phlToastShown = true;
+                }
+            }
+            else
+            {
+                _phlToastShown = false;
+            }
         }
     }
 }
