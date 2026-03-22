@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find \"C:\\\\Projects\\\\Puck Plugins\\\\ToasterPuckFX\" -type d -name \"lib*\" -o -name \"*dll\" 2>/dev/null | head -20)"
+    ]
+  }
+}
