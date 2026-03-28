@@ -314,6 +314,7 @@ public static class UITools
         mainContainer.Add(slidersContainer);
 
         // 4. Local helper function to avoid repeating slider creation code
+        // Sliders display 0-255 for user friendliness but store/callback as 0-1
         void CreateAndRegisterSliderRow(
             string componentLabel,
             float initialComponentValue,
@@ -324,17 +325,18 @@ public static class UITools
             row.Add(CreateConfigurationLabel(componentLabel));
             var slider = CreateConfigurationSlider(
                 0,
-                1,
-                initialComponentValue,
+                255,
+                Mathf.Round(initialComponentValue * 255f),
                 300
             );
-            
+
 
             // Register callback for continuous changes (live preview)
             slider.RegisterCallback<ChangeEvent<float>>(evt =>
             {
-                // Update the specific color component (r, g, b, or a)
-                updateComponentAction(evt.newValue);
+                // Convert 0-255 display value to 0-1 internal value
+                float normalized = evt.newValue / 255f;
+                updateComponentAction(normalized);
                 // Update the preview box color
                 colorPreview.style.backgroundColor = currentColor;
                 // Fire the external callback for live updates

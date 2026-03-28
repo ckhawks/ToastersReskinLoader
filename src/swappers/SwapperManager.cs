@@ -104,6 +104,7 @@ public static class SwapperManager
             GoalieHelmetSwapper.SetHeadgearForPlayer(__instance.Player);
             SkaterHelmetSwapper.SetHelmetForPlayer(__instance.Player);
             PartyHatSwapper.AttachToPlayer(__instance.Player);
+            GenderSwapper.ApplyToPlayer(__instance.Player);
         }
     }
 
@@ -126,6 +127,8 @@ public static class SwapperManager
         global::UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
         FullArenaSwapper.Initialize();
         PartyHatSwapper.Initialize();
+        GenderSwapper.Initialize();
+        GenderSwapper.StartAlternating();
         TeamIndicatorSwapper.Setup();
     }
 
@@ -133,6 +136,7 @@ public static class SwapperManager
     {
         global::UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
         PartyHatSwapper.Cleanup();
+        GenderSwapper.Cleanup();
         TeamIndicatorSwapper.Cleanup();
     }
 
@@ -147,6 +151,7 @@ public static class SwapperManager
             GoalieHelmetSwapper.ClearHelmetCache();
             SkaterHelmetSwapper.ClearHelmetCache();
             PartyHatSwapper.ClearHats();
+            GenderSwapper.ClearCache();
             Plugin.Log($"Local player caches reset from switching to locker room");
         }
 

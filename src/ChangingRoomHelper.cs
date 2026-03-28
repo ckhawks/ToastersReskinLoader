@@ -324,6 +324,69 @@ public static class ChangingRoomHelper
         if (mat.HasProperty("baseColorFactor")) mat.SetColor("baseColorFactor", color);
     }
 
+    // ==================== FACIAL HAIR ====================
+
+    public static void SetBeardID(int beardID)
+    {
+        if (!IsInMainMenu()) return;
+        Scan();
+        if (lockerRoomPlayer != null)
+            lockerRoomPlayer.SetBeardID(beardID);
+    }
+
+    public static void SetMustacheID(int mustacheID)
+    {
+        if (!IsInMainMenu()) return;
+        Scan();
+        if (lockerRoomPlayer != null)
+            lockerRoomPlayer.SetMustacheID(mustacheID);
+    }
+
+    /// <summary>
+    /// Logs mustache and beard ID-to-GameObject mappings from the locker room PlayerHead.
+    /// Call once to discover the actual ID assignments.
+    /// </summary>
+    public static void LogFacialHairMappings()
+    {
+        if (!IsInMainMenu()) return;
+        Scan();
+        var playerMesh = GetPlayerMesh();
+        if (playerMesh?.PlayerHead == null) return;
+
+        // Use reflection to access the serialized lists
+        var headType = typeof(PlayerHead);
+        var mustachesField = headType.GetField("mustaches", BindingFlags.Instance | BindingFlags.NonPublic);
+        var beardsField = headType.GetField("beards", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        if (mustachesField != null)
+        {
+            var mustaches = (System.Collections.IList)mustachesField.GetValue(playerMesh.PlayerHead);
+            Plugin.Log($"[FacialHair] Mustache mappings ({mustaches.Count}):");
+            foreach (var m in mustaches)
+            {
+                var idField2 = m.GetType().GetField("ID");
+                var goField2 = m.GetType().GetField("GameObject");
+                int id = (int)idField2.GetValue(m);
+                GameObject go = (GameObject)goField2.GetValue(m);
+                Plugin.Log($"[FacialHair]   ID={id} -> {go?.name ?? "null"}");
+            }
+        }
+
+        if (beardsField != null)
+        {
+            var beards = (System.Collections.IList)beardsField.GetValue(playerMesh.PlayerHead);
+            Plugin.Log($"[FacialHair] Beard mappings ({beards.Count}):");
+            foreach (var b in beards)
+            {
+                var idField2 = b.GetType().GetField("ID");
+                var goField2 = b.GetType().GetField("GameObject");
+                int id = (int)idField2.GetValue(b);
+                GameObject go = (GameObject)goField2.GetValue(b);
+                Plugin.Log($"[FacialHair]   ID={id} -> {go?.name ?? "null"}");
+            }
+        }
+    }
+
     // ==================== CAMERA ====================
 
     public static void ShowStick()

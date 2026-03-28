@@ -36,6 +36,9 @@ namespace ToasterReskinLoader
 
                     // Always try leg pads - they'll just not find a renderer if the player isn't a goalie
                     ApplyLegPadsToPlayerMesh(playerMesh, team);
+
+                    // Apply body model swap to locker room preview
+                    GenderSwapper.ApplyToPlayerMesh(playerMesh, false);
                 }
                 catch (Exception e)
                 {
