@@ -53,12 +53,12 @@ public static class PlayerCustomizationSection
     };
     private static readonly int[] BEARD_IDS = { -1, 1536, 1537, 1538, 1539, 1540 };
 
-    // Mustache: -1 = none, 1024-1030
+    // Mustache: -1 = none, 1024-1030 (1028 "Toothbrush" intentionally excluded)
     private static readonly List<string> MUSTACHE_CHOICES = new List<string>
     {
-        "None", "Chevron", "Lampshade", "Pencil", "Sheriff", "Toothbrush", "Walrus", "HQM"
+        "None", "Chevron", "Lampshade", "Pencil", "Sheriff", "Walrus", "HQM"
     };
-    private static readonly int[] MUSTACHE_IDS = { -1, 1024, 1025, 1026, 1027, 1028, 1029, 1030 };
+    private static readonly int[] MUSTACHE_IDS = { -1, 1024, 1025, 1026, 1027, 1029, 1030 };
 
     public static void CreateSection(VisualElement contentScrollViewContent)
     {

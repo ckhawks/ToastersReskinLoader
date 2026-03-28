@@ -79,30 +79,6 @@ public static class AboutSection
             Application.OpenURL("http://ko-fi.com/stellaric");
         }
 
-        // Fun settings
-        Label funLabel = new Label();
-        funLabel.text = "<br><b>Fun Settings</b>";
-        funLabel.style.fontSize = 16;
-        funLabel.style.color = Color.white;
-        funLabel.style.marginTop = 12;
-        funLabel.style.marginBottom = 4;
-        contentScrollViewContent.Add(funLabel);
-
-        VisualElement bigHeadRow = UITools.CreateConfigurationRow();
-        bigHeadRow.Add(UITools.CreateConfigurationLabel("Big Heads"));
-        Toggle bigHeadToggle = UITools.CreateConfigurationCheckbox(Plugin.modSettings.BigHeadsEnabled);
-        bigHeadToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
-        {
-            Plugin.modSettings.BigHeadsEnabled = evt.newValue;
-            Plugin.modSettings.Save();
-            if (evt.newValue)
-                HatSwapper.ResetHeadScales();
-            else
-                HatSwapper.ResetHeadScales();
-        });
-        bigHeadRow.Add(bigHeadToggle);
-        contentScrollViewContent.Add(bigHeadRow);
-
         // -- Personalization master toggle + sub-settings --
         var dependentControls = new System.Collections.Generic.List<VisualElement>();
 

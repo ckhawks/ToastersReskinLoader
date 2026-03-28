@@ -73,6 +73,7 @@ public class Plugin : IPuckMod
                 ReskinMenuAccessButtons.Setup();
                 AppearanceAPI.Initialize(MonoBehaviourSingleton<UIManager>.Instance);
                 PlayerCustomizationSection.SubscribeToServerLoad();
+                ToothbrushFilter.ResetIfActive();
 
                 // The locker room scene is already loaded before the mod loads,
                 // so OnSceneLoaded won't fire - apply everything here
