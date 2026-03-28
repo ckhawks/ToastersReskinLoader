@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using System.Reflection;
-using AYellowpaper.SerializedCollections;
 using UnityEngine;
 
 namespace ToasterReskinLoader.swappers;
@@ -9,39 +7,14 @@ namespace ToasterReskinLoader.swappers;
 public static class StickSwapper
 {
     static readonly FieldInfo _stickMeshRendererField = typeof(StickMesh)
-        .GetField("stickMeshRenderer", 
+        .GetField("stickMeshRenderer",
             BindingFlags.Instance | BindingFlags.NonPublic);
-    
-    static readonly FieldInfo _stickMaterialMapField = typeof(StickMesh)
-        .GetField("stickMaterialMap", 
-            BindingFlags.Instance | BindingFlags.NonPublic);
-    
-    
-    // TODO cache the original texture for sticks so we can switch it back. Make sure to clear it on level change in SwapperManager
-    // private static Dictionary<ulong, Texture> originalTextures = new Dictionary<ulong, Texture>();
 
-    // Helper method to apply texture to stick based on role
-    private static void ApplyStickTexture(MeshRenderer stickMeshRenderer, SerializedDictionary<string, Material> stickMaterialMap, Texture2D texture, PlayerRole role)
-    {
-        // Select material based on role
-        if (role == PlayerRole.Attacker)
-            stickMeshRenderer.material = stickMaterialMap["red_beta_attacker"];
-        else if (role == PlayerRole.Goalie)
-            stickMeshRenderer.material = stickMaterialMap["red_beta_goalie"];
-
-        stickMeshRenderer.material.SetTexture("_Texture", texture);
-        Plugin.LogDebug("Texture applied to property: _Texture");
-
-        // Ensure the renderer is enabled
-        if (!stickMeshRenderer.enabled)
-        {
-            Plugin.LogError("stickMeshRenderer is disabled. Enabling it.");
-            stickMeshRenderer.enabled = true;
-        }
-    }
-
-    // This is only used for the changing room stick because it will only be used to set reskins, not the original skins
-    public static void SetStickMeshTexture(StickMesh stickMesh, ReskinRegistry.ReskinEntry reskin, PlayerRole role) 
+    /// <summary>
+    /// Applies a custom texture to a StickMesh's renderer material.
+    /// Used for both in-game sticks and locker room preview sticks.
+    /// </summary>
+    public static void SetStickMeshTexture(StickMesh stickMesh, ReskinRegistry.ReskinEntry reskin, PlayerRole role)
     {
         try
         {
@@ -58,8 +31,7 @@ public static class StickSwapper
                 Plugin.LogError($"stickMeshRenderer is null!");
                 return;
             }
-            
-            // Plugin.Log($"file path: {textureFilePath}");
+
             Texture2D texture2D = TextureManager.GetTexture(reskin);
             if (texture2D == null)
             {
@@ -67,29 +39,26 @@ public static class StickSwapper
                 return;
             }
 
-            // Debugging: Log material and shader
             Plugin.LogDebug($"Material: {stickMeshRenderer.material.name}");
             Plugin.LogDebug($"Shader: {stickMeshRenderer.material.shader.name}");
 
-            SerializedDictionary<string, Material> stickMaterialMap =
-                (SerializedDictionary<string, Material>)_stickMaterialMapField.GetValue(stickMesh);
-
-            ApplyStickTexture(stickMeshRenderer, stickMaterialMap, texture2D, role);
-
-            Plugin.LogDebug("Texture applied to stick GameObject!");
-            return;
+            ApplyTextureToStickMaterial(stickMeshRenderer.material, texture2D);
+            Plugin.LogDebug("Texture applied to stick mesh!");
         }
         catch (Exception ex)
         {
             Plugin.LogError($"Error when setting stick mesh texture: {ex.Message}");
         }
     }
-    
+
+    /// <summary>
+    /// Applies a custom texture to a Stick component (in-game player stick).
+    /// </summary>
     public static void SetStickTexture(Stick stick, ReskinRegistry.ReskinEntry reskin)
     {
         try
         {
-            Plugin.LogDebug($"Trying to replace stick texture, postspawn");
+            Plugin.LogDebug($"Trying to replace stick texture");
             StickMesh stickMesh = stick.StickMesh;
             if (stickMesh == null)
             {
@@ -107,11 +76,10 @@ public static class StickSwapper
             // Reset to normal skin
             if (reskin == null || reskin.Path == null)
             {
-                stickMesh.SetSkin(stick.Player.Team.Value, stick.Player.GetPlayerStickSkin().ToString());
+                stickMesh.SetSkinID(stick.Player.GetPlayerStickSkinID(), stick.Player.Team);
                 return;
             }
 
-            // Plugin.Log($"file path: {textureFilePath}");
             Texture2D texture2D = TextureManager.GetTexture(reskin);
             if (texture2D == null)
             {
@@ -119,53 +87,45 @@ public static class StickSwapper
                 return;
             }
 
-            // Debugging: Log material and shader
             Plugin.LogDebug($"Material: {stickMeshRenderer.material.name}");
             Plugin.LogDebug($"Shader: {stickMeshRenderer.material.shader.name}");
 
-            SerializedDictionary<string, Material> stickMaterialMap =
-                (SerializedDictionary<string, Material>)_stickMaterialMapField.GetValue(stickMesh);
-            // foreach (KeyValuePair<string, Material> pair in stickMaterialMap)
-            // {
-            //     Plugin.Log($"Material key: {pair.Key}");
-            //     Plugin.Log($"Material value: {pair.Value.name} - {pair.Value}");
-            //     // if (pair.Key.Contains(search))
-            // }
-
-            ApplyStickTexture(stickMeshRenderer, stickMaterialMap, texture2D, stick.Player.Role.Value);
-
-            Plugin.LogDebug("Texture applied to stick GameObject!");
-            
-            // Prototype: Test stick tape colors
-            // StickTapeSwapper.SetStickTapeForPlayer(stick);
-            // return;
+            ApplyTextureToStickMaterial(stickMeshRenderer.material, texture2D);
+            Plugin.LogDebug("Texture applied to stick!");
         }
         catch (Exception ex)
         {
             Plugin.LogError($"Error when setting stick texture: {ex.Message}");
         }
     }
-    
-    public static Material FindMaterialByRendererScan(string materialNamePartial)
+
+    /// <summary>
+    /// Applies texture to a stick material, trying all known property names
+    /// for b310's Shader Graphs/Stick Simple and other potential shaders.
+    /// Also clears holographic/iridescent/emission layers that some vanilla skins use,
+    /// so the custom texture displays cleanly without visual artifacts.
+    /// </summary>
+    private static void ApplyTextureToStickMaterial(Material material, Texture2D texture)
     {
-        // Get all active Renderers in the current scene
-        Renderer[] allRenderers = GameObject.FindObjectsOfType<Renderer>();
+        Plugin.LogDebug($"Swapping stick shader from '{material.shader.name}' to URP/Lit");
 
-        foreach (Renderer renderer in allRenderers)
-        {
-            // Iterate through all shared materials on this renderer
-            // An object might have multiple sub-meshes, each with a different material
-            foreach (Material mat in renderer.sharedMaterials)
-            {
-                if (mat != null && mat.name.Contains(materialNamePartial))
-                {
-                    Plugin.Log($"Found material '{mat.name}' on object '{renderer.gameObject.name}'");
-                    return mat; // Return the first match
-                }
-            }
-        }
+        // Swap the shader to URP Lit to completely remove holographic/iridescent
+        // effects baked into the vanilla Shader Graph. The old code replaced the
+        // entire material from stickMaterialMap; swapping the shader achieves the
+        // same result without needing that dictionary.
+        material.shader = Shader.Find("Universal Render Pipeline/Lit");
 
-        Debug.LogWarning($"Material '{materialNamePartial}' not found on any active renderer in the scene.");
-        return null;
+        // Apply the custom texture
+        material.mainTexture = texture;
+        material.SetTexture("_BaseMap", texture);
+        material.SetTexture("_MainTex", texture);
+
+        // White tint so the texture displays at full brightness
+        material.color = Color.white;
+        material.SetColor("_BaseColor", Color.white);
+
+        // Clean material state
+        material.SetFloat("_Metallic", 0f);
+        material.SetFloat("_Smoothness", 0.5f);
     }
 }

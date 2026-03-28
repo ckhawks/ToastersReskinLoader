@@ -83,6 +83,8 @@ public static class StickTapeSwapper
         if (mat.HasProperty("_BaseMap"))
         {
             mat.SetTexture("_BaseMap", texture);
+            if (mat.HasProperty("baseColorTexture"))
+                mat.SetTexture("baseColorTexture", texture);
             Plugin.LogDebug($"✓ Set _BaseMap to {texture.name}");
         }
         else
@@ -441,14 +443,14 @@ public static class StickTapeSwapper
                 return;
             }
 
-            PlayerTeam team = stick.Player.Team.Value;
+            PlayerTeam team = stick.Player.Team;
             if (team is not (PlayerTeam.Blue or PlayerTeam.Red))
             {
                 Plugin.LogDebug($"Player {stick.Player.Username.Value} is not on red or blue team, skipping tape customization.");
                 return;
             }
 
-            PlayerRole role = stick.Player.Role.Value;
+            PlayerRole role = stick.Player.Role;
             StickMesh stickMesh = stick.StickMesh;
 
             // Get renderers via reflection
@@ -564,7 +566,80 @@ public static class StickTapeSwapper
             Plugin.LogError($"Error setting stick tape: {ex.Message}");
         }
     }
-    
+
+    /// <summary>
+    /// Applies tape customization to a standalone StickMesh (e.g. locker room preview).
+    /// </summary>
+    public static void ApplyTapeToStickMesh(StickMesh stickMesh, PlayerTeam team, PlayerRole role)
+    {
+        try
+        {
+            if (stickMesh == null) return;
+
+            MeshRenderer bladeTapeRenderer = (MeshRenderer) _bladeTapeMeshRendererField.GetValue(stickMesh);
+            MeshRenderer shaftTapeRenderer = (MeshRenderer) _shaftTapeMeshRendererField.GetValue(stickMesh);
+
+            const ulong lockerRoomId = 99999UL;
+
+            if (team == PlayerTeam.Blue)
+            {
+                if (role == PlayerRole.Goalie)
+                {
+                    ApplyTapeCustomization(bladeTapeRenderer, lockerRoomId, team, role, "blade",
+                        ReskinProfileManager.currentProfile.blueGoalieBladeTapeMode ?? "Unchanged",
+                        ReskinProfileManager.currentProfile.blueGoalieBladeTape,
+                        ReskinProfileManager.currentProfile.blueGoalieBladeTapeColor);
+                    ApplyTapeCustomization(shaftTapeRenderer, lockerRoomId, team, role, "shaft",
+                        ReskinProfileManager.currentProfile.blueGoalieShaftTapeMode ?? "Unchanged",
+                        ReskinProfileManager.currentProfile.blueGoalieShaftTape,
+                        ReskinProfileManager.currentProfile.blueGoalieShaftTapeColor);
+                }
+                else
+                {
+                    ApplyTapeCustomization(bladeTapeRenderer, lockerRoomId, team, role, "blade",
+                        ReskinProfileManager.currentProfile.blueSkaterBladeTapeMode ?? "Unchanged",
+                        ReskinProfileManager.currentProfile.blueSkaterBladeTape,
+                        ReskinProfileManager.currentProfile.blueSkaterBladeTapeColor);
+                    ApplyTapeCustomization(shaftTapeRenderer, lockerRoomId, team, role, "shaft",
+                        ReskinProfileManager.currentProfile.blueSkaterShaftTapeMode ?? "Unchanged",
+                        ReskinProfileManager.currentProfile.blueSkaterShaftTape,
+                        ReskinProfileManager.currentProfile.blueSkaterShaftTapeColor);
+                }
+            }
+            else if (team == PlayerTeam.Red)
+            {
+                if (role == PlayerRole.Goalie)
+                {
+                    ApplyTapeCustomization(bladeTapeRenderer, lockerRoomId, team, role, "blade",
+                        ReskinProfileManager.currentProfile.redGoalieBladeTapeMode ?? "Unchanged",
+                        ReskinProfileManager.currentProfile.redGoalieBladeTape,
+                        ReskinProfileManager.currentProfile.redGoalieBladeTapeColor);
+                    ApplyTapeCustomization(shaftTapeRenderer, lockerRoomId, team, role, "shaft",
+                        ReskinProfileManager.currentProfile.redGoalieShaftTapeMode ?? "Unchanged",
+                        ReskinProfileManager.currentProfile.redGoalieShaftTape,
+                        ReskinProfileManager.currentProfile.redGoalieShaftTapeColor);
+                }
+                else
+                {
+                    ApplyTapeCustomization(bladeTapeRenderer, lockerRoomId, team, role, "blade",
+                        ReskinProfileManager.currentProfile.redSkaterBladeTapeMode ?? "Unchanged",
+                        ReskinProfileManager.currentProfile.redSkaterBladeTape,
+                        ReskinProfileManager.currentProfile.redSkaterBladeTapeColor);
+                    ApplyTapeCustomization(shaftTapeRenderer, lockerRoomId, team, role, "shaft",
+                        ReskinProfileManager.currentProfile.redSkaterShaftTapeMode ?? "Unchanged",
+                        ReskinProfileManager.currentProfile.redSkaterShaftTape,
+                        ReskinProfileManager.currentProfile.redSkaterShaftTapeColor);
+                }
+            }
+
+            Plugin.LogDebug($"Applied locker room tape customization for {team} {role}");
+        }
+        catch (Exception ex)
+        {
+            Plugin.LogError($"Error applying tape to locker room stick: {ex.Message}");
+        }
+    }
+
     // Helper to get the local player's stick
     private static Stick GetLocalPlayerStick()
     {
@@ -637,7 +712,7 @@ public static class StickTapeSwapper
     public static void OnBlueSkaterTapeChanged()
     {
         var stick = GetLocalPlayerStick();
-        if (stick != null && stick.Player.Team.Value == PlayerTeam.Blue && stick.Player.Role.Value == PlayerRole.Attacker)
+        if (stick != null && stick.Player.Team == PlayerTeam.Blue && stick.Player.Role == PlayerRole.Attacker)
         {
             SetStickTapeForPlayer(stick);
             Plugin.LogDebug("Applied blue skater tape changes");
@@ -647,7 +722,7 @@ public static class StickTapeSwapper
     public static void OnRedSkaterTapeChanged()
     {
         var stick = GetLocalPlayerStick();
-        if (stick != null && stick.Player.Team.Value == PlayerTeam.Red && stick.Player.Role.Value == PlayerRole.Attacker)
+        if (stick != null && stick.Player.Team == PlayerTeam.Red && stick.Player.Role == PlayerRole.Attacker)
         {
             SetStickTapeForPlayer(stick);
             Plugin.LogDebug("Applied red skater tape changes");
@@ -657,7 +732,7 @@ public static class StickTapeSwapper
     public static void OnBlueGoalieTapeChanged()
     {
         var stick = GetLocalPlayerStick();
-        if (stick != null && stick.Player.Team.Value == PlayerTeam.Blue && stick.Player.Role.Value == PlayerRole.Goalie)
+        if (stick != null && stick.Player.Team == PlayerTeam.Blue && stick.Player.Role == PlayerRole.Goalie)
         {
             SetStickTapeForPlayer(stick);
             Plugin.LogDebug("Applied blue goalie tape changes");
@@ -667,7 +742,7 @@ public static class StickTapeSwapper
     public static void OnRedGoalieTapeChanged()
     {
         var stick = GetLocalPlayerStick();
-        if (stick != null && stick.Player.Team.Value == PlayerTeam.Red && stick.Player.Role.Value == PlayerRole.Goalie)
+        if (stick != null && stick.Player.Team == PlayerTeam.Red && stick.Player.Role == PlayerRole.Goalie)
         {
             SetStickTapeForPlayer(stick);
             Plugin.LogDebug("Applied red goalie tape changes");

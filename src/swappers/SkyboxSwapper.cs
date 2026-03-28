@@ -1,42 +1,47 @@
-﻿using System;
+using System;
 using UnityEngine;
 
 namespace ToasterReskinLoader.swappers;
 
 public static class SkyboxSwapper
 {
+    private static Material _originalSkybox;
+    private static Material _skyboxInstance;
+
     public static void UpdateSkybox()
     {
         try
         {
-            // Check if there is a skybox material assigned
-            if (RenderSettings.skybox != null)
+            if (RenderSettings.skybox == null)
             {
-                // Create a new instance of the skybox material to avoid
-                // modifying the original asset.
-                Material skyboxInstance = new Material(RenderSettings.skybox);
-
-                // Set the new instance as the current skybox
-                RenderSettings.skybox = skyboxInstance;
-
-                // Now, modify the properties of our new instance.
-                // Let's change the tint color to a reddish hue.
-                // The property name "_SkyTint" is specific to the default
-                // procedural skybox.
-                skyboxInstance.SetFloat("_AtmosphereThickness", ReskinProfileManager.currentProfile.skyboxAtmosphereThickness);
-                skyboxInstance.SetFloat("_Exposure", ReskinProfileManager.currentProfile.skyboxExposure);
-                skyboxInstance.SetFloat("_SunDisk", ReskinProfileManager.currentProfile.skyboxSunDisk);
-                skyboxInstance.SetFloat("_SunSize", ReskinProfileManager.currentProfile.skyboxSunSize);
-                skyboxInstance.SetFloat("_SunSizeConvergence", ReskinProfileManager.currentProfile.skyboxSunSizeConvergence);
-            
-                skyboxInstance.SetColor("_GroundColor", ReskinProfileManager.currentProfile.skyboxGroundColor);
-                skyboxInstance.SetColor("_SkyTint", ReskinProfileManager.currentProfile.skyboxSkyTint);
-                // skyboxInstance.SetColor()
+                Plugin.LogWarning("No skybox material found in RenderSettings.");
+                return;
             }
-            else
+
+            // Cache the original skybox on first call so we always clone from it
+            if (_originalSkybox == null)
             {
-                Debug.LogWarning("No skybox material found in RenderSettings.");
+                _originalSkybox = RenderSettings.skybox;
             }
+
+            // Destroy previous instance to avoid material leak
+            if (_skyboxInstance != null)
+            {
+                UnityEngine.Object.Destroy(_skyboxInstance);
+            }
+
+            // Create a fresh instance from the original
+            _skyboxInstance = new Material(_originalSkybox);
+            RenderSettings.skybox = _skyboxInstance;
+
+            _skyboxInstance.SetFloat("_AtmosphereThickness", ReskinProfileManager.currentProfile.skyboxAtmosphereThickness);
+            _skyboxInstance.SetFloat("_Exposure", ReskinProfileManager.currentProfile.skyboxExposure);
+            _skyboxInstance.SetFloat("_SunDisk", ReskinProfileManager.currentProfile.skyboxSunDisk);
+            _skyboxInstance.SetFloat("_SunSize", ReskinProfileManager.currentProfile.skyboxSunSize);
+            _skyboxInstance.SetFloat("_SunSizeConvergence", ReskinProfileManager.currentProfile.skyboxSunSizeConvergence);
+
+            _skyboxInstance.SetColor("_GroundColor", ReskinProfileManager.currentProfile.skyboxGroundColor);
+            _skyboxInstance.SetColor("_SkyTint", ReskinProfileManager.currentProfile.skyboxSkyTint);
         }
         catch (Exception e)
         {

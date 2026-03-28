@@ -121,7 +121,12 @@ public static class ArenaSwapper
     {
         "scoreboard",
         "Scoreboard",
-        "Scoreboard (1)"
+        "Scoreboard (1)",
+        "Red Score",
+        "Blue Score",
+        "Period",
+        "Minute",
+        "Second"
     };
 
     private static string[] namesOfCrowdObjects = new[]
@@ -149,7 +154,8 @@ public static class ArenaSwapper
 
             if (namesOfCrowdObjects.Contains(gameObject.name))
             {
-                hiddenCrowdObjects.Add(gameObject);
+                if (!hiddenCrowdObjects.Contains(gameObject))
+                    hiddenCrowdObjects.Add(gameObject);
                 gameObject.SetActive(false);
             }
         }
@@ -183,7 +189,8 @@ public static class ArenaSwapper
 
             if (namesOfOutdoorObjects.Contains(gameObject.name))
             {
-                hiddenOutdoorObjects.Add(gameObject);
+                if (!hiddenOutdoorObjects.Contains(gameObject))
+                    hiddenOutdoorObjects.Add(gameObject);
                 gameObject.SetActive(false);
 
                 MeshRenderer mr = gameObject.GetComponent<MeshRenderer>();
@@ -233,16 +240,15 @@ public static class ArenaSwapper
                     hiddenScoreboardObjects.Add(gameObject);
                 if (gameObject.GetComponent<Scoreboard>() != null)
                 {
-                    // Plugin.Log($"turning off scoreboard {gameObject.name}");
                     Scoreboard scoreboard = gameObject.GetComponent<Scoreboard>();
                     scoreboard.TurnOff();
                 }
                 gameObject.SetActive(false);
 
-                MeshRenderer mr = gameObject.GetComponent<MeshRenderer>();
-                if (mr != null)
+                // Disable all renderers including children (score digits, etc.)
+                foreach (var r in gameObject.GetComponentsInChildren<Renderer>(true))
                 {
-                    mr.enabled = false;
+                    r.enabled = false;
                 }
             }
         }
@@ -254,11 +260,13 @@ public static class ArenaSwapper
         {
             if (obj == null || obj.transform == null) continue;
             obj.SetActive(true);
-            MeshRenderer mr = obj.GetComponent<MeshRenderer>();
-            if (mr != null)
+
+            // Re-enable all renderers including children (score digits, etc.)
+            foreach (var r in obj.GetComponentsInChildren<Renderer>(true))
             {
-                mr.enabled = true;
+                r.enabled = true;
             }
+
             if (obj.GetComponent<Scoreboard>() != null)
             {
                 Scoreboard scoreboard = obj.GetComponent<Scoreboard>();
@@ -287,7 +295,8 @@ public static class ArenaSwapper
 
             if (namesOfGlassObjects.Contains(gameObject.name))
             {
-                hiddenGlassObjects.Add(gameObject);
+                if (!hiddenGlassObjects.Contains(gameObject))
+                    hiddenGlassObjects.Add(gameObject);
                 gameObject.SetActive(false);
 
                 MeshRenderer mr = gameObject.GetComponent<MeshRenderer>();
@@ -315,8 +324,8 @@ public static class ArenaSwapper
         hiddenGlassObjects.Clear();
     }
 
-    [HarmonyPatch(typeof(SpectatorManager), nameof(SpectatorManager.SpawnSpectators))]
-    public static class SpectatorManagerSpawnSpectators
+    [HarmonyPatch(typeof(SpectatorManager), nameof(SpectatorManager.RegisterSpectatorPosition))]
+    public static class SpectatorManagerRegisterSpectatorPosition
     {
         [HarmonyPostfix]
         public static void Postfix(SpectatorManager __instance)
@@ -329,8 +338,6 @@ public static class ArenaSwapper
     {
         try
         {
-            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "changing_room") return; // Do not do anything if in changing room
-            
             // middle
             GameObject barrierGameObject = GameObject.Find("Barrier");
 
@@ -344,7 +351,8 @@ public static class ArenaSwapper
 
             if (barrierMeshRenderer == null)
             {
-                Debug.LogError("No MeshRenderer found on GameObject Barrier.");
+                Plugin.LogError("No MeshRenderer found on GameObject Barrier.");
+                return;
             }
 
             barrierMeshRenderer.material.SetColor("_BaseColor", ReskinProfileManager.currentProfile.boardsMiddleColor);
@@ -363,7 +371,8 @@ public static class ArenaSwapper
 
             if (barrierBorderTopMeshRenderer == null)
             {
-                Debug.LogError("No MeshRenderer found on GameObject Barrier Top Border.");
+                Plugin.LogError("No MeshRenderer found on GameObject Barrier Top Border.");
+                return;
             }
 
             barrierBorderTopMeshRenderer.material.SetColor("_BaseColor",
@@ -384,7 +393,8 @@ public static class ArenaSwapper
 
             if (barrierBorderBottomMeshRenderer == null)
             {
-                Debug.LogError("No MeshRenderer found on GameObject Barrier Bottom Border.");
+                Plugin.LogError("No MeshRenderer found on GameObject Barrier Bottom Border.");
+                return;
             }
 
             barrierBorderBottomMeshRenderer.material.SetColor("_BaseColor",
@@ -415,7 +425,8 @@ public static class ArenaSwapper
 
             if (glassMeshRenderer == null)
             {
-                Debug.LogError("No MeshRenderer found on GameObject Glass");
+                Plugin.LogError("No MeshRenderer found on GameObject Glass.");
+                return;
             }
 
             // Plugin.Log($"glassMeshRenderer name: {glassMeshRenderer.name}");
@@ -433,7 +444,8 @@ public static class ArenaSwapper
 
             if (pillarsMeshRenderer == null)
             {
-                Debug.LogError("No MeshRenderer found on GameObject Pillars");
+                Plugin.LogError("No MeshRenderer found on GameObject Pillars.");
+                return;
             }
 
             pillarsMeshRenderer.material.SetColor("_BaseColor", ReskinProfileManager.currentProfile.pillarsColor);
@@ -450,6 +462,10 @@ public static class ArenaSwapper
         .GetField("spectatorDensity",
             BindingFlags.Instance | BindingFlags.NonPublic);
 
+    static readonly FieldInfo _spectatorMapField = typeof(SpectatorManager)
+        .GetField("spectatorPositionSpectatorMap",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
     public static void UpdateSpectators()
     {
         try
@@ -460,17 +476,30 @@ public static class ArenaSwapper
                 return;
             }
 
-            _spectatorDensityField.SetValue(SpectatorManager.Instance,
+            var spectatorManager = SpectatorManager.Instance;
+
+            // Update density
+            _spectatorDensityField.SetValue(spectatorManager,
                 ReskinProfileManager.currentProfile.spectatorDensity);
-            SpectatorManager.Instance.ClearSpectators();
+
+            // Get all SpectatorPosition objects and re-register them
+            // First, unregister all existing ones
+            SpectatorPosition[] positions = Object.FindObjectsByType<SpectatorPosition>(FindObjectsSortMode.None);
+            foreach (var pos in positions)
+            {
+                spectatorManager.UnregisterSpectatorPosition(pos);
+            }
+
+            // Then re-register if crowd is enabled (density filtering happens in RegisterSpectatorPosition)
             if (ReskinProfileManager.currentProfile.crowdEnabled)
             {
-                SpectatorManager.Instance.SpawnSpectators();
+                foreach (var pos in positions)
+                {
+                    spectatorManager.RegisterSpectatorPosition(pos);
+                }
             }
 
             Plugin.LogDebug($"Update spectators complete.");
-
-            return;
         }
         catch (Exception e)
         {
@@ -550,6 +579,55 @@ public static class ArenaSwapper
         catch (Exception e)
         {
             Plugin.LogError($"Failed to set net texture: {e}");
+        }
+    }
+
+    private static Color? _originalBlueGoalFrameColor;
+    private static Color? _originalRedGoalFrameColor;
+
+    public static void UpdateGoalFrameColors()
+    {
+        try
+        {
+            var goals = Object.FindObjectsByType(typeof(Goal), FindObjectsSortMode.None);
+            var profile = ReskinProfileManager.currentProfile;
+
+            foreach (Object obj in goals)
+            {
+                Goal goal = (Goal)obj;
+                Transform frameTransform = goal.transform.Find("Frame");
+                if (frameTransform == null) continue;
+
+                MeshRenderer mr = frameTransform.GetComponent<MeshRenderer>();
+                if (mr == null) continue;
+
+                bool isBlue = goal.gameObject.name.Contains("Blue");
+
+                // Cache original colors
+                if (isBlue && _originalBlueGoalFrameColor == null)
+                    _originalBlueGoalFrameColor = mr.material.GetColor("_BaseColor");
+                else if (!isBlue && _originalRedGoalFrameColor == null)
+                    _originalRedGoalFrameColor = mr.material.GetColor("_BaseColor");
+
+                if (profile.teamColorsEnabled)
+                {
+                    Color color = isBlue ? profile.blueTeamColor : profile.redTeamColor;
+                    mr.material.SetColor("_BaseColor", color);
+                    mr.material.SetColor("_Color", color);
+                }
+                else
+                {
+                    Color original = isBlue
+                        ? _originalBlueGoalFrameColor ?? Color.white
+                        : _originalRedGoalFrameColor ?? Color.white;
+                    mr.material.SetColor("_BaseColor", original);
+                    mr.material.SetColor("_Color", original);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Plugin.LogError($"Failed to update goal frame colors: {e.Message}");
         }
     }
 

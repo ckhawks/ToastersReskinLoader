@@ -12,9 +12,6 @@ namespace ToasterReskinLoader.swappers;
 public static class PuckFXSwapper
 {
     public static bool IsPHLServer = false;
-    static readonly FieldInfo _puckElevationIndicatorField = typeof(PuckElevationIndicatorController)
-        .GetField("puckElevationIndicator",
-            BindingFlags.Instance | BindingFlags.NonPublic);
 
     static readonly FieldInfo _lineRendererField = typeof(PuckElevationIndicator)
         .GetField("lineRenderer",
@@ -24,7 +21,7 @@ public static class PuckFXSwapper
         .GetField("material",
             BindingFlags.Instance | BindingFlags.NonPublic);
 
-    static readonly FieldInfo _puckOutlineSettingsField = typeof(PostProcessingManager)
+    static readonly FieldInfo _puckOutlineSettingsField = typeof(PostProcessing)
         .GetField("puckOutlineSettings",
             BindingFlags.Instance | BindingFlags.NonPublic);
 
@@ -36,10 +33,10 @@ public static class PuckFXSwapper
     {
         try
         {
-            PostProcessingManager ppm = PostProcessingManager.Instance;
+            PostProcessing ppm = Object.FindObjectOfType<PostProcessing>();
             if (ppm == null)
             {
-                Plugin.LogWarning("PostProcessingManager.Instance is null, cannot set puck outline.");
+                Plugin.LogWarning("PostProcessing not found, cannot set puck outline.");
                 return;
             }
 
@@ -91,12 +88,6 @@ public static class PuckFXSwapper
                 profile.puckFXVerticalityLineColor.g,
                 profile.puckFXVerticalityLineColor.b,
                 profile.puckFXVerticalityLineColor.a);
-
-            if (_puckElevationIndicatorField == null)
-            {
-                Plugin.LogError("PuckFX: FieldInfo for puckElevationIndicator is null!");
-                return;
-            }
 
             PuckElevationIndicator puckElevationIndicator =
                 instance.GetComponent<PuckElevationIndicator>();
@@ -176,7 +167,7 @@ public static class PuckFXSwapper
             {
                 // Ensure trail is off on PHL servers
                 GameObject puckRoot = puck.gameObject;
-                Transform trailTransform = puckRoot.transform.FindChild("Trail");
+                Transform trailTransform = puckRoot.transform.Find("Trail");
                 if (trailTransform != null)
                 {
                     TrailRenderer tr = trailTransform.gameObject.GetComponent<TrailRenderer>();
@@ -190,7 +181,7 @@ public static class PuckFXSwapper
             }
 
             GameObject puckRootGameObject = puck.gameObject;
-            Transform trailGameObjectTransform = puckRootGameObject.transform.FindChild("Trail");
+            Transform trailGameObjectTransform = puckRootGameObject.transform.Find("Trail");
             if (trailGameObjectTransform == null)
             {
                 Plugin.LogError("PuckFX: Could not find Trail child transform.");
@@ -292,7 +283,7 @@ public static class PuckFXSwapper
         UpdatePuckSilhouetteColor();
     }
 
-    static readonly FieldInfo _universalRendererDataField = typeof(PostProcessingManager)
+    static readonly FieldInfo _universalRendererDataField = typeof(PostProcessing)
         .GetField("universalRendererData",
             BindingFlags.Instance | BindingFlags.NonPublic);
 
@@ -305,10 +296,10 @@ public static class PuckFXSwapper
     {
         try
         {
-            PostProcessingManager ppm = PostProcessingManager.Instance;
+            PostProcessing ppm = Object.FindObjectOfType<PostProcessing>();
             if (ppm == null)
             {
-                Plugin.LogWarning("PostProcessingManager.Instance is null, cannot set puck silhouette color.");
+                Plugin.LogWarning("PostProcessing not found, cannot set puck silhouette color.");
                 return;
             }
 
@@ -319,10 +310,10 @@ public static class PuckFXSwapper
                 return;
             }
 
-            var feature = rendererData.rendererFeatures.Find(x => x.name == "Obstructed Puck");
+            var feature = rendererData.rendererFeatures.Find(x => x.name == "Puck Silhouette");
             if (feature == null)
             {
-                Plugin.LogWarning("'Obstructed Puck' renderer feature not found.");
+                Plugin.LogWarning("'Puck Silhouette' renderer feature not found.");
                 return;
             }
 
@@ -363,8 +354,7 @@ public static class PuckFXSwapper
     }
 
     // Harmony patch: apply verticality line + elevation indicator settings when the indicator starts
-    [HarmonyPatch(typeof(PuckElevationIndicatorController),
-        nameof(PuckElevationIndicatorController.Start))]
+    [HarmonyPatch(typeof(PuckElevationIndicatorController), "Start")]
     public static class PuckElevationIndicatorStartPatch
     {
         [HarmonyPostfix]
@@ -385,15 +375,15 @@ public static class PuckFXSwapper
         }
     }
 
-    // Harmony patch: detect PHL servers when server config is received (fires before pucks spawn)
-    [HarmonyPatch(typeof(ServerManager), "Server_ServerConfigurationRpc")]
+    // Harmony patch: detect PHL servers when server config changes (NetworkVariable sync)
+    [HarmonyPatch(typeof(ServerManager), "OnServerChanged")]
     public static class ServerConfigurationPatch
     {
         [HarmonyPostfix]
-        public static void Postfix(Server server)
+        public static void Postfix(Server oldServer, Server newServer)
         {
-            string serverName = server.Name.ToString();
-            Plugin.LogDebug("Server configuration received: " + serverName);
+            string serverName = newServer.Name.ToString();
+            Plugin.LogDebug("Server configuration changed: " + serverName);
             IsPHLServer = serverName.Contains("PHL Official") || serverName.Contains("PHL Pickup");
 
             // Re-apply trail state to any pucks that already spawned before this RPC
@@ -412,7 +402,7 @@ public static class PuckFXSwapper
 
             if (IsPHLServer && ReskinProfileManager.currentProfile.puckFXTrailEnabled)
             {
-                UIToastManager.Instance.ShowToast(
+                MonoBehaviourSingleton<UIManager>.Instance.ToastManager.ShowToast(
                     "Puck Trail Disabled",
                     "Puck trail is disabled on PHL Official/Pickup servers.",
                     5f);

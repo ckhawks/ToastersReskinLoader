@@ -33,12 +33,8 @@ public static class GoaliesSection
 
     public static void CreateSection(VisualElement contentScrollViewContent)
     {
-        Label description = new Label();
-        description.text = $"Note: Customization will not show in changing room currently.";
-        description.style.color = new Color(0.7f, 0.7f, 0.7f);
-        description.style.fontSize = 14;
-        description.style.marginBottom = 8;
-        contentScrollViewContent.Add(description);
+        void showBody() { ChangingRoomHelper.ShowBody(); }
+        contentScrollViewContent.schedule.Execute(showBody).ExecuteLater(2);
 
         // Get all reskin entries upfront
         List<ReskinRegistry.ReskinEntry> jerseyTorsos = ReskinRegistry.GetReskinEntriesByType("jersey_torso");
@@ -113,6 +109,8 @@ public static class GoaliesSection
                 ReskinRegistry.ReskinEntry chosen = evt.newValue;
                 Plugin.Log($"User picked ID={chosen.Path}, Name={chosen.Name}");
                 ReskinProfileManager.SetSelectedReskinInCurrentProfile(chosen, "jersey_torso", $"{teamSlot}_goalie");
+                ChangingRoomHelper.SetPreviewContext(teamSlot == "blue" ? PlayerTeam.Blue : PlayerTeam.Red, PlayerRole.Goalie);
+                ChangingRoomHelper.RefreshPreview();
             })
         );
         torsoDropdown.choices = jerseyTorsos;
@@ -134,6 +132,8 @@ public static class GoaliesSection
                 ReskinRegistry.ReskinEntry chosen = evt.newValue;
                 Plugin.Log($"User picked ID={chosen.Path}, Name={chosen.Name}");
                 ReskinProfileManager.SetSelectedReskinInCurrentProfile(chosen, "jersey_groin", $"{teamSlot}_goalie");
+                ChangingRoomHelper.SetPreviewContext(teamSlot == "blue" ? PlayerTeam.Blue : PlayerTeam.Red, PlayerRole.Goalie);
+                ChangingRoomHelper.RefreshPreview();
             })
         );
         groinDropdown.choices = jerseyGroins;
@@ -185,6 +185,8 @@ public static class GoaliesSection
                         ReskinProfileManager.currentProfile.blueLegPadDefaultColor = newColor;
                         ReskinProfileManager.SaveProfile();
                         GoalieEquipmentSwapper.OnBlueLegPadColorChanged();
+                        ChangingRoomHelper.SetPreviewContext(team == "blue" ? PlayerTeam.Blue : PlayerTeam.Red, PlayerRole.Goalie);
+                        ChangingRoomHelper.RefreshPreview();
                     },
                     () => { ReskinProfileManager.SaveProfile(); }
                 );
@@ -202,6 +204,8 @@ public static class GoaliesSection
                         ReskinProfileManager.currentProfile.redLegPadDefaultColor = newColor;
                         ReskinProfileManager.SaveProfile();
                         GoalieEquipmentSwapper.OnRedLegPadColorChanged();
+                        ChangingRoomHelper.SetPreviewContext(team == "blue" ? PlayerTeam.Blue : PlayerTeam.Red, PlayerRole.Goalie);
+                        ChangingRoomHelper.RefreshPreview();
                     },
                     () => { ReskinProfileManager.SaveProfile(); }
                 );
@@ -252,6 +256,8 @@ public static class GoaliesSection
                 ReskinRegistry.ReskinEntry chosen = evt.newValue;
                 Plugin.Log($"User picked leg pad: {chosen.Name}");
                 ReskinProfileManager.SetSelectedReskinInCurrentProfile(chosen, "legpad", slot);
+                ChangingRoomHelper.SetPreviewContext(slot.Contains("blue") ? PlayerTeam.Blue : PlayerTeam.Red, PlayerRole.Goalie);
+                ChangingRoomHelper.RefreshPreview();
             })
         );
 
@@ -308,11 +314,15 @@ public static class GoaliesSection
                     {
                         ReskinProfileManager.currentProfile.blueGoalieHelmetColor = newColor;
                         GoalieHelmetSwapper.OnBlueHelmetColorChanged();
+                        ChangingRoomHelper.SetPreviewContext(team == "blue" ? PlayerTeam.Blue : PlayerTeam.Red, PlayerRole.Goalie);
+                        ChangingRoomHelper.RefreshPreview();
                     }
                     else
                     {
                         ReskinProfileManager.currentProfile.redGoalieHelmetColor = newColor;
                         GoalieHelmetSwapper.OnRedHelmetColorChanged();
+                        ChangingRoomHelper.SetPreviewContext(team == "blue" ? PlayerTeam.Blue : PlayerTeam.Red, PlayerRole.Goalie);
+                        ChangingRoomHelper.RefreshPreview();
                     }
 
                     ReskinProfileManager.SaveProfile();
@@ -358,11 +368,15 @@ public static class GoaliesSection
                     {
                         ReskinProfileManager.currentProfile.blueGoalieMaskColor = newColor;
                         GoalieHelmetSwapper.OnBlueMaskColorChanged();
+                        ChangingRoomHelper.SetPreviewContext(team == "blue" ? PlayerTeam.Blue : PlayerTeam.Red, PlayerRole.Goalie);
+                        ChangingRoomHelper.RefreshPreview();
                     }
                     else
                     {
                         ReskinProfileManager.currentProfile.redGoalieMaskColor = newColor;
                         GoalieHelmetSwapper.OnRedMaskColorChanged();
+                        ChangingRoomHelper.SetPreviewContext(team == "blue" ? PlayerTeam.Blue : PlayerTeam.Red, PlayerRole.Goalie);
+                        ChangingRoomHelper.RefreshPreview();
                     }
 
                     ReskinProfileManager.SaveProfile();
@@ -392,11 +406,15 @@ public static class GoaliesSection
                     {
                         ReskinProfileManager.currentProfile.blueGoalieCageColor = newColor;
                         GoalieHelmetSwapper.OnBlueCageColorChanged();
+                        ChangingRoomHelper.SetPreviewContext(team == "blue" ? PlayerTeam.Blue : PlayerTeam.Red, PlayerRole.Goalie);
+                        ChangingRoomHelper.RefreshPreview();
                     }
                     else
                     {
                         ReskinProfileManager.currentProfile.redGoalieCageColor = newColor;
                         GoalieHelmetSwapper.OnRedCageColorChanged();
+                        ChangingRoomHelper.SetPreviewContext(team == "blue" ? PlayerTeam.Blue : PlayerTeam.Red, PlayerRole.Goalie);
+                        ChangingRoomHelper.RefreshPreview();
                     }
 
                     ReskinProfileManager.SaveProfile();
@@ -424,7 +442,8 @@ public static class GoaliesSection
                         ReskinProfileManager.currentProfile.redGoalieLetteringColor = newColor;
                         PlayerTextSwapper.OnRedGoalieLetteringColorChanged();
                     }
-
+                    ChangingRoomHelper.SetPreviewContext(team == "blue" ? PlayerTeam.Blue : PlayerTeam.Red, PlayerRole.Goalie);
+                    ChangingRoomHelper.RefreshPreview();
                     ReskinProfileManager.SaveProfile();
                 },
                 () => { ReskinProfileManager.SaveProfile(); }
@@ -477,6 +496,8 @@ public static class GoaliesSection
                 // For helmet type, encode goalie context in slot
                 string slot = (type == "helmet") ? $"goalie_{team}" : team;
                 ReskinProfileManager.SetSelectedReskinInCurrentProfile(chosen, type, slot);
+                ChangingRoomHelper.SetPreviewContext(team == "blue" ? PlayerTeam.Blue : PlayerTeam.Red, PlayerRole.Goalie);
+                ChangingRoomHelper.RefreshPreview();
             })
         );
 
@@ -514,6 +535,8 @@ public static class GoaliesSection
                 ReskinRegistry.ReskinEntry chosen = evt.newValue;
                 Plugin.Log($"User picked leg pad: {chosen.Name}");
                 ReskinProfileManager.SetSelectedReskinInCurrentProfile(chosen, "legpad", slot);
+                ChangingRoomHelper.SetPreviewContext(slot.Contains("blue") ? PlayerTeam.Blue : PlayerTeam.Red, PlayerRole.Goalie);
+                ChangingRoomHelper.RefreshPreview();
             })
         );
 

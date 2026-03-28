@@ -1,51 +1,35 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 namespace ToasterReskinLoader.swappers;
 
 public static class SwapperUtils
 {
-    public static string FindTextureProperty(Material material)
+    /// <summary>
+    /// Applies a texture to a renderer's material using all known texture property names.
+    /// Sets material color to white so the texture displays without tinting.
+    /// This is the single source of truth for texture application across all swappers.
+    /// </summary>
+    public static void ApplyTextureToMaterial(Material material, Texture2D texture)
     {
-        Shader shader = material.shader;
-        int propertyCount = shader.GetPropertyCount();
-
-        bool foundOnce = false;
-        for (int i = 0; i < propertyCount; i++)
-        {
-            // Check if the property is a texture
-            if (shader.GetPropertyType(i) == UnityEngine.Rendering.ShaderPropertyType.Texture)
-            {
-                string propertyName = shader.GetPropertyName(i);
-                Plugin.Log($"Found texture property: {propertyName}");
-                if (!foundOnce)
-                {
-                    foundOnce = true;
-                }
-                else
-                {
-                    return propertyName; // Return the first texture property found
-                }
-            }
-        }
-
-        return null; // No texture property found
+        material.mainTexture = texture;
+        material.SetTexture("_MainTex", texture);
+        material.SetTexture("_BaseMap", texture);
+        material.SetTexture("baseColorTexture", texture);
+        material.SetTexture("_Albedo", texture);
+        material.color = Color.white;
+        material.SetColor("_BaseColor", Color.white);
+        material.SetColor("_Color", Color.white);
     }
-    
-    public static string FindTextureProperties(Material material)
-    {
-        Shader shader = material.shader;
-        int propertyCount = shader.GetPropertyCount();
-        
-        for (int i = 0; i < propertyCount; i++)
-        {
-            // Check if the property is a texture
-            if (shader.GetPropertyType(i) == UnityEngine.Rendering.ShaderPropertyType.Texture)
-            {
-                string propertyName = shader.GetPropertyName(i);
-                Plugin.Log($"Found texture property: {propertyName}");
-            }
-        }
 
-        return null; // No texture property found
+    /// <summary>
+    /// Restores a renderer's material to its original texture with a tint color.
+    /// Used when resetting a swapped texture back to vanilla.
+    /// </summary>
+    public static void RestoreOriginalTexture(Material material, Texture originalTexture, Color tintColor)
+    {
+        material.mainTexture = originalTexture;
+        material.color = tintColor;
+        if (material.HasProperty("_BaseColor"))
+            material.SetColor("_BaseColor", tintColor);
     }
 }

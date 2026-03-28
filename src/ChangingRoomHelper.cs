@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 using ToasterReskinLoader.swappers;
@@ -9,364 +10,454 @@ namespace ToasterReskinLoader;
 
 public static class ChangingRoomHelper
 {
-    private static ChangingRoomStick changingRoomStickAttacker;
-    private static ChangingRoomStick changingRoomStickGoalie;
-    private static ChangingRoomManager changingRoomManager;
-    private static ChangingRoomPlayer changingRoomPlayer;
+    private static LockerRoomStick lockerRoomStick;
+    private static LockerRoomPlayer lockerRoomPlayer;
+    private static LockerRoomCamera lockerRoomCamera;
+
+    // Saved user settings to restore on menu close
+    private static PlayerTeam savedTeam;
+    private static PlayerRole savedRole;
+    private static bool hasOverride;
+
+    // Reflection fields
+    static readonly FieldInfo _attackerStickMeshField = typeof(LockerRoomStick)
+        .GetField("attackerStickMesh", BindingFlags.Instance | BindingFlags.NonPublic);
+    static readonly FieldInfo _goalieStickMeshField = typeof(LockerRoomStick)
+        .GetField("goalieStickMesh", BindingFlags.Instance | BindingFlags.NonPublic);
+    static readonly FieldInfo _playerMeshField = typeof(LockerRoomPlayer)
+        .GetField("playerMesh", BindingFlags.Instance | BindingFlags.NonPublic);
+    static readonly FieldInfo _usernameTextField = typeof(PlayerTorso)
+        .GetField("usernameText", BindingFlags.Instance | BindingFlags.NonPublic);
+    static readonly FieldInfo _numberTextField = typeof(PlayerTorso)
+        .GetField("numberText", BindingFlags.Instance | BindingFlags.NonPublic);
+
+    public static StickMesh GetStickMesh(PlayerRole role)
+    {
+        if (lockerRoomStick == null) return null;
+        return role == PlayerRole.Goalie
+            ? (StickMesh)_goalieStickMeshField.GetValue(lockerRoomStick)
+            : (StickMesh)_attackerStickMeshField.GetValue(lockerRoomStick);
+    }
+
+    public static PlayerMesh GetPlayerMesh()
+    {
+        if (lockerRoomPlayer == null) return null;
+        return (PlayerMesh)_playerMeshField?.GetValue(lockerRoomPlayer);
+    }
 
     public static bool IsInMainMenu()
     {
-        return UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "changing_room";
+        return UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "locker_room";
     }
-    
+
+    // ==================== PREVIEW CONTEXT ====================
+
+    /// <summary>
+    /// Switches the locker room model to show a specific team+role.
+    /// Saves the user's real settings so they can be restored later.
+    /// Fires game events so the game's controllers update the model,
+    /// then our Harmony postfixes apply our textures.
+    /// </summary>
+    public static void SetPreviewContext(PlayerTeam team, PlayerRole role)
+    {
+        if (!IsInMainMenu()) return;
+        Scan();
+
+        // Save original settings on first override
+        if (!hasOverride)
+        {
+            savedTeam = SettingsManager.Team;
+            savedRole = SettingsManager.Role;
+            hasOverride = true;
+        }
+
+        // Set the fields directly (no SaveManager persist)
+        bool teamChanged = SettingsManager.Team != team;
+        bool roleChanged = SettingsManager.Role != role;
+        SettingsManager.Team = team;
+        SettingsManager.Role = role;
+
+        // Fire events so game controllers update the model + stick
+        if (teamChanged)
+            EventManager.TriggerEvent("Event_OnTeamChanged", new Dictionary<string, object> { { "value", team } });
+        if (roleChanged)
+            EventManager.TriggerEvent("Event_OnRoleChanged", new Dictionary<string, object> { { "value", role } });
+
+        // If neither changed, the events won't fire and our patches won't run.
+        // Force a refresh in that case.
+        if (!teamChanged && !roleChanged)
+            ForceModelRefresh(team, role);
+
+        // Apply everything our patches might miss (colors, tapes, lettering)
+        ApplyCustomizationsAfterGameUpdate(team, role);
+    }
+
+    /// <summary>
+    /// Restores the locker room model to the user's real settings.
+    /// Called when closing the reskin menu.
+    /// </summary>
+    public static void ResetPreviewContext()
+    {
+        if (!hasOverride) return;
+
+        hasOverride = false;
+        SettingsManager.Team = savedTeam;
+        SettingsManager.Role = savedRole;
+
+        // Fire events to restore
+        EventManager.TriggerEvent("Event_OnTeamChanged", new Dictionary<string, object> { { "value", savedTeam } });
+        EventManager.TriggerEvent("Event_OnRoleChanged", new Dictionary<string, object> { { "value", savedRole } });
+
+        // Apply our customizations for the restored context
+        ApplyCustomizationsAfterGameUpdate(savedTeam, savedRole);
+    }
+
+    /// <summary>
+    /// Re-applies all our customizations for the current preview context.
+    /// Called by UI callbacks after any dropdown/slider/color change.
+    /// </summary>
+    public static void RefreshPreview()
+    {
+        if (!IsInMainMenu()) return;
+        Scan();
+
+        var team = SettingsManager.Team;
+        var role = SettingsManager.Role;
+
+        // Force the game to re-apply its defaults so our postfixes re-fire
+        ForceModelRefresh(team, role);
+
+        // Apply everything our patches might miss
+        ApplyCustomizationsAfterGameUpdate(team, role);
+    }
+
+    // ==================== INTERNAL ====================
+
+    /// <summary>
+    /// Forces the game's locker room model to re-apply by calling Set methods directly.
+    /// This triggers our Harmony postfixes on SetJerseyID/SetHeadgearID/SetSkinID.
+    /// </summary>
+    private static void ForceModelRefresh(PlayerTeam team, PlayerRole role)
+    {
+        if (lockerRoomPlayer != null)
+        {
+            lockerRoomPlayer.SetLegsPadsActive(role == PlayerRole.Goalie);
+            lockerRoomPlayer.SetJerseyID(SettingsManager.GetJerseyID(team, role), team);
+            lockerRoomPlayer.SetHeadgearID(SettingsManager.GetHeadgearID(team, role), role);
+        }
+
+        if (lockerRoomStick != null)
+        {
+            lockerRoomStick.ShowRoleStick(role);
+            lockerRoomStick.SetSkinID(SettingsManager.GetStickSkinID(team, role), team, role);
+            lockerRoomStick.SetShaftTapeID(SettingsManager.GetStickShaftTapeID(team, role), role);
+            lockerRoomStick.SetBladeTapeID(SettingsManager.GetStickBladeTapeID(team, role), role);
+        }
+    }
+
+    /// <summary>
+    /// Applies customizations that our Harmony postfixes don't cover:
+    /// colors (helmet, cage, leg pads), lettering, stick tape overrides.
+    /// </summary>
+    private static void ApplyCustomizationsAfterGameUpdate(PlayerTeam team, PlayerRole role)
+    {
+        try
+        {
+            var playerMesh = GetPlayerMesh();
+            if (playerMesh != null)
+            {
+                // Helmet/mask/cage colors (patches apply textures but not standalone colors)
+                ApplyHelmetColors(playerMesh, team, role);
+
+                // Leg pad colors
+                ApplyLegPadColors(playerMesh, team);
+
+                // Lettering colors
+                ApplyLetteringColor(playerMesh, team, role);
+            }
+
+            // Stick tape
+            StickMesh stickMesh = GetStickMesh(role);
+            if (stickMesh != null)
+            {
+                StickTapeSwapper.ApplyTapeToStickMesh(stickMesh, team, role);
+            }
+        }
+        catch (Exception e)
+        {
+            Plugin.LogError($"Error in ApplyCustomizationsAfterGameUpdate: {e.Message}");
+        }
+    }
+
+    private static void ApplyHelmetColors(PlayerMesh playerMesh, PlayerTeam team, PlayerRole role)
+    {
+        if (playerMesh.PlayerHead == null) return;
+
+        var renderers = playerMesh.PlayerHead.GetComponentsInChildren<Renderer>(true);
+        foreach (var renderer in renderers)
+        {
+            if (renderer == null) continue;
+            string name = renderer.gameObject.name.ToLower();
+
+            if (role == PlayerRole.Goalie)
+            {
+                // Main goalie mask shell: "Helmet Cage & Neck Guard (Goalie)"
+                if (name.Contains("helmet") && name.Contains("goalie"))
+                {
+                    var entry = team == PlayerTeam.Blue
+                        ? ReskinProfileManager.currentProfile.blueGoalieHelmet
+                        : ReskinProfileManager.currentProfile.redGoalieHelmet;
+                    if (entry == null || entry.Path == null)
+                    {
+                        SetMaterialColor(renderer.material, team == PlayerTeam.Blue
+                            ? ReskinProfileManager.currentProfile.blueGoalieHelmetColor
+                            : ReskinProfileManager.currentProfile.redGoalieHelmetColor);
+                    }
+                }
+                // Standalone cage: "Cage"
+                else if (name == "cage")
+                {
+                    SetMaterialColor(renderer.material, team == PlayerTeam.Blue
+                        ? ReskinProfileManager.currentProfile.blueGoalieCageColor
+                        : ReskinProfileManager.currentProfile.redGoalieCageColor);
+                }
+                // Standalone neck guard: "Neck Guard"
+                else if (name == "neck guard")
+                {
+                    var entry = team == PlayerTeam.Blue
+                        ? ReskinProfileManager.currentProfile.blueGoalieMask
+                        : ReskinProfileManager.currentProfile.redGoalieMask;
+                    if (entry == null || entry.Path == null)
+                    {
+                        SetMaterialColor(renderer.material, team == PlayerTeam.Blue
+                            ? ReskinProfileManager.currentProfile.blueGoalieMaskColor
+                            : ReskinProfileManager.currentProfile.redGoalieMaskColor);
+                    }
+                }
+            }
+            else
+            {
+                // Skater helmet color (only when no custom texture)
+                if (name.Contains("helmet") && !name.Contains("cage") && !name.Contains("neck"))
+                {
+                    var entry = team == PlayerTeam.Blue
+                        ? ReskinProfileManager.currentProfile.blueSkaterHelmet
+                        : ReskinProfileManager.currentProfile.redSkaterHelmet;
+                    if (entry == null || entry.Path == null)
+                    {
+                        SetMaterialColor(renderer.material, team == PlayerTeam.Blue
+                            ? ReskinProfileManager.currentProfile.blueSkaterHelmetColor
+                            : ReskinProfileManager.currentProfile.redSkaterHelmetColor);
+                    }
+                }
+            }
+        }
+    }
+
+    private static void ApplyLegPadColors(PlayerMesh playerMesh, PlayerTeam team)
+    {
+        // Leg pad default colors (when no custom texture)
+        if (playerMesh.PlayerLegPadLeft == null || playerMesh.PlayerLegPadRight == null) return;
+
+        var leftEntry = team == PlayerTeam.Blue
+            ? ReskinProfileManager.currentProfile.blueLegPadLeft
+            : ReskinProfileManager.currentProfile.redLegPadLeft;
+        var rightEntry = team == PlayerTeam.Blue
+            ? ReskinProfileManager.currentProfile.blueLegPadRight
+            : ReskinProfileManager.currentProfile.redLegPadRight;
+
+        if ((leftEntry == null || leftEntry.Path == null) && (rightEntry == null || rightEntry.Path == null))
+        {
+            Color padColor = team == PlayerTeam.Blue
+                ? ReskinProfileManager.currentProfile.blueLegPadDefaultColor
+                : ReskinProfileManager.currentProfile.redLegPadDefaultColor;
+
+            var leftRenderer = playerMesh.PlayerLegPadLeft.GetComponent<Renderer>();
+            if (leftRenderer != null) SetMaterialColor(leftRenderer.material, padColor);
+
+            var rightRenderer = playerMesh.PlayerLegPadRight.GetComponent<Renderer>();
+            if (rightRenderer != null) SetMaterialColor(rightRenderer.material, padColor);
+        }
+    }
+
+    private static void ApplyLetteringColor(PlayerMesh playerMesh, PlayerTeam team, PlayerRole role)
+    {
+        if (playerMesh.PlayerTorso == null) return;
+
+        Color textColor;
+        if (team == PlayerTeam.Blue)
+            textColor = role == PlayerRole.Goalie
+                ? ReskinProfileManager.currentProfile.blueGoalieLetteringColor
+                : ReskinProfileManager.currentProfile.blueSkaterLetteringColor;
+        else if (team == PlayerTeam.Red)
+            textColor = role == PlayerRole.Goalie
+                ? ReskinProfileManager.currentProfile.redGoalieLetteringColor
+                : ReskinProfileManager.currentProfile.redSkaterLetteringColor;
+        else return;
+
+        try
+        {
+            var usernameText = (TMPro.TMP_Text)_usernameTextField?.GetValue(playerMesh.PlayerTorso);
+            var numberText = (TMPro.TMP_Text)_numberTextField?.GetValue(playerMesh.PlayerTorso);
+            if (usernameText != null) usernameText.color = textColor;
+            if (numberText != null) numberText.color = textColor;
+        }
+        catch (Exception e)
+        {
+            Plugin.LogError($"Error applying lettering color: {e.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Sets color on a material using all known property names for b310 shaders.
+    /// </summary>
+    private static void SetMaterialColor(Material mat, Color color)
+    {
+        mat.color = color;
+        if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
+        if (mat.HasProperty("baseColorFactor")) mat.SetColor("baseColorFactor", color);
+    }
+
+    // ==================== CAMERA ====================
+
     public static void ShowStick()
     {
-        if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "changing_room") return;
+        if (!IsInMainMenu()) return;
         Scan();
-        
-        if (changingRoomManager != null)
-        {
-            changingRoomManager.Client_MoveCameraToAppearanceDefaultPosition();
-        }
-
-        if (changingRoomPlayer != null)
-        {
-            changingRoomPlayer.RotateWithMouse = false;
-            changingRoomPlayer.Client_MovePlayerToDefaultPosition();
-        }
-        
-        // TODO temporarily disabled this until I get it showing skins
-        if (changingRoomStickAttacker != null)
-        {
-            changingRoomStickAttacker.Client_MoveStickToAppearanceStickPosition();
-            changingRoomStickAttacker.RotateWithMouse = true;
-        }
-
-        if (changingRoomStickGoalie != null)
-        {
-            changingRoomStickGoalie.Client_MoveStickToAppearanceStickPosition();
-            changingRoomStickGoalie.RotateWithMouse = true;
-        }
+        if (lockerRoomCamera != null)
+            lockerRoomCamera.SetPosition("stickCloseUp");
+        if (lockerRoomPlayer != null)
+            lockerRoomPlayer.AllowRotation = false;
     }
 
     public static void ShowBody()
     {
-        if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "changing_room") return;
+        if (!IsInMainMenu()) return;
         Scan();
         try
         {
-            if (changingRoomManager != null)
-            {
-                changingRoomManager.Client_MoveCameraToAppearanceDefaultPosition();
-            }
-
-            if (changingRoomPlayer != null)
-            {
-                changingRoomPlayer.RotateWithMouse = true;
-            }
+            if (lockerRoomCamera != null)
+                lockerRoomCamera.SetPosition("bodyCloseUp");
+            if (lockerRoomPlayer != null)
+                lockerRoomPlayer.AllowRotation = true;
         }
         catch (Exception e)
         {
             Plugin.LogError($"Error ShowBody(): {e.Message}");
         }
-        
     }
 
     public static void ShowBaseFocus()
     {
-        if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "changing_room") return;
+        if (!IsInMainMenu()) return;
         Scan();
-        
-        if (changingRoomManager != null)
+        if (lockerRoomCamera != null)
+            lockerRoomCamera.SetPosition("bodyCloseUp");
+        if (lockerRoomPlayer != null)
         {
-            changingRoomManager.Client_MoveCameraToAppearanceDefaultPosition();
-        }
-        
-        if (changingRoomPlayer != null)
-        {
-            changingRoomPlayer.RotateWithMouse = false;
-            changingRoomPlayer.Client_MovePlayerToDefaultPosition();
-        }
-        
-        if (changingRoomStickAttacker != null)
-        {
-            changingRoomStickAttacker.Client_MoveStickToDefaultPosition();
-            changingRoomStickAttacker.RotateWithMouse = false;
-        }
-
-        if (changingRoomStickGoalie != null)
-        {
-            changingRoomStickGoalie.Client_MoveStickToDefaultPosition();
-            changingRoomStickGoalie.RotateWithMouse = false;
+            lockerRoomPlayer.AllowRotation = false;
+            lockerRoomPlayer.SetRotationFromPreset("front");
         }
     }
 
     public static void Unfocus()
     {
-        if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "changing_room") return;
+        if (!IsInMainMenu()) return;
         Scan();
-        
-        if (changingRoomManager != null)
+        if (lockerRoomCamera != null)
+            lockerRoomCamera.SetPosition("default");
+        if (lockerRoomPlayer != null)
         {
-            changingRoomManager.Client_MoveCameraToDefaultPosition();
-        }
-        
-        if (changingRoomPlayer != null)
-        {
-            changingRoomPlayer.RotateWithMouse = false;
-            changingRoomPlayer.Client_MovePlayerToDefaultPosition();
-        }
-        
-        if (changingRoomStickAttacker != null)
-        {
-            changingRoomStickAttacker.Client_MoveStickToDefaultPosition();
-            changingRoomStickAttacker.RotateWithMouse = false;
-        }
-
-        if (changingRoomStickGoalie != null)
-        {
-            changingRoomStickGoalie.Client_MoveStickToDefaultPosition();
-            changingRoomStickGoalie.RotateWithMouse = false;
+            lockerRoomPlayer.AllowRotation = false;
+            lockerRoomPlayer.SetRotationFromPreset("front");
         }
     }
-    
+
+    // ==================== SCANNING ====================
+
     public static void Scan()
     {
-        if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "changing_room") return;
-        if (changingRoomStickGoalie == null || changingRoomStickAttacker == null)
+        if (!IsInMainMenu()) return;
+
+        if (lockerRoomStick == null)
         {
-            ChangingRoomStick[] crss = Object.FindObjectsByType<ChangingRoomStick>(FindObjectsSortMode.None);
-            Plugin.Log($"crss length: {crss.Length}");
-            if (crss.Length == 0)
-            {
-                Plugin.LogError($"Could not locate changing room stick.");
-            }
-            else
-            {
-                foreach (ChangingRoomStick crs in crss)
-                {
-                    if (crs.Role == PlayerRole.Goalie)
-                    {
-                        changingRoomStickGoalie = crs;
-                    } else if (crs.Role == PlayerRole.Attacker)
-                    {
-                        changingRoomStickAttacker = crs;
-                    }
-                }
-            }
+            var sticks = Object.FindObjectsByType<LockerRoomStick>(FindObjectsSortMode.None);
+            if (sticks.Length > 0) lockerRoomStick = sticks[0];
         }
 
-        if (changingRoomManager == null)
+        if (lockerRoomCamera == null)
         {
-            ChangingRoomManager[] crms = Object.FindObjectsByType<ChangingRoomManager>(FindObjectsSortMode.None);
-            if (crms.Length == 0)
-            {
-                Plugin.LogError($"Could not locate changing room manager.");
-            }
-            else
-            {
-                changingRoomManager = crms[0];
-            }
+            var cameras = Object.FindObjectsByType<LockerRoomCamera>(FindObjectsSortMode.None);
+            if (cameras.Length > 0) lockerRoomCamera = cameras[0];
         }
-        
-        if (changingRoomPlayer == null)
+
+        if (lockerRoomPlayer == null)
         {
-            ChangingRoomPlayer[] crps = Object.FindObjectsByType<ChangingRoomPlayer>(FindObjectsSortMode.None);
-            if (crps.Length == 0)
-            {
-                Plugin.LogError($"Could not locate changing room player.");
-            }
-            else
-            {
-                changingRoomPlayer = crps[0];
-            }
+            var players = Object.FindObjectsByType<LockerRoomPlayer>(FindObjectsSortMode.None);
+            if (players.Length > 0) lockerRoomPlayer = players[0];
         }
     }
 
-    // TODO one small problem is that when we are in the vanilla  PLAYER screen choosing sticks this is being called and 
-    [HarmonyPatch(typeof(ChangingRoomStick), nameof(ChangingRoomStick.UpdateStickMesh))]
-    public static class ChangingRoomStickUpdateStickMesh
+    // ==================== HARMONY PATCHES ====================
+
+    // Patch LockerRoomStick.SetSkinID to apply our custom stick skin
+    [HarmonyPatch(typeof(LockerRoomStick), nameof(LockerRoomStick.SetSkinID))]
+    public static class LockerRoomStickSetSkinIDPatch
     {
-        [HarmonyPrefix]
-        public static bool Prefix(ChangingRoomStick __instance)
+        [HarmonyPostfix]
+        public static void Postfix(LockerRoomStick __instance, int skinID, PlayerTeam team, PlayerRole role)
         {
-            if (__instance.Role == PlayerRole.Attacker)
+            try
             {
-                changingRoomStickAttacker = __instance;
-                // Plugin.Log($"Set attacker stick!");
-            }
+                lockerRoomStick = __instance;
 
-            if (__instance.Role == PlayerRole.Goalie)
+                StickMesh stickMesh = role == PlayerRole.Goalie
+                    ? (StickMesh)_goalieStickMeshField.GetValue(__instance)
+                    : (StickMesh)_attackerStickMeshField.GetValue(__instance);
+
+                if (stickMesh == null) return;
+
+                ReskinRegistry.ReskinEntry reskinEntry = null;
+                switch (team)
+                {
+                    case PlayerTeam.Blue:
+                        reskinEntry = role == PlayerRole.Attacker
+                            ? ReskinProfileManager.currentProfile.stickAttackerBluePersonal
+                            : ReskinProfileManager.currentProfile.stickGoalieBluePersonal;
+                        break;
+                    case PlayerTeam.Red:
+                        reskinEntry = role == PlayerRole.Attacker
+                            ? ReskinProfileManager.currentProfile.stickAttackerRedPersonal
+                            : ReskinProfileManager.currentProfile.stickGoalieRedPersonal;
+                        break;
+                }
+
+                if (reskinEntry != null)
+                {
+                    StickSwapper.SetStickMeshTexture(stickMesh, reskinEntry, role);
+                }
+            }
+            catch (Exception e)
             {
-                changingRoomStickGoalie = __instance;
-                // Plugin.Log($"Set goalie stick!");
+                Plugin.LogError($"Error in LockerRoomStickSetSkinIDPatch: {e}");
             }
-            
-            // this.StickMesh.SetSkin(this.Team, MonoBehaviourSingleton<SettingsManager>.Instance.GetStickSkin(this.Team, this.Role));
-            __instance.StickMesh.SetShaftTape(MonoBehaviourSingleton<SettingsManager>.Instance.GetStickShaftSkin(__instance.Team, __instance.Role));
-            __instance.StickMesh.SetBladeTape(MonoBehaviourSingleton<SettingsManager>.Instance.GetStickBladeSkin(__instance.Team, __instance.Role));
-
-            switch (__instance.Team)
-            {
-                case PlayerTeam.Blue:
-                    switch (__instance.Role)
-                    {
-                        case PlayerRole.Attacker:
-                            if (ReskinProfileManager.currentProfile.stickAttackerBluePersonal != null)
-                            {
-                                StickSwapper.SetStickMeshTexture(__instance.StickMesh, ReskinProfileManager.currentProfile.stickAttackerBluePersonal, PlayerRole.Attacker);
-                            }
-                            break;
-                        case PlayerRole.Goalie: 
-                            if (ReskinProfileManager.currentProfile.stickGoalieBluePersonal != null)
-                            {
-                                StickSwapper.SetStickMeshTexture(__instance.StickMesh, ReskinProfileManager.currentProfile.stickGoalieBluePersonal, PlayerRole.Goalie);
-                            }
-                            break;
-                        default:
-                            __instance.StickMesh.SetSkin(__instance.Team, MonoBehaviourSingleton<SettingsManager>.Instance.GetStickSkin(__instance.Team, __instance.Role));
-                            break;
-                    }
-                    break;
-                case PlayerTeam.Red:
-                    switch (__instance.Role)
-                    {
-                        case PlayerRole.Attacker:
-                            if (ReskinProfileManager.currentProfile.stickAttackerRedPersonal != null)
-                            {
-                                StickSwapper.SetStickMeshTexture(__instance.StickMesh, ReskinProfileManager.currentProfile.stickAttackerRedPersonal, PlayerRole.Attacker);
-                            }
-                            break;
-                        case PlayerRole.Goalie: 
-                            if (ReskinProfileManager.currentProfile.stickGoalieRedPersonal != null)
-                            {
-                                StickSwapper.SetStickMeshTexture(__instance.StickMesh, ReskinProfileManager.currentProfile.stickGoalieRedPersonal, PlayerRole.Goalie);
-                            }
-                            break;
-                        default:
-                            __instance.StickMesh.SetSkin(__instance.Team, MonoBehaviourSingleton<SettingsManager>.Instance.GetStickSkin(__instance.Team, __instance.Role));
-                            break;
-                    }
-                    break;
-            }
-
-            return false;
         }
     }
 
-    public static void UpdateStickDisplayToReskin(ReskinRegistry.ReskinEntry reskinEntry, PlayerRole role)
+    // ==================== LEGACY COMPAT (called from Plugin.OnEnable) ====================
+
+    /// <summary>
+    /// Called on initial load to apply customizations to the already-loaded locker room.
+    /// </summary>
+    public static void ApplyInitialCustomizations()
     {
-        if (role == PlayerRole.Attacker)
-        {
-            if (changingRoomStickAttacker != null)
-            {
-                if (reskinEntry == null || reskinEntry.Path == null)
-                {
-                    changingRoomStickAttacker.StickMesh.SetSkin(changingRoomStickAttacker.Team, MonoBehaviourSingleton<SettingsManager>.Instance.GetStickSkin(changingRoomStickAttacker.Team, changingRoomStickAttacker.Role));
-                    changingRoomStickAttacker.StickMesh.SetShaftTape(MonoBehaviourSingleton<SettingsManager>.Instance.GetStickShaftSkin(changingRoomStickAttacker.Team, changingRoomStickAttacker.Role));
-                    changingRoomStickAttacker.StickMesh.SetBladeTape(MonoBehaviourSingleton<SettingsManager>.Instance.GetStickBladeSkin(changingRoomStickAttacker.Team, changingRoomStickAttacker.Role));
-                }
-                else
-                {
-                    changingRoomStickAttacker.Show();
-                    StickSwapper.SetStickMeshTexture(changingRoomStickAttacker.StickMesh, reskinEntry, role);
-                }
-            }
+        if (!IsInMainMenu()) return;
+        Scan();
 
-            if (changingRoomStickGoalie != null)
-            {
-                changingRoomStickGoalie.Hide();
-            }
-        } 
-        else if (role == PlayerRole.Goalie)
-        {
-            if (changingRoomStickGoalie != null)
-            {
-                if (reskinEntry == null || reskinEntry.Path == null)
-                {
-                    changingRoomStickGoalie.StickMesh.SetSkin(changingRoomStickGoalie.Team, MonoBehaviourSingleton<SettingsManager>.Instance.GetStickSkin(changingRoomStickGoalie.Team, changingRoomStickGoalie.Role));
-                    changingRoomStickGoalie.StickMesh.SetShaftTape(MonoBehaviourSingleton<SettingsManager>.Instance.GetStickShaftSkin(changingRoomStickGoalie.Team, changingRoomStickGoalie.Role));
-                    changingRoomStickGoalie.StickMesh.SetBladeTape(MonoBehaviourSingleton<SettingsManager>.Instance.GetStickBladeSkin(changingRoomStickGoalie.Team, changingRoomStickGoalie.Role));
-                }
-                else
-                {
-                    changingRoomStickGoalie.Show();
-                    StickSwapper.SetStickMeshTexture(changingRoomStickGoalie.StickMesh, reskinEntry, role);
-                }
-            }
+        var team = SettingsManager.Team;
+        var role = SettingsManager.Role;
 
-            if (changingRoomStickAttacker != null)
-            {
-                changingRoomStickAttacker.Hide();
-            }
-        }
+        ForceModelRefresh(team, role);
+        ApplyCustomizationsAfterGameUpdate(team, role);
     }
-    
-    // TODO i might want to have this have a reskin argument so that we can display skins used on non-personal configuration fields
-    public static void UpdateStickToPersonalSelected()
-    {
-        if (changingRoomManager != null)
-        {
-            if (changingRoomManager.Role == PlayerRole.Attacker)
-            {
-                if (changingRoomStickAttacker != null)
-                {
-                    changingRoomStickAttacker.Show();
-                    changingRoomStickAttacker.UpdateStickMesh();
-                }
-
-                if (changingRoomStickGoalie != null)
-                {
-                    changingRoomStickGoalie.Hide();
-                }
-            }
-            
-            if (changingRoomManager.Role == PlayerRole.Goalie)
-            {
-                if (changingRoomStickGoalie != null)
-                {
-                    changingRoomStickGoalie.Show();
-                    changingRoomStickGoalie.UpdateStickMesh();
-                }
-
-                if (changingRoomStickAttacker != null)
-                {
-                    changingRoomStickAttacker.Hide();
-                }
-            }
-        } 
-    }
-
-    public static void UpdateBodyToPersonalSelected()
-    {
-        changingRoomPlayer.UpdatePlayerMesh();
-    }
-
-    static readonly FieldInfo _changingRoomPlayerRoleField = typeof(ChangingRoomPlayer)
-        .GetField("role", 
-            BindingFlags.Instance | BindingFlags.NonPublic);
-    static readonly FieldInfo _changingRoomPlayerTeamField = typeof(ChangingRoomPlayer)
-        .GetField("team", 
-            BindingFlags.Instance | BindingFlags.NonPublic);
-    
-    // public static void UpdateBodyToShowTorso(ReskinRegistry.ReskinEntry torsoReskin, ReskinRegistry.ReskinEntry groinReskin, PlayerRole role, PlayerTeam team)
-    // {
-    //     if (reskinEntry == null || reskinEntry.Path == null)
-    //     {
-    //         changingRoomPlayer.PlayerMesh.SetJersey(team, MonoBehaviourSingleton<SettingsManager>.Instance.GetJerseySkin(team, role));
-    //         changingRoomPlayer.PlayerMesh.SetRole(role);
-    //         return;
-    //     }
-    //
-    //     
-    //     // 
-    //     _changingRoomPlayerRoleField.SetValue(changingRoomPlayer, role);
-    //     changingRoomPlayer.PlayerMesh.SetRole(role); // this shows/hides the leg pads and helmet cage
-    //     _changingRoomPlayerTeamField.SetValue(changingRoomPlayer, team);
-    //     // changing these two updates the player mesh, which would override stuff
-    //     // changingRoomPlayer.Role = role;
-    //     // changingRoomPlayer.Team = team;
-    //     
-    //     
-    // }
 }

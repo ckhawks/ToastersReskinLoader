@@ -25,7 +25,7 @@ public static class ReskinMenu
     // menu state
     public static string[] sections = new []{"Packs", "Sticks", "Tapes", "Skaters", "Goalies", "Pucks", "Puck FX", "Arena",
         // "Full Arena",
-        "Skybox", "About" };
+        "Skybox", "Shadows", "User Interface", "About" };
     // "Sounds", "Other"
     public static int selectedSectionIndex = 0;
 
@@ -51,50 +51,25 @@ public static class ReskinMenu
         mainContainer.style.display = DisplayStyle.Flex;
 
 
-        // Plugin.Log($"Scene: {UnityEngine.SceneManagement.SceneManager.GetActiveScene().name}");
         if (ChangingRoomHelper.IsInMainMenu())
         {
-            // Plugin.Log($"here1");
-            if (UIManager.Instance != null)
+            if (MonoBehaviourSingleton<UIManager>.Instance != null)
             {
-                // Plugin.Log($"here2");
-                UIManager.Instance.HideMainMenuComponents();
-                // Plugin.Log($"here3");
-                UIManager.Instance.isMouseActive = true;
-                // Plugin.Log($"here4");
-                Cursor.lockState = CursorLockMode.None;
-                // Plugin.Log($"here5");
-                Cursor.visible = true;
-                // Plugin.Log($"here6");
+                MonoBehaviourSingleton<UIManager>.Instance.MainMenu.Hide();
+                MonoBehaviourSingleton<UIManager>.Instance.Footer.Hide();
             }
 
             ChangingRoomHelper.ShowBaseFocus();
         }
         else
         {
-            if (UIPauseMenu.Instance != null)
-            {
-                UIPauseMenu.Instance.Hide();
-            }
-
-            if (UIGameState.Instance != null)
-            {
-                UIGameState.Instance.Hide();
-            }
-
-            if (UIMinimap.Instance != null)
-            {
-                UIMinimap.Instance.Hide();
-            }
+            MonoBehaviourSingleton<UIManager>.Instance?.PauseMenu.Hide();
+            MonoBehaviourSingleton<UIManager>.Instance?.GameState.Hide();
+            MonoBehaviourSingleton<UIManager>.Instance?.Minimap.Hide();
         }
-        
-        // Plugin.Log($"here8");
-        if (UIManager.Instance != null)
-        {
-            UIManager.Instance.isMouseActive = true;
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
-        }
+
+        // Tell the game's state system that the mouse should be visible
+        GlobalStateManager.SetUIState(new Dictionary<string, object> { { "isMouseRequired", true } });
         // Plugin.Log($"Finish reskin manager menu");
     }
 
@@ -113,30 +88,20 @@ public static class ReskinMenu
         // Plugin.Log($"Scene: {UnityEngine.SceneManagement.SceneManager.GetActiveScene().name}");
         if (ChangingRoomHelper.IsInMainMenu())
         {
-            if (UIManager.Instance != null)
+            if (MonoBehaviourSingleton<UIManager>.Instance != null)
             {
-                UIManager.Instance.ShowMainMenuComponents();
+                MonoBehaviourSingleton<UIManager>.Instance.MainMenu.Show();
+                MonoBehaviourSingleton<UIManager>.Instance.Footer.Show();
             }
 
             ChangingRoomHelper.Unfocus();
-            ChangingRoomHelper.UpdateStickToPersonalSelected();
+            ChangingRoomHelper.ResetPreviewContext();
         }
         else
         {
-            if (UIPauseMenu.Instance != null)
-            {
-                UIPauseMenu.Instance.Show();
-            }
-            
-            if (UIGameState.Instance != null)
-            {
-                UIGameState.Instance.Show();
-            }
-
-            if (UIMinimap.Instance != null)
-            {
-                UIMinimap.Instance.Show();
-            }
+            MonoBehaviourSingleton<UIManager>.Instance?.PauseMenu.Show();
+            MonoBehaviourSingleton<UIManager>.Instance?.GameState.Show();
+            MonoBehaviourSingleton<UIManager>.Instance?.Minimap.Show();
         }
     }
 
@@ -144,12 +109,15 @@ public static class ReskinMenu
     {
         // Plugin.Log($"Create reskin manager menu 1");
         rootContainer = new VisualElement();
+        rootContainer.style.position = Position.Absolute;
+        rootContainer.style.left = 0;
+        rootContainer.style.top = 0;
+        rootContainer.style.right = 0;
+        rootContainer.style.bottom = 0;
         rootContainer.style.flexDirection = FlexDirection.Row;
-        rootContainer.style.height = new StyleLength(new Length(100, LengthUnit.Percent));
-        rootContainer.style.width = new StyleLength(new Length(100, LengthUnit.Percent));
         rootContainer.style.alignItems = Align.Center;
         rootContainer.style.justifyContent = Justify.FlexStart;
-        rootContainer.pickingMode = PickingMode.Ignore; // TODO maybe remove this
+        rootContainer.pickingMode = PickingMode.Ignore;
         
         // Plugin.Log($"Create reskin manager menu 2");
         mainContainer = new VisualElement();
@@ -249,9 +217,7 @@ public static class ReskinMenu
         pageContainer.style.maxWidth = new StyleLength(new Length(100, LengthUnit.Percent));
         pageContainer.style.minWidth = new StyleLength(new Length(100, LengthUnit.Percent));
         pageContainer.style.width = new StyleLength(new Length(100, LengthUnit.Percent));
-        pageContainer.style.maxHeight = new StyleLength(new Length(76, LengthUnit.Percent)); // TODO i made this 75->100
-        pageContainer.style.minHeight = new StyleLength(new Length(76, LengthUnit.Percent));
-        pageContainer.style.height = new StyleLength(new Length(76, LengthUnit.Percent));
+        pageContainer.style.flexGrow = 1; // Take all available space, pushing bottom row to the bottom
         mainContainer.Add(pageContainer);
         
         
@@ -334,14 +300,11 @@ public static class ReskinMenu
         contentContainer.style.minWidth = new StyleLength(new Length(70, LengthUnit.Percent));
         contentContainer.style.width = new StyleLength(new Length(70, LengthUnit.Percent));
         pageContainer.Add(contentContainer);
-        ScrollView contentScrollView = new ScrollView();
-        // contentScrollView.style.paddingLeft = 16;
-        // contentScrollView.style.paddingTop = 16;
-        // contentScrollView.style.paddingRight = 16;
-        // contentScrollView.style.paddingBottom = 16;
+        ScrollView contentScrollView = new ScrollView(ScrollViewMode.Vertical);
         contentScrollView.style.flexDirection = FlexDirection.Column;
         contentScrollView.style.maxWidth = new StyleLength(new Length(100, LengthUnit.Percent));
         contentScrollView.style.overflow = Overflow.Hidden;
+        contentScrollView.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
         contentScrollViewContent = new VisualElement();
         contentScrollViewContent.style.flexDirection = FlexDirection.Column;
         contentScrollViewContent.style.paddingLeft = 16;
@@ -404,7 +367,7 @@ public static class ReskinMenu
         rootContainer.Add(mainContainer);
         rootContainer.visible = false;
         rootContainer.enabledSelf = false;
-        ReskinMenuAccessButtons.mainMenuSettingsButton.parent.parent.Add(rootContainer);
+        MonoBehaviourSingleton<UIManager>.Instance.RootVisualElement.Add(rootContainer);
         // Plugin.Log($"Create reskin manager menu 12");
         return;
 
@@ -423,7 +386,6 @@ public static class ReskinMenu
         contentScrollViewContent.Add(contentSectionTitle);
 
         ChangingRoomHelper.ShowBaseFocus();
-        ChangingRoomHelper.UpdateStickToPersonalSelected();
 
         switch (sections[sectionIndex])
         {
@@ -456,6 +418,12 @@ public static class ReskinMenu
                 break;
             case "Puck FX":
                 PuckFXSection.CreateSection(contentScrollViewContent);
+                break;
+            case "Shadows":
+                ShadowsSection.CreateSection(contentScrollViewContent);
+                break;
+            case "User Interface":
+                UISection.CreateSection(contentScrollViewContent);
                 break;
             // case "Full Arena":
             //     FullArenaSection.CreateSection(contentScrollViewContent);
@@ -496,11 +464,11 @@ public static class ReskinMenu
     }
     
     // Make it so that if Reskin menu is open, pressing Escape closes it
-    [HarmonyPatch(typeof(UIManagerInputs), "OnPauseActionPerformed")]
-    private static class UIManagerInputsOnPauseActionPerformedPatch
+    [HarmonyPatch(typeof(UIManager), "OnPauseActionPerformed")]
+    private static class UIManagerOnPauseActionPerformedPatch
     {
         [HarmonyPrefix]
-        static bool Prefix(UIManagerInputs __instance, InputAction.CallbackContext context)
+        static bool Prefix(UIManager __instance, InputAction.CallbackContext context)
         {
             if (rootContainer == null) return true;
 
@@ -508,11 +476,11 @@ public static class ReskinMenu
             {
                 Hide();
 
-                if (UIManager.Instance.UIState == UIState.Play)
+                if (GlobalStateManager.UIState.Phase == UIPhase.Playing)
                 {
-                    UIManager.Instance.PauseMenu.Toggle();
+                    MonoBehaviourSingleton<UIManager>.Instance.PauseMenu.Toggle();
                 }
-                
+
                 return false;
             }
 
@@ -549,84 +517,33 @@ public static class ReskinMenu
     //     }
     // }
     
-    // If the game phase changes, keep the mouse visible (make it visible again to counteract other things)
-    [HarmonyPatch(typeof(ReplayManagerController), "Event_OnGamePhaseChanged" )]
-    private static class ReplayManagerControllerOnGamePhaseChangedPatch
-    {
-        [HarmonyPostfix]
-        static void Postfix(ReplayManagerController __instance, Dictionary<string, object> message)
-        {
-            try
-            {
-                if (rootContainer == null) return;
-            
-                if (rootContainer.visible || rootContainer.enabledSelf || rootContainer.style.display == DisplayStyle.Flex)
-                {
-                    if (UIManager.Instance.UIState == UIState.Play)
-                    {
-                        UIManager.Instance.isMouseActive = true;
-                        Cursor.lockState = CursorLockMode.None;
-                        Cursor.visible = true;
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                Plugin.LogError($"Error while handling ReplayManagerController OnGamePhaseChanged postfix: {e}");
-            }
-        }
-    }
+    // NOTE: ReplayManagerController no longer has Event_OnGamePhaseChanged in b310.
+    // The UIAnnouncements Show/Hide patches below handle keeping the cursor visible during game phase changes.
 
-    [HarmonyPatch(typeof(UIAnnouncement), nameof(UIAnnouncement.Hide))]
-    private static class UIAnnouncementHidePatch
+    // NOTE: UIAnnouncements.Hide is inherited from UIView and not overridden,
+    // so Harmony can't patch it on UIAnnouncements directly. Only Show is overridden.
+
+    [HarmonyPatch(typeof(UIAnnouncements), nameof(UIAnnouncements.Show))]
+    private static class UIAnnouncementsShowPatch
     {
         [HarmonyPostfix]
-        static void Postfix(UIAnnouncement __instance)
+        static void Postfix(UIAnnouncements __instance)
         {
             try
             {
                 if (rootContainer == null) return;
-            
+
                 if (rootContainer.visible || rootContainer.enabledSelf || rootContainer.style.display == DisplayStyle.Flex)
                 {
-                    if (UIManager.Instance.UIState == UIState.Play)
+                    if (GlobalStateManager.UIState.Phase == UIPhase.Playing)
                     {
-                        UIManager.Instance.isMouseActive = true;
-                        Cursor.lockState = CursorLockMode.None;
-                        Cursor.visible = true;
+                        GlobalStateManager.SetUIState(new Dictionary<string, object> { { "isMouseRequired", true } });
                     }
                 }
             }
             catch (Exception e)
             {
-                Plugin.LogError($"Error while handling UIAnnouncementHidePatch postfix: {e}");
-            }
-        }
-    }
-    
-    [HarmonyPatch(typeof(UIAnnouncement), nameof(UIAnnouncement.Show))]
-    private static class UIAnnouncementShowPatch
-    {
-        [HarmonyPostfix]
-        static void Postfix(UIAnnouncement __instance)
-        {
-            try
-            {
-                if (rootContainer == null) return;
-            
-                if (rootContainer.visible || rootContainer.enabledSelf || rootContainer.style.display == DisplayStyle.Flex)
-                {
-                    if (UIManager.Instance.UIState == UIState.Play)
-                    {
-                        UIManager.Instance.isMouseActive = true;
-                        Cursor.lockState = CursorLockMode.None;
-                        Cursor.visible = true;
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                Plugin.LogError($"Error while handling UIAnnouncementShowPatch postfix: {e}");
+                Plugin.LogError($"Error while handling UIAnnouncementsShowPatch postfix: {e}");
             }
         }
     }

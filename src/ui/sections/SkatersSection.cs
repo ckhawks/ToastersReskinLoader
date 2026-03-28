@@ -30,19 +30,8 @@ public static class SkaterSection
     }
     public static void CreateSection(VisualElement contentScrollViewContent)
     {
-        void showBody()
-        {
-            ChangingRoomHelper.ShowBody();
-        }
-
+        void showBody() { ChangingRoomHelper.ShowBody(); }
         contentScrollViewContent.schedule.Execute(showBody).ExecuteLater(2);
-
-        Label description = new Label();
-        description.text = $"Note: Customization will not show in changing room currently.";
-        description.style.color = new Color(0.7f, 0.7f, 0.7f);
-        description.style.fontSize = 14;
-        description.style.marginBottom = 8;
-        contentScrollViewContent.Add(description);
 
         List<ReskinRegistry.ReskinEntry> jerseyTorsos = ReskinRegistry.GetReskinEntriesByType("jersey_torso");
         ReskinRegistry.ReskinEntry unchangedJerseyTorsoEntry = new ReskinRegistry.ReskinEntry
@@ -87,6 +76,8 @@ public static class SkaterSection
                 ReskinRegistry.ReskinEntry chosen = evt.newValue;
                 Plugin.Log($"User picked ID={chosen.Path}, Name={chosen.Name}");
                 ReskinProfileManager.SetSelectedReskinInCurrentProfile(chosen, "jersey_torso", "blue_skater");
+                ChangingRoomHelper.SetPreviewContext(PlayerTeam.Blue, PlayerRole.Attacker);
+                ChangingRoomHelper.RefreshPreview();
             })
         );
         // attackerPersonalStickDropdown.index = 0;
@@ -108,6 +99,8 @@ public static class SkaterSection
                 ReskinRegistry.ReskinEntry chosen = evt.newValue;
                 Plugin.Log($"User picked ID={chosen.Path}, Name={chosen.Name}");
                 ReskinProfileManager.SetSelectedReskinInCurrentProfile(chosen, "jersey_groin", "blue_skater");
+                ChangingRoomHelper.SetPreviewContext(PlayerTeam.Blue, PlayerRole.Attacker);
+                ChangingRoomHelper.RefreshPreview();
             })
         );
         // attackerPersonalStickDropdown.index = 0;
@@ -134,6 +127,8 @@ public static class SkaterSection
                 ReskinProfileManager.currentProfile.blueSkaterHelmetColor = newColor;
                 ReskinProfileManager.SaveProfile();
                 SkaterHelmetSwapper.OnBlueHelmetColorChanged();
+                ChangingRoomHelper.SetPreviewContext(PlayerTeam.Blue, PlayerRole.Attacker);
+                ChangingRoomHelper.RefreshPreview();
             },
             () => { ReskinProfileManager.SaveProfile(); }
         );
@@ -144,6 +139,8 @@ public static class SkaterSection
                 ReskinRegistry.ReskinEntry chosen = evt.newValue;
                 Plugin.Log($"User picked ID={chosen.Path}, Name={chosen.Name}");
                 ReskinProfileManager.SetSelectedReskinInCurrentProfile(chosen, "helmet", "skater_blue");
+                ChangingRoomHelper.SetPreviewContext(PlayerTeam.Blue, PlayerRole.Attacker);
+                ChangingRoomHelper.RefreshPreview();
                 // Enable/disable color sliders based on whether "Unchanged" is selected
                 SetColorSliderEnabled(blueSkaterHelmetColorSection, chosen.Path == null);
             })
@@ -168,6 +165,8 @@ public static class SkaterSection
             {
                 ReskinProfileManager.currentProfile.blueSkaterLetteringColor = newColor;
                 PlayerTextSwapper.OnBlueSkaterLetteringColorChanged();
+                ChangingRoomHelper.SetPreviewContext(PlayerTeam.Blue, PlayerRole.Attacker);
+                ChangingRoomHelper.RefreshPreview();
                 ReskinProfileManager.SaveProfile();
             },
             () => { ReskinProfileManager.SaveProfile(); }
@@ -190,6 +189,8 @@ public static class SkaterSection
                 ReskinRegistry.ReskinEntry chosen = evt.newValue;
                 Plugin.Log($"User picked ID={chosen.Path}, Name={chosen.Name}");
                 ReskinProfileManager.SetSelectedReskinInCurrentProfile(chosen, "jersey_torso", "red_skater");
+                ChangingRoomHelper.SetPreviewContext(PlayerTeam.Red, PlayerRole.Attacker);
+                ChangingRoomHelper.RefreshPreview();
             })
         );
         // attackerPersonalStickDropdown.index = 0;
@@ -211,6 +212,8 @@ public static class SkaterSection
                 ReskinRegistry.ReskinEntry chosen = evt.newValue;
                 Plugin.Log($"User picked ID={chosen.Path}, Name={chosen.Name}");
                 ReskinProfileManager.SetSelectedReskinInCurrentProfile(chosen, "jersey_groin", "red_skater");
+                ChangingRoomHelper.SetPreviewContext(PlayerTeam.Red, PlayerRole.Attacker);
+                ChangingRoomHelper.RefreshPreview();
             })
         );
         // attackerPersonalStickDropdown.index = 0;
@@ -237,6 +240,8 @@ public static class SkaterSection
                 ReskinProfileManager.currentProfile.redSkaterHelmetColor = newColor;
                 ReskinProfileManager.SaveProfile();
                 SkaterHelmetSwapper.OnRedHelmetColorChanged();
+                ChangingRoomHelper.SetPreviewContext(PlayerTeam.Red, PlayerRole.Attacker);
+                ChangingRoomHelper.RefreshPreview();
             },
             () => { ReskinProfileManager.SaveProfile(); }
         );
@@ -247,6 +252,8 @@ public static class SkaterSection
                 ReskinRegistry.ReskinEntry chosen = evt.newValue;
                 Plugin.Log($"User picked ID={chosen.Path}, Name={chosen.Name}");
                 ReskinProfileManager.SetSelectedReskinInCurrentProfile(chosen, "helmet", "skater_red");
+                ChangingRoomHelper.SetPreviewContext(PlayerTeam.Red, PlayerRole.Attacker);
+                ChangingRoomHelper.RefreshPreview();
                 // Enable/disable color sliders based on whether "Unchanged" is selected
                 SetColorSliderEnabled(redSkaterHelmetColorSection, chosen.Path == null);
             })
@@ -271,6 +278,8 @@ public static class SkaterSection
             {
                 ReskinProfileManager.currentProfile.redSkaterLetteringColor = newColor;
                 PlayerTextSwapper.OnRedSkaterLetteringColorChanged();
+                ChangingRoomHelper.SetPreviewContext(PlayerTeam.Red, PlayerRole.Attacker);
+                ChangingRoomHelper.RefreshPreview();
                 ReskinProfileManager.SaveProfile();
             },
             () => { ReskinProfileManager.SaveProfile(); }

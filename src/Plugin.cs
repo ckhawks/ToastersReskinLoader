@@ -11,7 +11,7 @@ namespace ToasterReskinLoader;
 public class Plugin : IPuckMod
 {
     public static string MOD_NAME = "ToasterReskinLoader";
-    public static string MOD_VERSION = "1.2.8";
+    public static string MOD_VERSION = "2.0.0";
     public static string MOD_GUID = "pw.stellaric.toaster.reskinloader";
 
     static readonly Harmony harmony = new Harmony(MOD_GUID);
@@ -32,7 +32,16 @@ public class Plugin : IPuckMod
             {
                 Plugin.Log("Environment: client.");
                 Plugin.Log("Patching methods...");
-                harmony.PatchAll();
+                try
+                {
+                    harmony.PatchAll();
+                }
+                catch (Exception patchEx)
+                {
+                    Plugin.LogError($"Harmony PatchAll failed: {patchEx}");
+                    Plugin.LogError($"Inner: {patchEx.InnerException}");
+                    throw;
+                }
                 Plugin.Log($"All patched! Patched methods:");
                 LogAllPatchedMethods();
                 
@@ -60,6 +69,14 @@ public class Plugin : IPuckMod
                 PuckFXSwapper.ApplyAll();
                 ChangingRoomHelper.Scan();
                 ReskinMenuAccessButtons.Setup();
+
+                // The locker room scene is already loaded before the mod loads,
+                // so OnSceneLoaded won't fire - apply everything here
+                if (ChangingRoomHelper.IsInMainMenu())
+                {
+                    SwapperManager.SetAll();
+                    ChangingRoomHelper.ApplyInitialCustomizations();
+                }
             }
             
             Plugin.Log($"Enabled!");
@@ -80,7 +97,7 @@ public class Plugin : IPuckMod
             harmony.UnpatchSelf();
             SwapperManager.Destroy();
             Plugin.Log($"Disabled! Goodbye!");
-            UIToastManager.Instance.ShowToast("Warning", "Please restart your game to fully disable Toaster's Reskin Loader.", 5f);
+            MonoBehaviourSingleton<UIManager>.Instance.ToastManager.ShowToast("Warning", "Please restart your game to fully disable Toaster's Reskin Loader.", 5f);
             return true;
         }
         catch (Exception e)

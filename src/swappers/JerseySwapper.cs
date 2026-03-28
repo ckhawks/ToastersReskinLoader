@@ -33,22 +33,19 @@ public static class JerseySwapper
     {
         if (reskinEntry == null || reskinEntry.Path == null)
         {
-            // Restore original texture
             meshRenderer.material.mainTexture = originalTexture;
         }
         else
         {
-            // Apply custom texture
             var texture = TextureManager.GetTexture(reskinEntry);
-            meshRenderer.material.SetTexture("_MainTex", texture);
-            meshRenderer.material.SetTexture("_BaseMap", texture);
+            SwapperUtils.ApplyTextureToMaterial(meshRenderer.material, texture);
         }
     }
 
     public static void SetJerseyForPlayer(Player player)
     {
-        Plugin.LogDebug($"Setting jersey for {player.Username.Value} {player.Team.Value} isReplay {player.IsReplay.Value}");
-        PlayerTeam team = player.Team.Value;
+        Plugin.LogDebug($"Setting jersey for {player.Username.Value} {player.Team} isReplay {player.IsReplay.Value}");
+        PlayerTeam team = player.Team;
 
         if (team is not (PlayerTeam.Blue or PlayerTeam.Red))
         {
@@ -76,7 +73,7 @@ public static class JerseySwapper
         // Plugin.Log($"Texture torso property: {SwapperUtils.FindTextureProperty(torsoMeshRenderer.material)}");
         // Plugin.Log($"Texture groin property: {SwapperUtils.FindTextureProperty(groinMeshRenderer.material)}");
         
-        // player.PlayerBody.PlayerMesh.SetJersey(player.Team.Value, player.GetPlayerJerseySkin().ToString());
+        // player.PlayerBody.PlayerMesh.SetJersey(player.Team, player.GetPlayerJerseySkin().ToString());
         
         if (team == PlayerTeam.Blue)
         {
@@ -87,11 +84,10 @@ public static class JerseySwapper
 
             if (!originalBlueTorsoTextures.ContainsKey(player.OwnerClientId))
             {
-                if (torsoMeshRenderer.material.mainTexture.name.Contains("blue_"))
-                    originalBlueTorsoTextures.Add(player.OwnerClientId, torsoMeshRenderer.material.mainTexture);
+                originalBlueTorsoTextures.Add(player.OwnerClientId, torsoMeshRenderer.material.mainTexture);
             }
 
-            if (player.Role.Value == PlayerRole.Goalie)
+            if (player.Role == PlayerRole.Goalie)
             {
                 //  Apply blue goalie torso
                 if (originalBlueTorsoTextures.ContainsKey(player.OwnerClientId))
@@ -121,13 +117,10 @@ public static class JerseySwapper
             
             if (!originalRedTorsoTextures.ContainsKey(player.OwnerClientId))
             {
-                if (torsoMeshRenderer.material.mainTexture.name.Contains("red_"))
-                {
-                    originalRedTorsoTextures.Add(player.OwnerClientId, torsoMeshRenderer.material.mainTexture);
-                }
+                originalRedTorsoTextures.Add(player.OwnerClientId, torsoMeshRenderer.material.mainTexture);
             }
             
-            if (player.Role.Value == PlayerRole.Goalie)
+            if (player.Role == PlayerRole.Goalie)
             {
                 //  Apply red goalie torso
                 if (originalRedTorsoTextures.ContainsKey(player.OwnerClientId))

@@ -58,37 +58,37 @@ public static class SwapperManager
         if (player == null || player.PlayerBody == null || player.Stick == null)
             return;
 
-        Plugin.LogDebug($"player.Team {player.Team.Value.ToString()}");
-        Plugin.LogDebug($"player.Role {player.Role.Value.ToString()}");
+        Plugin.LogDebug($"player.Team {player.Team.ToString()}");
+        Plugin.LogDebug($"player.Role {player.Role.ToString()}");
 
         bool isReplayLocalPlayer = player.IsReplay.Value &&
                                    PlayerManager.Instance.GetLocalPlayer()?.OwnerClientId == player.OwnerClientId - 1337UL;
 
-        switch (player.Team.Value)
+        switch (player.Team)
         {
             case PlayerTeam.Blue when player.IsLocalPlayer || isReplayLocalPlayer:
                 StickSwapper.SetStickTexture(player.Stick,
-                    player.Role.Value == PlayerRole.Attacker
+                    player.Role == PlayerRole.Attacker
                         ? ReskinProfileManager.currentProfile.stickAttackerBluePersonal
                         : ReskinProfileManager.currentProfile.stickGoalieBluePersonal);
 
                 return;
             case PlayerTeam.Blue:
                 StickSwapper.SetStickTexture(player.Stick,
-                    player.Role.Value == PlayerRole.Attacker
+                    player.Role == PlayerRole.Attacker
                         ? ReskinProfileManager.currentProfile.stickAttackerBlue
                         : ReskinProfileManager.currentProfile.stickGoalieBlue);
 
                 return;
             case PlayerTeam.Red when player.IsLocalPlayer || isReplayLocalPlayer:
                 StickSwapper.SetStickTexture(player.Stick,
-                    player.Role.Value == PlayerRole.Attacker
+                    player.Role == PlayerRole.Attacker
                         ? ReskinProfileManager.currentProfile.stickAttackerRedPersonal
                         : ReskinProfileManager.currentProfile.stickGoalieRedPersonal);
                 return;
             case PlayerTeam.Red:
                 StickSwapper.SetStickTexture(player.Stick,
-                    player.Role.Value == PlayerRole.Attacker
+                    player.Role == PlayerRole.Attacker
                         ? ReskinProfileManager.currentProfile.stickAttackerRed
                         : ReskinProfileManager.currentProfile.stickGoalieRed);
                 break;
@@ -100,73 +100,29 @@ public static class SwapperManager
         }
     }
 
-    // [HarmonyPatch(typeof(Stick), "OnNetworkPostSpawn")]
-    // public static class StickOnNetworkPostSpawn
-    // {
-    //     [HarmonyPostfix]
-    //     public static void Postfix(Stick __instance)
-    //     {
-    //         Plugin.LogDebug($"Stick.OnNetworkPostSpawn");
-    //         Player player = __instance.PlayerBody.Player;
-    //
-    //         SetStickReskinForPlayer(player);
-    //         JerseySwapper.SetJerseyForPlayer(player);
-    //     }
-    // }
-
-    // [HarmonyPatch(typeof(Player), "OnPlayerRoleChanged")]
-    // public static class PlayerOnPlayerRoleChanged
-    // {
-    //     [HarmonyPostfix]
-    //     public static void Postfix(Player __instance, PlayerRole newRole)
-    //     {
-    //         Plugin.LogDebug($"Player.OnPlayerRoleChanged");
-    //
-    //         if (newRole != null && newRole != PlayerRole.None)
-    //         {
-    //             SetStickReskinForPlayer(__instance);
-    //             JerseySwapper.SetJerseyForPlayer(__instance);
-    //         }
-    //     }
-    // }
-
-    // [HarmonyPatch(typeof(Player), "OnNetworkPostSpawn")]
-    // public static class PlayerOnNetworkPostSpawn
-    // {
-    //     [HarmonyPostfix]
-    //     public static void Postfix(Player __instance)
-    //     {
-    //         Plugin.LogDebug($"Player.OnNetworkPostSpawn");
-    //         OnPersonalStickChanged();
-    //         OnBlueTeamStickChanged();
-    //         OnRedTeamStickChanged();
-    //         // OnBlueJerseyChanged();
-    //         // OnRedJerseyChanged();
-    //     }
-    // }
-
     // This patch makes the jersey change when a player spawns
-    [HarmonyPatch(typeof(PlayerBodyV2), nameof(PlayerBodyV2.UpdateMesh))]
-    public static class PlayerBodyV2UpdateMesh
+    [HarmonyPatch(typeof(PlayerBody), nameof(PlayerBody.ApplyCustomizations))]
+    public static class PlayerBodyApplyCustomizations
     {
         [HarmonyPostfix]
-        public static void Postfix(PlayerBodyV2 __instance)
+        public static void Postfix(PlayerBody __instance)
         {
             JerseySwapper.SetJerseyForPlayer(__instance.Player);
             GoalieEquipmentSwapper.SetLegPadsForPlayer(__instance.Player);
             GoalieHelmetSwapper.SetHeadgearForPlayer(__instance.Player);
             SkaterHelmetSwapper.SetHelmetForPlayer(__instance.Player);
+            PartyHatSwapper.AttachToPlayer(__instance.Player);
         }
     }
 
     // This patch makes the stick change when a player spawns
-    [HarmonyPatch(typeof(Stick), nameof(Stick.UpdateStick))]
-    public static class StickUpdateStickPatch
+    [HarmonyPatch(typeof(Stick), nameof(Stick.ApplyCustomizations))]
+    public static class StickApplyCustomizationsPatch
     {
         [HarmonyPostfix]
         public static void Postfix(Stick __instance)
         {
-            Plugin.LogDebug($"Stick.UpdateStick");
+            Plugin.LogDebug($"Stick.ApplyCustomizations");
             SetStickReskinForPlayer(__instance.Player);
             if (__instance.Player.IsLocalPlayer)
                 StickTapeSwapper.SetStickTapeForPlayer(__instance.Player.Stick);
@@ -177,6 +133,8 @@ public static class SwapperManager
     {
         global::UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
         FullArenaSwapper.Initialize();
+        PartyHatSwapper.Initialize();
+        TeamIndicatorSwapper.Setup();
         // // We register patches for Changing Room
         // var harmony = new Harmony("com.toaster.reskinloader");
         // harmony.PatchAll(typeof(ChangingRoomPatcher));
@@ -185,24 +143,25 @@ public static class SwapperManager
     public static void Destroy()
     {
         global::UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+        PartyHatSwapper.Cleanup();
+        TeamIndicatorSwapper.Cleanup();
     }
 
     public static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         Plugin.Log($"OnSceneLoaded: {scene.name}");
-        if (scene.name.Equals("changing_room"))
+        if (scene.name.Equals("locker_room"))
         {
             StickTapeSwapper.ClearTapeCache();
             JerseySwapper.ClearJerseyCache();
             GoalieEquipmentSwapper.ClearEquipmentCache();
             GoalieHelmetSwapper.ClearHelmetCache();
             SkaterHelmetSwapper.ClearHelmetCache();
-            Plugin.Log($"Local player caches reset from switching to changing room");
+            PartyHatSwapper.ClearHats();
+            Plugin.Log($"Local player caches reset from switching to locker room");
         }
-        else
-        {
-            SetAll();
-        }
+
+        SetAll();
     }
 
     // Update each jersey texture (torso and groin) for all blue team players
@@ -252,7 +211,6 @@ public static class SwapperManager
 
     public static void SetAll()
     {
-        if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "changing_room")
         {
             IceSwapper.SetIceTexture();
             IceSwapper.UpdateIceSmoothness();
@@ -264,14 +222,20 @@ public static class SwapperManager
             ArenaSwapper.UpdateGlassAndPillars();
             ArenaSwapper.UpdateSpectators();
             ArenaSwapper.SetNetTexture();
+            ArenaSwapper.UpdateGoalFrameColors();
             OnBlueJerseyChanged();
             OnRedJerseyChanged();
             OnBlueLegPadsChanged();
-            OnRedLegPadsChanged();   
+            OnRedLegPadsChanged();
             OnBlueHelmetsChanged();
-            OnRedHelmetsChanged();        
+            OnRedHelmetsChanged();
+            SkaterHelmetSwapper.OnBlueHelmetsChanged();
+            SkaterHelmetSwapper.OnRedHelmetsChanged();
             FullArenaSwapper.ApplyFromProfile();
             SkyboxSwapper.UpdateSkybox();
+            CrispyShadowsSwapper.Apply();
+            TeamIndicatorSwapper.Setup();
+            TeamIndicatorSwapper.UpdateVisibility();
             PuckFXSwapper.ApplyAll();
         }
     }

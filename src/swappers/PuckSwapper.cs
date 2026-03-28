@@ -20,16 +20,15 @@ public static class PuckSwapper
     {
         try
         {
-            // Get puck's MeshRenderer from its class
-            // TODO fix this
             MeshRenderer puckMeshRenderer =
                 puck.gameObject.transform.Find("puck").Find("Puck").GetComponent<MeshRenderer>();
 
             if (puckMeshRenderer == null)
             {
-                Debug.LogError("No MeshRenderer found on GameObject Puck.");
+                Plugin.LogError("No MeshRenderer found on GameObject Puck.");
+                return;
             }
-            
+
             // these should only run on the first go around setting the puck from vanilla->custom
             if (_originalTexture == null)
             {
@@ -39,23 +38,19 @@ public static class PuckSwapper
             {
                 _originalBumpMap = puckMeshRenderer.material.GetTexture("_BumpMap");
             }
-            
-            if (reskinEntry.Path == null)
+
+            if (reskinEntry == null || reskinEntry.Path == null)
             {
-                // If ReskinEntry is null, make it the original puck again
+                // No entry or unchanged — restore the original puck
                 puckMeshRenderer.material.SetTexture(BaseMap, _originalTexture);
                 puckMeshRenderer.material.SetTexture("_BumpMap", _originalBumpMap);
-                // Plugin.Log("Original texture applied to property: _BaseMap");
             }
             else
             {
                 // ReskinEntry has values, set puck to custom texture
                 puckMeshRenderer.material.SetTexture(BaseMap, TextureManager.GetTexture(reskinEntry));
                 puckMeshRenderer.material.SetTexture("_BumpMap", TextureManager.GetTextureFromFilePath(_puckBumpMapPath));
-                // Plugin.Log("Texture applied to property: _BaseMap");
             }
-
-            // Plugin.Log($"Set the puck texture to {reskinEntry.Name} {reskinEntry.Path}");
         }
         catch (Exception ex)
         {

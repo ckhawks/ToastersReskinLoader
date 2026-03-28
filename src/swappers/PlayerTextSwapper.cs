@@ -7,11 +7,11 @@ namespace ToasterReskinLoader.swappers;
 
 public static class PlayerTextSwapper
 {
-    static readonly FieldInfo _usernameTextField = typeof(PlayerMesh)
+    static readonly FieldInfo _usernameTextField = typeof(PlayerTorso)
         .GetField("usernameText",
             BindingFlags.Instance | BindingFlags.NonPublic);
 
-    static readonly FieldInfo _numberTextField = typeof(PlayerMesh)
+    static readonly FieldInfo _numberTextField = typeof(PlayerTorso)
         .GetField("numberText",
             BindingFlags.Instance | BindingFlags.NonPublic);
 
@@ -19,37 +19,34 @@ public static class PlayerTextSwapper
     {
         try
         {
-            if (player?.PlayerBody?.PlayerMesh == null)
+            if (player?.PlayerBody?.PlayerMesh?.PlayerTorso == null)
             {
-                Plugin.LogError("Player or PlayerMesh is null");
+                Plugin.LogError("Player or PlayerTorso is null");
                 return;
             }
 
-            PlayerMesh playerMesh = player.PlayerBody.PlayerMesh;
+            PlayerTorso playerTorso = player.PlayerBody.PlayerMesh.PlayerTorso;
 
-            // Determine which color to use based on team and role
             Color textColor;
-            if (player.Team.Value == PlayerTeam.Blue)
+            if (player.Team == PlayerTeam.Blue)
             {
-                textColor = player.Role.Value == PlayerRole.Goalie
+                textColor = player.Role == PlayerRole.Goalie
                     ? ReskinProfileManager.currentProfile.blueGoalieLetteringColor
                     : ReskinProfileManager.currentProfile.blueSkaterLetteringColor;
             }
-            else if (player.Team.Value == PlayerTeam.Red)
+            else if (player.Team == PlayerTeam.Red)
             {
-                textColor = player.Role.Value == PlayerRole.Goalie
+                textColor = player.Role == PlayerRole.Goalie
                     ? ReskinProfileManager.currentProfile.redGoalieLetteringColor
                     : ReskinProfileManager.currentProfile.redSkaterLetteringColor;
             }
             else
             {
-                // Default to white for spectators or other teams
                 textColor = Color.white;
             }
 
-            // Get the TMP_Text components via reflection
-            var usernameText = (TMP_Text)_usernameTextField.GetValue(playerMesh);
-            var numberText = (TMP_Text)_numberTextField.GetValue(playerMesh);
+            var usernameText = (TMP_Text)_usernameTextField.GetValue(playerTorso);
+            var numberText = (TMP_Text)_numberTextField.GetValue(playerTorso);
 
             if (usernameText != null)
             {
@@ -74,9 +71,9 @@ public static class PlayerTextSwapper
         var players = UnityEngine.Object.FindObjectsByType<Player>(FindObjectsSortMode.None);
         foreach (var player in players)
         {
-            if (player.Team.Value == team)
+            if (player.Team == team)
             {
-                if (role == null || player.Role.Value == role)
+                if (role == null || player.Role == role)
                 {
                     SetPlayerTextColors(player);
                 }

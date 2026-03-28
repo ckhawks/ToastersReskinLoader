@@ -28,7 +28,8 @@ public static class IceSwapper
 
             if (iceBottomMeshRenderer == null)
             {
-                Debug.LogError("No MeshRenderer found on GameObject Ice Bottom.");
+                Plugin.LogError("No MeshRenderer found on GameObject Ice Bottom.");
+                return;
             }
         
             // string texturePropertyName = SwapperUtils.FindTextureProperty(iceBottomMeshRenderer.material);
@@ -47,13 +48,13 @@ public static class IceSwapper
             if (reskinEntry == null || reskinEntry.Path == null)
             {
                 iceBottomMeshRenderer.material.SetTexture("_BaseMap", originalTexture);
-                // Plugin.Log("Texture applied to property: _BaseMap");
+                iceBottomMeshRenderer.material.SetTexture("baseColorTexture", originalTexture);
             }
             else
             {
                 Texture2D texture2D = TextureManager.GetTexture(reskinEntry);
-                // TODO add mipmap stuff here
                 iceBottomMeshRenderer.material.SetTexture("_BaseMap", texture2D);
+                iceBottomMeshRenderer.material.SetTexture("baseColorTexture", texture2D);
                 // Plugin.Log("Texture applied to property: _BaseMap");
             }
         
@@ -80,7 +81,8 @@ public static class IceSwapper
 
         if (iceTopMeshRenderer == null)
         {
-            Debug.LogError("No MeshRenderer found on GameObject Ice Top.");
+            Plugin.LogError("No MeshRenderer found on GameObject Ice Top.");
+            return false;
         }
         
         iceTopMeshRenderer.material.SetFloat("_Smoothness", ReskinProfileManager.currentProfile.iceSmoothness);

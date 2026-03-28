@@ -21,14 +21,20 @@ namespace ToasterReskinLoader.swappers
 
             var renderers = playerHead.GetComponentsInChildren<Renderer>();
 
-            // Available renderers:
-            // - Cage = metal grate thing in front
-            // - Eyes = eyes
-            // - Head = head base
-            // - Helmet = top of helmet, same as skater
-            // - Flag = flag on helmet
-            // - Mustache Chevron = decorative
-            // - Neck Shield = lower part of goalie helmet (mask)
+            Plugin.LogDebug($"[GoalieHelmet] Searching for '{part}' among {renderers.Length} renderers on PlayerHead:");
+            foreach (var r in renderers)
+            {
+                Plugin.LogDebug($"  - Renderer: '{r.name}' (type: {r.GetType().Name}, shader: {r.material?.shader?.name ?? "null"})");
+            }
+
+            // Actual goalie head renderers (as observed in-game):
+            // - "Helmet Cage & Neck Guard (Goalie)" = the main painted goalie mask shell
+            // - "Cage" = the metal wire cage in front of the face
+            // - "Neck Guard" = throat/neck protector
+            // - "Flag", "Head", "Eyes", "Mustache Sheriff" = decorative
+            //
+            // The helmet shell is a SINGLE renderer with "helmet", "cage", AND "neck" in
+            // its name, so filters must match it specifically before the individual parts.
 
             foreach (var renderer in renderers)
             {
@@ -36,20 +42,34 @@ namespace ToasterReskinLoader.swappers
                 switch (part)
                 {
                     case "helmet":
-                        if (rendererNameLower.Contains("helmet") && !rendererNameLower.Contains("neck"))
+                        // The main goalie mask shell: "Helmet Cage & Neck Guard (Goalie)"
+                        // This contains "helmet", "cage", AND "neck" — match the composite name
+                        if (rendererNameLower.Contains("helmet") && rendererNameLower.Contains("goalie"))
+                        {
+                            Plugin.LogDebug($"[GoalieHelmet] Matched '{part}' → renderer '{renderer.name}'");
                             return renderer;
+                        }
                         break;
                     case "mask":
-                        if (rendererNameLower.Contains("neck") || rendererNameLower.Contains("shield"))
+                        // The standalone neck guard: "Neck Guard" (NOT the composite helmet piece)
+                        if (rendererNameLower == "neck guard")
+                        {
+                            Plugin.LogDebug($"[GoalieHelmet] Matched '{part}' → renderer '{renderer.name}'");
                             return renderer;
+                        }
                         break;
                     case "cage":
-                        if (rendererNameLower.Contains("cage"))
+                        // The standalone cage: "Cage" (NOT the composite helmet piece)
+                        if (rendererNameLower == "cage")
+                        {
+                            Plugin.LogDebug($"[GoalieHelmet] Matched '{part}' → renderer '{renderer.name}'");
                             return renderer;
+                        }
                         break;
                 }
             }
 
+            Plugin.Log($"[GoalieHelmet] No renderer matched for part '{part}'");
             return null;
         }
 
@@ -71,15 +91,19 @@ namespace ToasterReskinLoader.swappers
             if (textureEntry?.Path != null)
             {
                 var texture = TextureManager.GetTexture(textureEntry);
-                renderer.material.SetTexture("_MainTex", texture);
-                renderer.material.SetTexture("_BaseMap", texture);
-                renderer.material.color = Color.white;
+                if (texture == null)
+                {
+                    Plugin.LogError($"[GoalieHelmet] Failed to load texture for {textureEntry.Name}");
+                    return;
+                }
+
+                SwapperUtils.ApplyTextureToMaterial(renderer.material, texture);
+                Plugin.LogDebug($"[GoalieHelmet] Applied texture '{textureEntry.Name}' to {part} (shader: {renderer.material.shader.name})");
             }
             else
             {
-                // Reset to original with the configured default color
-                renderer.material.mainTexture = originalTextures[cacheKey];
-                renderer.material.color = defaultColor;
+                SwapperUtils.RestoreOriginalTexture(renderer.material, originalTextures[cacheKey], defaultColor);
+                Plugin.LogDebug($"[GoalieHelmet] Restored original for {part} with color {defaultColor}");
             }
         }
 
@@ -94,11 +118,11 @@ namespace ToasterReskinLoader.swappers
             }
 
             // Only apply to goalies
-            if (player.Role.Value != PlayerRole.Goalie)
+            if (player.Role != PlayerRole.Goalie)
                 return;
 
             // Only blue/red teams
-            PlayerTeam team = player.Team.Value;
+            PlayerTeam team = player.Team;
             if (team is not (PlayerTeam.Blue or PlayerTeam.Red))
                 return;
 
@@ -110,7 +134,7 @@ namespace ToasterReskinLoader.swappers
         // Sets helmet for a goalie player
         private static void SetHelmetForPlayer(Player player)
         {
-            PlayerTeam team = player.Team.Value;
+            PlayerTeam team = player.Team;
             Renderer helmetRenderer = GetHeadgearRenderer(player.PlayerBody.PlayerMesh.PlayerHead, "helmet");
 
             if (helmetRenderer == null)
@@ -136,7 +160,7 @@ namespace ToasterReskinLoader.swappers
         // Sets mask (neck shield) for a goalie player
         private static void SetMaskForPlayer(Player player)
         {
-            PlayerTeam team = player.Team.Value;
+            PlayerTeam team = player.Team;
             Renderer maskRenderer = GetHeadgearRenderer(player.PlayerBody.PlayerMesh.PlayerHead, "mask");
 
             if (maskRenderer == null)
@@ -162,7 +186,7 @@ namespace ToasterReskinLoader.swappers
         // Sets cage for a goalie player (color only)
         private static void SetCageForPlayer(Player player)
         {
-            PlayerTeam team = player.Team.Value;
+            PlayerTeam team = player.Team;
             Renderer cageRenderer = GetHeadgearRenderer(player.PlayerBody.PlayerMesh.PlayerHead, "cage");
 
             if (cageRenderer == null)
@@ -194,7 +218,7 @@ namespace ToasterReskinLoader.swappers
             var players = PlayerManager.Instance.GetPlayersByTeam(team);
             foreach (Player player in players)
             {
-                if (player.Role.Value == PlayerRole.Goalie)
+                if (player.Role == PlayerRole.Goalie)
                 {
                     SetHeadgearForPlayer(player);
                 }

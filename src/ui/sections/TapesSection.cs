@@ -35,6 +35,8 @@ public static class TapesSection
         string currentMode,
         ReskinRegistry.ReskinEntry currentTexture,
         Color currentColor,
+        PlayerTeam previewTeam,
+        PlayerRole previewRole,
         System.Action<string> onModeChanged,
         System.Action<Color> onColorChanged,
         System.Action<ReskinRegistry.ReskinEntry> onTextureChanged)
@@ -43,15 +45,8 @@ public static class TapesSection
         VisualElement modeRow = UITools.CreateConfigurationRow();
         modeRow.Add(UITools.CreateConfigurationLabel($"{label} Mode"));
 
-        DropdownField modeDropdown = new DropdownField();
-        modeDropdown.choices = new List<string> { "Unchanged", "RGB", "Textured" };
-        modeDropdown.value = currentMode ?? "Unchanged";
-        modeDropdown.style.minWidth = 400;
-        modeDropdown.style.maxWidth = 400;
-        modeDropdown.style.width = 400;
-        modeDropdown.style.minHeight = 30;
-        modeDropdown.style.maxHeight = 30;
-        modeDropdown.style.fontSize = 16;
+        var modeDropdown = UITools.CreateStringDropdownField(
+            new List<string> { "Unchanged", "RGB", "Textured" }, currentMode);
         modeRow.Add(modeDropdown);
         container.Add(modeRow);
 
@@ -63,6 +58,7 @@ public static class TapesSection
             newColor =>
             {
                 onColorChanged(newColor);
+            ChangingRoomHelper.RefreshPreview();
                 ReskinProfileManager.SaveProfile();
             },
             () => { ReskinProfileManager.SaveProfile(); }
@@ -86,6 +82,7 @@ public static class TapesSection
             new EventCallback<ChangeEvent<ReskinRegistry.ReskinEntry>>(evt =>
             {
                 onTextureChanged(evt.newValue);
+            ChangingRoomHelper.RefreshPreview();
                 ReskinProfileManager.SaveProfile();
             })
         );
@@ -112,6 +109,9 @@ public static class TapesSection
 
     public static void CreateSection(VisualElement contentScrollViewContent)
     {
+        void showStick() { ChangingRoomHelper.ShowStick(); }
+        contentScrollViewContent.schedule.Execute(showStick).ExecuteLater(2);
+
         // Blue Team Skaters
         Label blueSkaterTitle = new Label("Blue Team Skaters");
         blueSkaterTitle.style.fontSize = 24;
@@ -126,6 +126,7 @@ public static class TapesSection
             ReskinProfileManager.currentProfile.blueSkaterBladeTapeMode,
             ReskinProfileManager.currentProfile.blueSkaterBladeTape,
             ReskinProfileManager.currentProfile.blueSkaterBladeTapeColor,
+            PlayerTeam.Blue, PlayerRole.Attacker,
             mode => {
                 ReskinProfileManager.currentProfile.blueSkaterBladeTapeMode = mode;
                 StickTapeSwapper.OnBlueSkaterTapeChanged();
@@ -147,6 +148,7 @@ public static class TapesSection
             ReskinProfileManager.currentProfile.blueSkaterShaftTapeMode,
             ReskinProfileManager.currentProfile.blueSkaterShaftTape,
             ReskinProfileManager.currentProfile.blueSkaterShaftTapeColor,
+            PlayerTeam.Blue, PlayerRole.Attacker,
             mode => {
                 ReskinProfileManager.currentProfile.blueSkaterShaftTapeMode = mode;
                 StickTapeSwapper.OnBlueSkaterTapeChanged();
@@ -175,6 +177,7 @@ public static class TapesSection
             ReskinProfileManager.currentProfile.blueGoalieBladeTapeMode,
             ReskinProfileManager.currentProfile.blueGoalieBladeTape,
             ReskinProfileManager.currentProfile.blueGoalieBladeTapeColor,
+            PlayerTeam.Blue, PlayerRole.Goalie,
             mode => {
                 ReskinProfileManager.currentProfile.blueGoalieBladeTapeMode = mode;
                 StickTapeSwapper.OnBlueGoalieTapeChanged();
@@ -196,6 +199,7 @@ public static class TapesSection
             ReskinProfileManager.currentProfile.blueGoalieShaftTapeMode,
             ReskinProfileManager.currentProfile.blueGoalieShaftTape,
             ReskinProfileManager.currentProfile.blueGoalieShaftTapeColor,
+            PlayerTeam.Blue, PlayerRole.Goalie,
             mode => {
                 ReskinProfileManager.currentProfile.blueGoalieShaftTapeMode = mode;
                 StickTapeSwapper.OnBlueGoalieTapeChanged();
@@ -224,6 +228,7 @@ public static class TapesSection
             ReskinProfileManager.currentProfile.redSkaterBladeTapeMode,
             ReskinProfileManager.currentProfile.redSkaterBladeTape,
             ReskinProfileManager.currentProfile.redSkaterBladeTapeColor,
+            PlayerTeam.Red, PlayerRole.Attacker,
             mode => {
                 ReskinProfileManager.currentProfile.redSkaterBladeTapeMode = mode;
                 StickTapeSwapper.OnRedSkaterTapeChanged();
@@ -245,6 +250,7 @@ public static class TapesSection
             ReskinProfileManager.currentProfile.redSkaterShaftTapeMode,
             ReskinProfileManager.currentProfile.redSkaterShaftTape,
             ReskinProfileManager.currentProfile.redSkaterShaftTapeColor,
+            PlayerTeam.Red, PlayerRole.Attacker,
             mode => {
                 ReskinProfileManager.currentProfile.redSkaterShaftTapeMode = mode;
                 StickTapeSwapper.OnRedSkaterTapeChanged();
@@ -273,6 +279,7 @@ public static class TapesSection
             ReskinProfileManager.currentProfile.redGoalieBladeTapeMode,
             ReskinProfileManager.currentProfile.redGoalieBladeTape,
             ReskinProfileManager.currentProfile.redGoalieBladeTapeColor,
+            PlayerTeam.Red, PlayerRole.Goalie,
             mode => {
                 ReskinProfileManager.currentProfile.redGoalieBladeTapeMode = mode;
                 StickTapeSwapper.OnRedGoalieTapeChanged();
@@ -294,6 +301,7 @@ public static class TapesSection
             ReskinProfileManager.currentProfile.redGoalieShaftTapeMode,
             ReskinProfileManager.currentProfile.redGoalieShaftTape,
             ReskinProfileManager.currentProfile.redGoalieShaftTapeColor,
+            PlayerTeam.Red, PlayerRole.Goalie,
             mode => {
                 ReskinProfileManager.currentProfile.redGoalieShaftTapeMode = mode;
                 StickTapeSwapper.OnRedGoalieTapeChanged();

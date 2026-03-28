@@ -18,10 +18,10 @@ public static class PuckFXSection
         var outlineEnabledRow = UITools.CreateConfigurationRow();
         outlineEnabledRow.Add(UITools.CreateConfigurationLabel("Enabled (game setting)"));
         var outlineEnabledToggle = UITools.CreateConfigurationCheckbox(
-            SettingsManager.Instance.ShowPuckOutline > 0);
+            SettingsManager.ShowPuckOutline);
         outlineEnabledToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
         {
-            SettingsManager.Instance.UpdateShowPuckOutline(evt.newValue);
+            SettingsManager.UpdateShowPuckOutline(evt.newValue);
             SyncGameSettingsUI();
         });
         outlineEnabledRow.Add(outlineEnabledToggle);
@@ -62,10 +62,10 @@ public static class PuckFXSection
         var elevationEnabledRow = UITools.CreateConfigurationRow();
         elevationEnabledRow.Add(UITools.CreateConfigurationLabel("Enabled (game setting)"));
         var elevationEnabledToggle = UITools.CreateConfigurationCheckbox(
-            SettingsManager.Instance.ShowPuckElevation > 0);
+            SettingsManager.ShowPuckElevation);
         elevationEnabledToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
         {
-            SettingsManager.Instance.UpdateShowPuckElevation(evt.newValue);
+            SettingsManager.UpdateShowPuckElevation(evt.newValue);
             SyncGameSettingsUI();
         });
         elevationEnabledRow.Add(elevationEnabledToggle);
@@ -138,10 +138,10 @@ public static class PuckFXSection
         var silhouetteEnabledRow = UITools.CreateConfigurationRow();
         silhouetteEnabledRow.Add(UITools.CreateConfigurationLabel("Enabled (game setting)"));
         var silhouetteEnabledToggle = UITools.CreateConfigurationCheckbox(
-            SettingsManager.Instance.ShowPuckSilhouette > 0);
+            SettingsManager.ShowPuckSilhouette);
         silhouetteEnabledToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
         {
-            SettingsManager.Instance.UpdateShowPuckSilhouette(evt.newValue);
+            SettingsManager.UpdateShowPuckSilhouette(evt.newValue);
             SyncGameSettingsUI();
         });
         silhouetteEnabledRow.Add(silhouetteEnabledToggle);
@@ -279,15 +279,8 @@ public static class PuckFXSection
     /// </summary>
     private static void SyncGameSettingsUI()
     {
-        try
-        {
-            var settingsUI = Object.FindObjectOfType<UISettings>();
-            settingsUI?.ApplySettingsValues();
-        }
-        catch (System.Exception e)
-        {
-            Plugin.LogDebug($"Could not sync game settings UI: {e.Message}");
-        }
+        // In b310, settings UI is event-driven and auto-syncs via EventManager
+        // No explicit refresh needed
     }
 
     private static void CreateSliderRow(

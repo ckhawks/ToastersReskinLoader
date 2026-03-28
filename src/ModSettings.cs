@@ -6,6 +6,8 @@ namespace ToasterReskinLoader;
 public class ModSettings
 {
     public bool DebugLoggingModeEnabled { get; set; } = false;
+    public bool PartyHatsEnabled { get; set; } = true;
+    public bool BigHeadsEnabled { get; set; } = true;
 
     static string ConfigurationFileName = $"{Plugin.MOD_NAME}.json";
 

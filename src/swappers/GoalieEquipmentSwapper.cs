@@ -41,16 +41,11 @@ namespace ToasterReskinLoader.swappers
             if (textureEntry?.Path != null)
             {
                 var texture = TextureManager.GetTexture(textureEntry);
-                renderer.material.SetTexture("_MainTex", texture);
-                renderer.material.SetTexture("_BaseMap", texture);
-                renderer.material.SetTexture("_Albedo", texture);
-                renderer.material.color = Color.white;
+                SwapperUtils.ApplyTextureToMaterial(renderer.material, texture);
             }
             else
             {
-                // Reset to original with the configured default color
-                renderer.material.mainTexture = originalTextures[cacheKey];
-                renderer.material.color = defaultColor;
+                SwapperUtils.RestoreOriginalTexture(renderer.material, originalTextures[cacheKey], defaultColor);
             }
         }
 
@@ -65,11 +60,11 @@ namespace ToasterReskinLoader.swappers
             }
 
             // Only apply to goalies
-            if (player.Role.Value != PlayerRole.Goalie)
+            if (player.Role != PlayerRole.Goalie)
                 return;
 
             // Only blue/red teams
-            PlayerTeam team = player.Team.Value;
+            PlayerTeam team = player.Team;
             if (team is not (PlayerTeam.Blue or PlayerTeam.Red))
                 return;
 
@@ -113,7 +108,7 @@ namespace ToasterReskinLoader.swappers
             var players = PlayerManager.Instance.GetPlayersByTeam(team);
             foreach (Player player in players)
             {
-                if (player.Role.Value == PlayerRole.Goalie)
+                if (player.Role == PlayerRole.Goalie)
                 {
                     SetLegPadsForPlayer(player);
                 }

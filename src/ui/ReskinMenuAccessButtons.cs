@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -9,20 +9,23 @@ public static class ReskinMenuAccessButtons
     public static UIMainMenu mainMenu;
     public static Button mainMenuSettingsButton;
     public static Button pauseMenuSettingsButton;
-    
+
     static readonly FieldInfo _mainMenuSettingsButtonField = typeof(UIMainMenu)
-        .GetField("settingsButton", 
+        .GetField("settingsButton",
             BindingFlags.Instance | BindingFlags.NonPublic);
-    
+
+    static readonly FieldInfo _mainMenuExitGameButtonField = typeof(UIMainMenu)
+        .GetField("exitGameButton",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
     static readonly FieldInfo _pauseMenuSettingsButtonField = typeof(UIPauseMenu)
-        .GetField("settingsButton", 
+        .GetField("settingsButton",
             BindingFlags.Instance | BindingFlags.NonPublic);
-    
+
     private static void AddReskinMenuButtonToPauseMenu(UIPauseMenu pauseMenu)
     {
         VisualElement containerVisualElement = pauseMenuSettingsButton.parent;
-        // containerVisualElement.style.height = new StyleLength(new Length(1000, LengthUnit.Pixel));
-        
+
         if (containerVisualElement == null)
         {
             Plugin.LogError("Container VisualElement not found (parent of settingsButton missing)!");
@@ -34,10 +37,11 @@ public static class ReskinMenuAccessButtons
     }
 
     private static void AddReskinMenuButtonToMainMenu(UIMainMenu mainMenu)
-    { 
+    {
+        // Follow QuickChatPlus pattern: find button container from a known button
+        Button exitGameButton = (Button)_mainMenuExitGameButtonField?.GetValue(mainMenu);
         VisualElement containerVisualElement = mainMenuSettingsButton.parent;
-        // containerVisualElement.style.height = new StyleLength(new Length(1000, LengthUnit.Pixel));
-        
+
         if (containerVisualElement == null)
         {
             Plugin.LogError("Container VisualElement not found (parent of settingsButton missing)!");
@@ -45,33 +49,43 @@ public static class ReskinMenuAccessButtons
         }
 
         Button reskinMenuButton = CreateReskinMenuButton(mainMenuSettingsButton);
-        containerVisualElement.Insert(4, reskinMenuButton);
+
+        // Insert before exit game button if possible
+        if (exitGameButton != null)
+        {
+            int exitIndex = containerVisualElement.IndexOf(exitGameButton);
+            if (exitIndex >= 0)
+            {
+                containerVisualElement.Insert(exitIndex, reskinMenuButton);
+                return;
+            }
+        }
+
+        // Fallback: insert after settings
+        int settingsIndex = containerVisualElement.IndexOf(mainMenuSettingsButton);
+        if (settingsIndex >= 0)
+        {
+            containerVisualElement.Insert(settingsIndex + 1, reskinMenuButton);
+        }
+        else
+        {
+            containerVisualElement.Add(reskinMenuButton);
+        }
     }
 
     private static Button CreateReskinMenuButton(Button referenceButton)
     {
-        Button button = new Button
+        Button button = new Button();
+        button.text = "RESKIN MANAGER";
+
+        // Copy USS classes from existing button to match the stylesheet
+        foreach (string cls in referenceButton.GetClasses())
         {
-            text = "RESKIN MANAGER",
-            style =
-            {
-                backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f)),
-                unityTextAlign = TextAnchor.MiddleLeft,
-                width = new StyleLength(new Length(100, LengthUnit.Percent)),
-                minWidth = new StyleLength(new Length(100, LengthUnit.Percent)),
-                maxWidth = new StyleLength(new Length(100, LengthUnit.Percent)),
-                // width = referenceButton.style.width,
-                // minWidth = referenceButton.style.minWidth,
-                // maxWidth = referenceButton.style.maxWidth,
-                height = referenceButton.style.height,
-                minHeight = referenceButton.style.minHeight,
-                maxHeight = referenceButton.style.maxHeight,
-                marginTop = 8,
-                paddingTop = 8,
-                paddingBottom = 8,
-                paddingLeft = 15
-            }
-        };
+            button.AddToClassList(cls);
+        }
+
+        button.style.backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f));
+
         UITools.AddHoverEffectsForButton(button);
         button.RegisterCallback<ClickEvent>(MainMenuOpenReskinManagerClickHandler);
 
@@ -86,20 +100,21 @@ public static class ReskinMenuAccessButtons
     public static void Setup()
     {
         Plugin.Log($"ReskinMenuAccessButtons::Setup()");
+        var uiManager = MonoBehaviourSingleton<UIManager>.Instance;
+        mainMenu = uiManager.MainMenu;
+        ReskinMenu.uiMainMenu = mainMenu;
+
         LocateReferenceButtons();
-        AddReskinMenuButtonToPauseMenu(UIPauseMenu.Instance);
-        
-        // TODO is this necessary?
-        mainMenu = UIMainMenu.Instance;
-        ReskinMenu.uiMainMenu = UIMainMenu.Instance;
-        AddReskinMenuButtonToMainMenu(UIMainMenu.Instance);
+        AddReskinMenuButtonToPauseMenu(uiManager.PauseMenu);
+        AddReskinMenuButtonToMainMenu(mainMenu);
     }
 
     private static void LocateReferenceButtons()
     {
-        mainMenuSettingsButton = (Button) _mainMenuSettingsButtonField.GetValue(UIMainMenu.Instance);
+        var uiManager = MonoBehaviourSingleton<UIManager>.Instance;
+        mainMenuSettingsButton = (Button)_mainMenuSettingsButtonField.GetValue(uiManager.MainMenu);
         Plugin.Log($"Located main menu settings button: {mainMenuSettingsButton}");
-        pauseMenuSettingsButton = (Button)_pauseMenuSettingsButtonField.GetValue(UIPauseMenu.Instance);
+        pauseMenuSettingsButton = (Button)_pauseMenuSettingsButtonField.GetValue(uiManager.PauseMenu);
         Plugin.Log($"Located pause menu settings button: {pauseMenuSettingsButton}");
     }
 }

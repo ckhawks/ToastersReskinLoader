@@ -21,16 +21,24 @@ namespace ToasterReskinLoader.swappers
 
             var renderers = playerHead.GetComponentsInChildren<Renderer>();
 
+            Plugin.LogDebug($"[SkaterHelmet] Searching among {renderers.Length} renderers on PlayerHead:");
+            foreach (var r in renderers)
+            {
+                Plugin.LogDebug($"  - Renderer: '{r.name}' (type: {r.GetType().Name})");
+            }
+
             // Search for helmet renderer (skaters have a helmet similar to the goalie helmet top)
             foreach (var renderer in renderers)
             {
                 string rendererNameLower = renderer.name.ToLower();
                 if (rendererNameLower.Contains("helmet") && !rendererNameLower.Contains("cage") && !rendererNameLower.Contains("neck"))
                 {
+                    Plugin.LogDebug($"[SkaterHelmet] Matched → renderer '{renderer.name}'");
                     return renderer;
                 }
             }
 
+            Plugin.LogDebug("[SkaterHelmet] No renderer matched for helmet");
             return null;
         }
 
@@ -52,15 +60,18 @@ namespace ToasterReskinLoader.swappers
             if (textureEntry?.Path != null)
             {
                 var texture = TextureManager.GetTexture(textureEntry);
-                renderer.material.SetTexture("_MainTex", texture);
-                renderer.material.SetTexture("_BaseMap", texture);
-                renderer.material.color = Color.white;
+                if (texture == null)
+                {
+                    Plugin.LogError($"[SkaterHelmet] Failed to load texture for {textureEntry.Name}");
+                    return;
+                }
+
+                SwapperUtils.ApplyTextureToMaterial(renderer.material, texture);
+                Plugin.LogDebug($"[SkaterHelmet] Applied texture '{textureEntry.Name}' (shader: {renderer.material.shader.name})");
             }
             else
             {
-                // Reset to original with the configured default color
-                renderer.material.mainTexture = originalTextures[cacheKey];
-                renderer.material.color = defaultColor;
+                SwapperUtils.RestoreOriginalTexture(renderer.material, originalTextures[cacheKey], defaultColor);
             }
         }
 
@@ -75,11 +86,11 @@ namespace ToasterReskinLoader.swappers
             }
 
             // Only apply to skaters (non-goalies)
-            if (player.Role.Value == PlayerRole.Goalie)
+            if (player.Role == PlayerRole.Goalie)
                 return;
 
             // Only blue/red teams
-            PlayerTeam team = player.Team.Value;
+            PlayerTeam team = player.Team;
             if (team is not (PlayerTeam.Blue or PlayerTeam.Red))
                 return;
 
@@ -112,7 +123,7 @@ namespace ToasterReskinLoader.swappers
             var players = PlayerManager.Instance.GetPlayersByTeam(team);
             foreach (Player player in players)
             {
-                if (player.Role.Value != PlayerRole.Goalie)
+                if (player.Role != PlayerRole.Goalie)
                 {
                     SetHelmetForPlayer(player);
                 }

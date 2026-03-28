@@ -123,44 +123,6 @@ public static class TextureManager
         return newTexture;
     }
     
-    // private static Texture2D LoadTexture(string filePath)
-    // {
-    //     // TODO make all reskin's textures load into a dictionary or something at setup
-    //     Plugin.Log($"Loading texture from {filePath}...");
-    //     
-    //     if (!System.IO.File.Exists(filePath))
-    //     {
-    //         Plugin.LogError($"File not found: {filePath}");
-    //         return null;
-    //     }
-    //
-    //     try
-    //     {
-    //         // Read the file as a byte array
-    //         byte[] fileData = System.IO.File.ReadAllBytes(filePath);
-    //
-    //         // Create a new Texture2D
-    //         Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-    //
-    //         // Use ImageConversion.LoadImage to load the texture
-    //         if (texture.LoadImage(fileData))
-    //         {
-    //             Plugin.Log("Texture loaded successfully!");
-    //             return texture;
-    //         }
-    //         else
-    //         {
-    //             Plugin.LogError("Failed to load texture.");
-    //             return null;
-    //         }
-    //     }
-    //     catch (System.Exception ex)
-    //     {
-    //         Plugin.LogError($"Exception while loading texture: {ex.Message}");
-    //         return null;
-    //     }
-    // }
-    
     /// <summary>
     /// Unloads all textures that are not present in the provided list of active entries.
     /// This is the "garbage collection" step to free up memory.

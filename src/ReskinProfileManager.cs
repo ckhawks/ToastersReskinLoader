@@ -436,6 +436,34 @@ public static class ReskinProfileManager
                     ? (Color)serializableProfile.RedGoalieShaftTapeColor
                     : defaultProfile.redGoalieShaftTapeColor,
 
+                // Team Colors
+                teamColorsEnabled = serializableProfile.TeamColorsEnabled
+                    ?? defaultProfile.teamColorsEnabled,
+                blueTeamColor = serializableProfile.BlueTeamColor != null
+                    ? (Color)serializableProfile.BlueTeamColor
+                    : defaultProfile.blueTeamColor,
+                redTeamColor = serializableProfile.RedTeamColor != null
+                    ? (Color)serializableProfile.RedTeamColor
+                    : defaultProfile.redTeamColor,
+                teamIndicatorEnabled = serializableProfile.TeamIndicatorEnabled
+                    ?? defaultProfile.teamIndicatorEnabled,
+                blueTeamName = serializableProfile.BlueTeamName
+                    ?? defaultProfile.blueTeamName,
+                redTeamName = serializableProfile.RedTeamName
+                    ?? defaultProfile.redTeamName,
+
+                // Shadows (CrispyShadows)
+                crispyShadowsEnabled = serializableProfile.CrispyShadowsEnabled
+                    ?? defaultProfile.crispyShadowsEnabled,
+                shadowResolution = serializableProfile.ShadowResolution
+                    ?? defaultProfile.shadowResolution,
+                shadowDistance = serializableProfile.ShadowDistance
+                    ?? defaultProfile.shadowDistance,
+                shadowCascadeCount = serializableProfile.ShadowCascadeCount
+                    ?? defaultProfile.shadowCascadeCount,
+                shadowSoftShadows = serializableProfile.ShadowSoftShadows
+                    ?? defaultProfile.shadowSoftShadows,
+
                 // Skybox
                 skyboxAtmosphereThickness =
                     serializableProfile.SkyboxAtmosphereThickness
@@ -660,6 +688,21 @@ public static class ReskinProfileManager
                 RedGoalieShaftTapeMode = currentProfile.redGoalieShaftTapeMode,
                 RedGoalieShaftTapeRef = CreateReferenceFromEntry(currentProfile.redGoalieShaftTape),
                 RedGoalieShaftTapeColor = new SerializableColor(currentProfile.redGoalieShaftTapeColor),
+
+                // Team Colors
+                TeamColorsEnabled = currentProfile.teamColorsEnabled,
+                BlueTeamColor = new SerializableColor(currentProfile.blueTeamColor),
+                RedTeamColor = new SerializableColor(currentProfile.redTeamColor),
+                TeamIndicatorEnabled = currentProfile.teamIndicatorEnabled,
+                BlueTeamName = currentProfile.blueTeamName,
+                RedTeamName = currentProfile.redTeamName,
+
+                // Shadows (CrispyShadows)
+                CrispyShadowsEnabled = currentProfile.crispyShadowsEnabled,
+                ShadowResolution = currentProfile.shadowResolution,
+                ShadowDistance = currentProfile.shadowDistance,
+                ShadowCascadeCount = currentProfile.shadowCascadeCount,
+                ShadowSoftShadows = currentProfile.shadowSoftShadows,
 
                 // Skybox
                 SkyboxAtmosphereThickness = currentProfile.skyboxAtmosphereThickness,
@@ -901,6 +944,50 @@ public static class ReskinProfileManager
         swappers.PuckFXSwapper.ApplyAll();
     }
 
+    /// <summary>
+    /// Resets only the team color properties of the current profile
+    /// to their default values and saves the profile.
+    /// </summary>
+    public static void ResetTeamColorsToDefault()
+    {
+        Plugin.Log("Resetting team color settings to their default values.");
+
+        var defaultValues = new Profile();
+
+        currentProfile.teamColorsEnabled = defaultValues.teamColorsEnabled;
+        currentProfile.blueTeamColor = defaultValues.blueTeamColor;
+        currentProfile.redTeamColor = defaultValues.redTeamColor;
+        currentProfile.teamIndicatorEnabled = defaultValues.teamIndicatorEnabled;
+        currentProfile.blueTeamName = defaultValues.blueTeamName;
+        currentProfile.redTeamName = defaultValues.redTeamName;
+
+        SaveProfile();
+
+        swappers.TeamIndicatorSwapper.UpdateVisibility();
+        ToasterReskinLoaderAPI.NotifyTeamColorsChanged();
+    }
+
+    /// <summary>
+    /// Resets only the shadow-related properties of the current profile
+    /// to their default values and saves the profile.
+    /// </summary>
+    public static void ResetShadowsToDefault()
+    {
+        Plugin.Log("Resetting shadow settings to their default values.");
+
+        var defaultValues = new Profile();
+
+        currentProfile.crispyShadowsEnabled = defaultValues.crispyShadowsEnabled;
+        currentProfile.shadowResolution = defaultValues.shadowResolution;
+        currentProfile.shadowDistance = defaultValues.shadowDistance;
+        currentProfile.shadowCascadeCount = defaultValues.shadowCascadeCount;
+        currentProfile.shadowSoftShadows = defaultValues.shadowSoftShadows;
+
+        SaveProfile();
+
+        swappers.CrispyShadowsSwapper.Apply();
+    }
+
     public class Profile
     {
         // Sticks section
@@ -1011,6 +1098,21 @@ public static class ReskinProfileManager
         public string redGoalieShaftTapeMode = "Unchanged";
         public ReskinRegistry.ReskinEntry redGoalieShaftTape;
         public Color redGoalieShaftTapeColor = Color.white;
+
+        // UI section
+        public bool teamColorsEnabled = false;
+        public Color blueTeamColor = new Color(0.231f, 0.510f, 0.965f, 1f); // #3b82f6
+        public Color redTeamColor = new Color(0.820f, 0.200f, 0.200f, 1f);  // #d13333
+        public bool teamIndicatorEnabled = false;
+        public string blueTeamName = "";
+        public string redTeamName = "";
+
+        // Shadows section (CrispyShadows)
+        public bool crispyShadowsEnabled = true;
+        public int shadowResolution = 8192;
+        public float shadowDistance = 50f;
+        public int shadowCascadeCount = 4;
+        public bool shadowSoftShadows = true;
 
         // Skybox section
         public float skyboxAtmosphereThickness = 1;
@@ -1255,6 +1357,32 @@ public static class ReskinProfileManager
         public ReskinReference PuckRef { get; set; }
         [JsonProperty("puckListRef")]
         public List<ReskinReference> PuckListRef { get; set; } = new List<ReskinReference>();
+
+        // TEAM COLORS
+        [JsonProperty("teamColorsEnabled")]
+        public bool? TeamColorsEnabled { get; set; }
+        [JsonProperty("blueTeamColor")]
+        public SerializableColor BlueTeamColor { get; set; }
+        [JsonProperty("redTeamColor")]
+        public SerializableColor RedTeamColor { get; set; }
+        [JsonProperty("teamIndicatorEnabled")]
+        public bool? TeamIndicatorEnabled { get; set; }
+        [JsonProperty("blueTeamName")]
+        public string BlueTeamName { get; set; }
+        [JsonProperty("redTeamName")]
+        public string RedTeamName { get; set; }
+
+        // SHADOWS (CrispyShadows)
+        [JsonProperty("crispyShadowsEnabled")]
+        public bool? CrispyShadowsEnabled { get; set; }
+        [JsonProperty("shadowResolution")]
+        public int? ShadowResolution { get; set; }
+        [JsonProperty("shadowDistance")]
+        public float? ShadowDistance { get; set; }
+        [JsonProperty("shadowCascadeCount")]
+        public int? ShadowCascadeCount { get; set; }
+        [JsonProperty("shadowSoftShadows")]
+        public bool? ShadowSoftShadows { get; set; }
 
         // SKYBOX
         [JsonProperty("skyboxAtmosphereThickness")]
