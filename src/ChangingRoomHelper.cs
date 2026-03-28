@@ -189,6 +189,12 @@ public static class ChangingRoomHelper
         }
     }
 
+    /// <summary>
+    /// Applies helmet/mask/cage color overrides. The head hierarchy contains these renderers:
+    ///   Goalie: "Helmet Cage &amp; Neck Guard (Goalie)" (main shell), "Cage", "Neck Guard"
+    ///   Skater: "Helmet ..." (excludes cage/neck variants)
+    /// Colors are only applied when no custom texture is set for that piece.
+    /// </summary>
     private static void ApplyHelmetColors(PlayerMesh playerMesh, PlayerTeam team, PlayerRole role)
     {
         if (playerMesh.PlayerHead == null) return;

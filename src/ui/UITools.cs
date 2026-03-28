@@ -380,4 +380,17 @@ public static class UITools
 
         return mainContainer;
     }
+
+    /// <summary>
+    /// Enables or disables a list of controls with a visual opacity change.
+    /// Used by sections with a master toggle that grays out dependent controls.
+    /// </summary>
+    public static void UpdateDependentControlsState(List<VisualElement> controls, bool enabled)
+    {
+        foreach (var control in controls)
+        {
+            control.SetEnabled(enabled);
+            control.style.opacity = enabled ? 1f : 0.5f;
+        }
+    }
 }

@@ -22,31 +22,31 @@ public static class TextureManager
     public static Texture2D GetTexture(ReskinRegistry.ReskinEntry reskinEntry)
     {
         if (reskinEntry == null || string.IsNullOrEmpty(reskinEntry.Path))
-        {
-            return null; // No entry, no texture.
-        }
+            return null;
 
-        // 1. Check if the texture is already cached.
-        if (_loadedTextures.TryGetValue(reskinEntry.Path, out var cachedTexture))
+        return GetTextureByPath(reskinEntry.Path, reskinEntry.Name);
+    }
+
+    /// <summary>
+    /// Shared cache-check-and-load logic used by both GetTexture and GetTextureFromFilePath.
+    /// </summary>
+    private static Texture2D GetTextureByPath(string path, string displayName)
+    {
+        // Check if the texture is already cached
+        if (_loadedTextures.TryGetValue(path, out var cachedTexture))
         {
-            // Return the cached texture if it's not null (it might have been destroyed)
             if (cachedTexture != null)
-            {
                 return cachedTexture;
-            }
-            // If it was destroyed but still in the dictionary, remove it and proceed to load.
-            _loadedTextures.Remove(reskinEntry.Path);
+
+            // Texture was destroyed but still in dictionary - remove and reload
+            _loadedTextures.Remove(path);
         }
 
-        // 2. If not cached, load it from disk.
-        Plugin.LogDebug($"Cache miss for '{reskinEntry.Name}'. Loading texture from: {reskinEntry.Path}");
-        Texture2D newTexture = LoadTextureFromFile(reskinEntry.Path);
+        Plugin.LogDebug($"Cache miss for '{displayName}'. Loading texture from: {path}");
+        Texture2D newTexture = LoadTextureFromFile(path);
 
         if (newTexture != null)
-        {
-            // 3. Add the newly loaded texture to the cache.
-            _loadedTextures[reskinEntry.Path] = newTexture;
-        }
+            _loadedTextures[path] = newTexture;
 
         return newTexture;
     }
@@ -98,29 +98,8 @@ public static class TextureManager
 
     public static Texture2D GetTextureFromFilePath(string filePath)
     {
-        // 1. Check if the texture is already cached.
-        if (_loadedTextures.TryGetValue(filePath, out var cachedTexture))
-        {
-            // Return the cached texture if it's not null (it might have been destroyed)
-            if (cachedTexture != null)
-            {
-                return cachedTexture;
-            }
-            // If it was destroyed but still in the dictionary, remove it and proceed to load.
-            _loadedTextures.Remove(filePath);
-        }
-
-        // 2. If not cached, load it from disk.
-        Plugin.LogDebug($"Cache miss for '{filePath}'. Loading texture from: {filePath}");
-        Texture2D newTexture = LoadTextureFromFile(filePath);
-
-        if (newTexture != null)
-        {
-            // 3. Add the newly loaded texture to the cache.
-            _loadedTextures[filePath] = newTexture;
-        }
-
-        return newTexture;
+        if (string.IsNullOrEmpty(filePath)) return null;
+        return GetTextureByPath(filePath, filePath);
     }
     
     /// <summary>

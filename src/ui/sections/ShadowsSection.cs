@@ -50,7 +50,7 @@ public static class ShadowsSection
             ReskinProfileManager.currentProfile.crispyShadowsEnabled = evt.newValue;
             ReskinProfileManager.SaveProfile();
             CrispyShadowsSwapper.Apply();
-            UpdateDependentControlsState(dependentControls, evt.newValue);
+            UITools.UpdateDependentControlsState(dependentControls, evt.newValue);
         });
         enableRow.Add(enableToggle);
         contentScrollViewContent.Add(enableRow);
@@ -182,15 +182,7 @@ public static class ShadowsSection
         contentScrollViewContent.Add(resetButton);
 
         // Set initial state of dependent controls
-        UpdateDependentControlsState(dependentControls, ReskinProfileManager.currentProfile.crispyShadowsEnabled);
+        UITools.UpdateDependentControlsState(dependentControls, ReskinProfileManager.currentProfile.crispyShadowsEnabled);
     }
 
-    private static void UpdateDependentControlsState(List<VisualElement> controls, bool enabled)
-    {
-        foreach (var control in controls)
-        {
-            control.SetEnabled(enabled);
-            control.style.opacity = enabled ? 1f : 0.5f;
-        }
-    }
 }

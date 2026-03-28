@@ -98,10 +98,6 @@ public static class ArenaSwapper
         "Rafter Edge",
 
         "Doors",
-        // "Light Row",
-        // "Light Row.001",
-        // "Light Row.002",
-        // "Light Row.003",
         "Small Roof Rafters",
         "Small Side Rafters",
         "Window Borders",
@@ -136,193 +132,96 @@ public static class ArenaSwapper
         "spectator_booth"
     };
 
-    private static void HideCrowdObjects()
+    /// <summary>
+    /// Finds all GameObjects matching the given names, adds them to the tracking list,
+    /// deactivates them, and optionally runs an extra action on each (e.g. disable renderers).
+    /// </summary>
+    private static void HideObjectsByName(string[] names, List<GameObject> trackingList,
+        Action<GameObject> onHide = null)
     {
-        // Find all GameObjects in the scene
         UnityEngine.Object[] allObjects =
             UnityEngine.Object.FindObjectsByType(typeof(GameObject), FindObjectsSortMode.None);
 
-        // Iterate through all objects
         foreach (Object obj in allObjects)
         {
-            // Try to cast the object to a GameObject
             GameObject gameObject = (GameObject)obj;
             if (gameObject == null || gameObject.transform == null)
-            {
                 continue;
-            }
 
-            if (namesOfCrowdObjects.Contains(gameObject.name))
+            if (names.Contains(gameObject.name))
             {
-                if (!hiddenCrowdObjects.Contains(gameObject))
-                    hiddenCrowdObjects.Add(gameObject);
+                if (!trackingList.Contains(gameObject))
+                    trackingList.Add(gameObject);
+                onHide?.Invoke(gameObject);
                 gameObject.SetActive(false);
             }
         }
     }
 
-    private static void ShowCrowdObjects()
+    /// <summary>
+    /// Re-activates all objects in the tracking list and optionally runs an extra action
+    /// on each (e.g. re-enable renderers), then clears the list.
+    /// </summary>
+    private static void ShowTrackedObjects(List<GameObject> trackingList,
+        Action<GameObject> onShow = null)
     {
-        foreach (GameObject obj in hiddenCrowdObjects)
-        {
-            obj.SetActive(true);
-        }
-
-        hiddenCrowdObjects.Clear();
-    }
-
-    public static void HideOutdoorObjects()
-    {
-        // Find all GameObjects in the scene
-        UnityEngine.Object[] allObjects =
-            UnityEngine.Object.FindObjectsByType(typeof(GameObject), FindObjectsSortMode.None);
-
-        // Iterate through all objects
-        foreach (Object obj in allObjects)
-        {
-            // Try to cast the object to a GameObject
-            GameObject gameObject = (GameObject)obj;
-            if (gameObject == null || gameObject.transform == null)
-            {
-                continue;
-            }
-
-            if (namesOfOutdoorObjects.Contains(gameObject.name))
-            {
-                if (!hiddenOutdoorObjects.Contains(gameObject))
-                    hiddenOutdoorObjects.Add(gameObject);
-                gameObject.SetActive(false);
-
-                MeshRenderer mr = gameObject.GetComponent<MeshRenderer>();
-                if (mr != null)
-                {
-                    mr.enabled = false;
-                }
-            }
-        }
-    }
-
-    public static void ShowOutdoorObjects()
-    {
-        foreach (GameObject obj in hiddenOutdoorObjects)
+        foreach (GameObject obj in trackingList)
         {
             if (obj == null || obj.transform == null) continue;
             obj.SetActive(true);
-            MeshRenderer mr = obj.GetComponent<MeshRenderer>();
-            if (mr != null)
-            {
-                mr.enabled = true;
-            }
+            onShow?.Invoke(obj);
         }
 
-        hiddenOutdoorObjects.Clear();
+        trackingList.Clear();
     }
 
-    public static void HideScoreboardObjects()
+    private static void SetMeshRendererEnabled(GameObject go, bool enabled)
     {
-        // Find all GameObjects in the scene
-        UnityEngine.Object[] allObjects =
-            UnityEngine.Object.FindObjectsByType(typeof(GameObject), FindObjectsSortMode.None);
-
-        // Iterate through all objects
-        foreach (Object obj in allObjects)
-        {
-            // Try to cast the object to a GameObject
-            GameObject gameObject = (GameObject)obj;
-            if (gameObject == null || gameObject.transform == null)
-            {
-                continue;
-            }
-
-            if (namesOfScoreboardObjects.Contains(gameObject.name))
-            {
-                if (!hiddenScoreboardObjects.Contains(gameObject))
-                    hiddenScoreboardObjects.Add(gameObject);
-                if (gameObject.GetComponent<Scoreboard>() != null)
-                {
-                    Scoreboard scoreboard = gameObject.GetComponent<Scoreboard>();
-                    scoreboard.TurnOff();
-                }
-                gameObject.SetActive(false);
-
-                // Disable all renderers including children (score digits, etc.)
-                foreach (var r in gameObject.GetComponentsInChildren<Renderer>(true))
-                {
-                    r.enabled = false;
-                }
-            }
-        }
+        MeshRenderer mr = go.GetComponent<MeshRenderer>();
+        if (mr != null) mr.enabled = enabled;
     }
 
-    public static void ShowScoreboardObjects()
+    private static void SetAllRenderersEnabled(GameObject go, bool enabled)
     {
-        foreach (GameObject obj in hiddenScoreboardObjects)
-        {
-            if (obj == null || obj.transform == null) continue;
-            obj.SetActive(true);
-
-            // Re-enable all renderers including children (score digits, etc.)
-            foreach (var r in obj.GetComponentsInChildren<Renderer>(true))
-            {
-                r.enabled = true;
-            }
-
-            if (obj.GetComponent<Scoreboard>() != null)
-            {
-                Scoreboard scoreboard = obj.GetComponent<Scoreboard>();
-                scoreboard.TurnOn();
-            }
-        }
-
-        hiddenScoreboardObjects.Clear();
+        foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+            r.enabled = enabled;
     }
 
-    public static void HideGlassObjects()
-    {
-        // Find all GameObjects in the scene
-        UnityEngine.Object[] allObjects =
-            UnityEngine.Object.FindObjectsByType(typeof(GameObject), FindObjectsSortMode.None);
+    private static void HideCrowdObjects() =>
+        HideObjectsByName(namesOfCrowdObjects, hiddenCrowdObjects);
 
-        // Iterate through all objects
-        foreach (Object obj in allObjects)
+    private static void ShowCrowdObjects() =>
+        ShowTrackedObjects(hiddenCrowdObjects);
+
+    public static void HideOutdoorObjects() =>
+        HideObjectsByName(namesOfOutdoorObjects, hiddenOutdoorObjects,
+            go => SetMeshRendererEnabled(go, false));
+
+    public static void ShowOutdoorObjects() =>
+        ShowTrackedObjects(hiddenOutdoorObjects,
+            go => SetMeshRendererEnabled(go, true));
+
+    public static void HideScoreboardObjects() =>
+        HideObjectsByName(namesOfScoreboardObjects, hiddenScoreboardObjects, go =>
         {
-            // Try to cast the object to a GameObject
-            GameObject gameObject = (GameObject)obj;
-            if (gameObject == null || gameObject.transform == null)
-            {
-                continue;
-            }
+            go.GetComponent<Scoreboard>()?.TurnOff();
+            SetAllRenderersEnabled(go, false);
+        });
 
-            if (namesOfGlassObjects.Contains(gameObject.name))
-            {
-                if (!hiddenGlassObjects.Contains(gameObject))
-                    hiddenGlassObjects.Add(gameObject);
-                gameObject.SetActive(false);
-
-                MeshRenderer mr = gameObject.GetComponent<MeshRenderer>();
-                if (mr != null)
-                {
-                    mr.enabled = false;
-                }
-            }
-        }
-    }
-
-    public static void ShowGlassObjects()
-    {
-        foreach (GameObject obj in hiddenGlassObjects)
+    public static void ShowScoreboardObjects() =>
+        ShowTrackedObjects(hiddenScoreboardObjects, go =>
         {
-            if (obj == null || obj.transform == null) continue;
-            obj.SetActive(true);
-            MeshRenderer mr = obj.GetComponent<MeshRenderer>();
-            if (mr != null)
-            {
-                mr.enabled = true;
-            }
-        }
+            SetAllRenderersEnabled(go, true);
+            go.GetComponent<Scoreboard>()?.TurnOn();
+        });
 
-        hiddenGlassObjects.Clear();
-    }
+    public static void HideGlassObjects() =>
+        HideObjectsByName(namesOfGlassObjects, hiddenGlassObjects,
+            go => SetMeshRendererEnabled(go, false));
+
+    public static void ShowGlassObjects() =>
+        ShowTrackedObjects(hiddenGlassObjects,
+            go => SetMeshRendererEnabled(go, true));
 
     [HarmonyPatch(typeof(SpectatorManager), nameof(SpectatorManager.RegisterSpectatorPosition))]
     public static class SpectatorManagerRegisterSpectatorPosition
@@ -334,74 +233,33 @@ public static class ArenaSwapper
         }
     }
 
+    private static void SetGameObjectColor(string gameObjectName, Color color)
+    {
+        GameObject go = GameObject.Find(gameObjectName);
+        if (go == null)
+        {
+            Plugin.LogError($"Could not locate {gameObjectName} GameObject.");
+            return;
+        }
+
+        MeshRenderer mr = go.GetComponent<MeshRenderer>();
+        if (mr == null)
+        {
+            Plugin.LogError($"No MeshRenderer found on GameObject {gameObjectName}.");
+            return;
+        }
+
+        mr.material.SetColor("_BaseColor", color);
+        mr.material.SetColor("_Color", color);
+    }
+
     public static void UpdateBoards()
     {
         try
         {
-            // middle
-            GameObject barrierGameObject = GameObject.Find("Barrier");
-
-            if (barrierGameObject == null)
-            {
-                Plugin.LogError($"Could not locate Barrier GameObject.");
-                return;
-            }
-
-            MeshRenderer barrierMeshRenderer = barrierGameObject.GetComponent<MeshRenderer>();
-
-            if (barrierMeshRenderer == null)
-            {
-                Plugin.LogError("No MeshRenderer found on GameObject Barrier.");
-                return;
-            }
-
-            barrierMeshRenderer.material.SetColor("_BaseColor", ReskinProfileManager.currentProfile.boardsMiddleColor);
-            barrierMeshRenderer.material.SetColor("_Color", ReskinProfileManager.currentProfile.boardsMiddleColor);
-
-            // top
-            GameObject barrierBorderTopGameObject = GameObject.Find("Barrier Top Border");
-
-            if (barrierBorderTopGameObject == null)
-            {
-                Plugin.LogError($"Could not locate Barrier Top Border GameObject.");
-                return;
-            }
-
-            MeshRenderer barrierBorderTopMeshRenderer = barrierBorderTopGameObject.GetComponent<MeshRenderer>();
-
-            if (barrierBorderTopMeshRenderer == null)
-            {
-                Plugin.LogError("No MeshRenderer found on GameObject Barrier Top Border.");
-                return;
-            }
-
-            barrierBorderTopMeshRenderer.material.SetColor("_BaseColor",
-                ReskinProfileManager.currentProfile.boardsBorderTopColor);
-            barrierBorderTopMeshRenderer.material.SetColor("_Color",
-                ReskinProfileManager.currentProfile.boardsBorderTopColor);
-
-            // bottom
-            GameObject barrierBorderBottomGameObject = GameObject.Find("Barrier Bottom Border");
-
-            if (barrierBorderBottomGameObject == null)
-            {
-                Plugin.LogError($"Could not locate Barrier Bottom Border GameObject.");
-                return;
-            }
-
-            MeshRenderer barrierBorderBottomMeshRenderer = barrierBorderBottomGameObject.GetComponent<MeshRenderer>();
-
-            if (barrierBorderBottomMeshRenderer == null)
-            {
-                Plugin.LogError("No MeshRenderer found on GameObject Barrier Bottom Border.");
-                return;
-            }
-
-            barrierBorderBottomMeshRenderer.material.SetColor("_BaseColor",
-                ReskinProfileManager.currentProfile.boardsBorderBottomColor);
-            barrierBorderBottomMeshRenderer.material.SetColor("_Color",
-                ReskinProfileManager.currentProfile.boardsBorderBottomColor);
-            return;
+            SetGameObjectColor("Barrier", ReskinProfileManager.currentProfile.boardsMiddleColor);
+            SetGameObjectColor("Barrier Top Border", ReskinProfileManager.currentProfile.boardsBorderTopColor);
+            SetGameObjectColor("Barrier Bottom Border", ReskinProfileManager.currentProfile.boardsBorderBottomColor);
         }
         catch (Exception e)
         {
@@ -546,7 +404,6 @@ public static class ArenaSwapper
                     if (reskinEntry == null || reskinEntry.Path == null)
                     {
                         netMeshRenderer.material.SetTexture("_BaseMap", _netOriginalTexture);
-                        // Plugin.Log("Texture applied to property: _BaseMap");
                     }
                     else
                     {

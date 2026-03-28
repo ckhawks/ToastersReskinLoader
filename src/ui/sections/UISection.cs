@@ -31,7 +31,7 @@ public static class UISection
             ArenaSwapper.UpdateGoalFrameColors();
             TeamIndicatorSwapper.UpdateVisibility();
             ToasterReskinLoaderAPI.NotifyTeamColorsChanged();
-            UpdateDependentControlsState(dependentControls, evt.newValue);
+            UITools.UpdateDependentControlsState(dependentControls, evt.newValue);
         });
         enableRow.Add(enableToggle);
         contentScrollViewContent.Add(enableRow);
@@ -176,17 +176,10 @@ public static class UISection
         contentScrollViewContent.Add(resetButton);
 
         // Set initial state
-        UpdateDependentControlsState(dependentControls, ReskinProfileManager.currentProfile.teamColorsEnabled);
+        UITools.UpdateDependentControlsState(dependentControls, ReskinProfileManager.currentProfile.teamColorsEnabled);
     }
 
-    private static void UpdateDependentControlsState(List<VisualElement> controls, bool enabled)
-    {
-        foreach (var control in controls)
-        {
-            control.SetEnabled(enabled);
-            control.style.opacity = enabled ? 1f : 0.5f;
-        }
-    }
+
 
     private static TextField CreateTextInput(string value, string placeholder, System.Action<string> onChanged)
     {

@@ -262,7 +262,7 @@ namespace ToasterReskinLoader
                     var texture = TextureManager.GetTexture(torsoEntry);
                     if (texture != null)
                     {
-                        ApplyTextureToPlayerTorso(playerMesh.PlayerTorso, texture);
+                        ApplyTextureToComponent(playerMesh.PlayerTorso, texture);
                     }
                 }
 
@@ -271,7 +271,7 @@ namespace ToasterReskinLoader
                     var texture = TextureManager.GetTexture(groinEntry);
                     if (texture != null)
                     {
-                        ApplyTextureToPlayerGroin(playerMesh.PlayerGroin, texture);
+                        ApplyTextureToComponent(playerMesh.PlayerGroin, texture);
                     }
                 }
             }
@@ -281,34 +281,15 @@ namespace ToasterReskinLoader
             }
         }
 
-        private static void ApplyTextureToPlayerTorso(PlayerTorso playerTorso, Texture2D texture)
+        private static void ApplyTextureToComponent(Component component, Texture2D texture)
         {
-            var meshRendererTexturer = playerTorso.GetComponent<MeshRendererTexturer>();
+            var meshRendererTexturer = component.GetComponent<MeshRendererTexturer>();
             if (meshRendererTexturer != null)
-            {
                 meshRendererTexturer.SetTexture(texture);
-            }
 
-            var renderer = playerTorso.GetComponent<Renderer>();
+            var renderer = component.GetComponent<Renderer>();
             if (renderer != null && renderer.material != null)
-            {
                 SwapperUtils.ApplyTextureToMaterial(renderer.material, texture);
-            }
-        }
-
-        private static void ApplyTextureToPlayerGroin(PlayerGroin playerGroin, Texture2D texture)
-        {
-            var meshRendererTexturer = playerGroin.GetComponent<MeshRendererTexturer>();
-            if (meshRendererTexturer != null)
-            {
-                meshRendererTexturer.SetTexture(texture);
-            }
-
-            var renderer = playerGroin.GetComponent<Renderer>();
-            if (renderer != null && renderer.material != null)
-            {
-                SwapperUtils.ApplyTextureToMaterial(renderer.material, texture);
-            }
         }
     }
 }

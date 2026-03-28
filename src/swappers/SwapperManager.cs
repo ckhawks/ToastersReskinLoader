@@ -153,28 +153,13 @@ public static class SwapperManager
         SetAll();
     }
 
-    // Update each jersey texture (torso and groin) for all blue team players
-    public static void OnBlueJerseyChanged()
-    {
-        List<Player> bluePlayers = PlayerManager.Instance.GetPlayersByTeam(PlayerTeam.Blue);
-        foreach (Player player in bluePlayers)
-        {
-            try
-            {
-                JerseySwapper.SetJerseyForPlayer(player);
-            }
-            catch (Exception e)
-            {
-                Plugin.LogError($"Error when setting jersey for {player.Username.Value}: {e.Message}");
-            }
-        }
-    }
+    public static void OnBlueJerseyChanged() => OnJerseyChanged(PlayerTeam.Blue);
+    public static void OnRedJerseyChanged() => OnJerseyChanged(PlayerTeam.Red);
 
-    // Update each jersey texture (torso and groin) for all red team players
-    public static void OnRedJerseyChanged()
+    private static void OnJerseyChanged(PlayerTeam team)
     {
-        List<Player> redPlayers = PlayerManager.Instance.GetPlayersByTeam(PlayerTeam.Red);
-        foreach (Player player in redPlayers)
+        List<Player> players = PlayerManager.Instance.GetPlayersByTeam(team);
+        foreach (Player player in players)
         {
             try
             {

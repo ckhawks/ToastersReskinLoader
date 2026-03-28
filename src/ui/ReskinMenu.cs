@@ -147,16 +147,7 @@ public static class ReskinMenu
         reloadButton.style.paddingTop = 8;
         reloadButton.style.paddingRight = 8;
         reloadButton.style.paddingBottom = 8;
-        reloadButton.RegisterCallback<MouseEnterEvent>(new EventCallback<MouseEnterEvent>((evt) =>
-        {
-            reloadButton.style.backgroundColor = Color.white;
-            reloadButton.style.color = Color.black;
-        }));
-        reloadButton.RegisterCallback<MouseLeaveEvent>(new EventCallback<MouseLeaveEvent>((evt) =>
-        {
-            reloadButton.style.backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f));
-            reloadButton.style.color = Color.white;
-        }));
+        UITools.AddHoverEffectsForButton(reloadButton);
         reloadButton.RegisterCallback<ClickEvent>(new EventCallback<ClickEvent>(ReloadButtonClickHandler));
         void ReloadButtonClickHandler(ClickEvent evt)
         {
@@ -321,16 +312,7 @@ public static class ReskinMenu
         closeButton.style.paddingBottom = 12;
         closeButton.style.paddingLeft = 16;
         closeButton.style.paddingRight = 16;
-        closeButton.RegisterCallback<MouseEnterEvent>(new EventCallback<MouseEnterEvent>((evt) =>
-        {
-            closeButton.style.backgroundColor = Color.white;
-            closeButton.style.color = Color.black;
-        }));
-        closeButton.RegisterCallback<MouseLeaveEvent>(new EventCallback<MouseLeaveEvent>((evt) =>
-        {
-            closeButton.style.backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f));
-            closeButton.style.color = Color.white;
-        }));
+        UITools.AddHoverEffectsForButton(closeButton);
         closeButton.RegisterCallback<ClickEvent>(QuickChatPlusSettingsCloseButtonClickHandler);
         
         bottomRow.Add(closeButton);
