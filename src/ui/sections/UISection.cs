@@ -30,6 +30,7 @@ public static class UISection
             ReskinProfileManager.SaveProfile();
             ArenaSwapper.UpdateGoalFrameColors();
             TeamIndicatorSwapper.UpdateVisibility();
+            TeamColorSwapper.RefreshAll();
             ToasterReskinLoaderAPI.NotifyTeamColorsChanged();
             UITools.UpdateDependentControlsState(dependentControls, evt.newValue);
         });
@@ -46,6 +47,7 @@ public static class UISection
                 ReskinProfileManager.currentProfile.blueTeamColor = newColor;
                 ArenaSwapper.UpdateGoalFrameColors();
                 TeamIndicatorSwapper.UpdateVisibility();
+                TeamColorSwapper.RefreshAll();
                 ToasterReskinLoaderAPI.NotifyTeamColorsChanged();
             },
             () => { ReskinProfileManager.SaveProfile(); }
@@ -63,6 +65,7 @@ public static class UISection
                 ReskinProfileManager.currentProfile.redTeamColor = newColor;
                 ArenaSwapper.UpdateGoalFrameColors();
                 TeamIndicatorSwapper.UpdateVisibility();
+                TeamColorSwapper.RefreshAll();
                 ToasterReskinLoaderAPI.NotifyTeamColorsChanged();
             },
             () => { ReskinProfileManager.SaveProfile(); }
@@ -167,6 +170,10 @@ public static class UISection
         resetButton.RegisterCallback<ClickEvent>(evt =>
         {
             ReskinProfileManager.ResetTeamColorsToDefault();
+            ArenaSwapper.UpdateGoalFrameColors();
+            TeamIndicatorSwapper.UpdateVisibility();
+            TeamColorSwapper.RefreshAll();
+            ToasterReskinLoaderAPI.NotifyTeamColorsChanged();
 
             Label title = (Label)contentScrollViewContent.Children().ToArray()[0];
             contentScrollViewContent.Clear();

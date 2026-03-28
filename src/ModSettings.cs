@@ -6,7 +6,10 @@ namespace ToasterReskinLoader;
 public class ModSettings
 {
     public bool DebugLoggingModeEnabled { get; set; } = false;
-    public bool BigHeadsEnabled { get; set; } = true;
+    public bool BigHeadsEnabled { get; set; } = false;
+    public bool ShowPersonalization { get; set; } = true;
+    public bool ShowOtherPlayersHats { get; set; } = true;
+    public bool ShowNonNaturalSkinTones { get; set; } = true;
 
     static string ConfigurationFileName = $"{Plugin.MOD_NAME}.json";
 

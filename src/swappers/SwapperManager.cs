@@ -109,6 +109,19 @@ public static class SwapperManager
         }
     }
 
+    // Clear cached appearance when a player leaves so we re-fetch if they rejoin
+    [HarmonyPatch(typeof(PlayerManager), nameof(PlayerManager.RemovePlayer))]
+    public static class PlayerManagerRemovePlayerPatch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Player player)
+        {
+            if (player == null || player.IsLocalPlayer) return;
+            string steamId = player.SteamId.Value.ToString();
+            AppearanceAPI.OnPlayerLeft(steamId);
+        }
+    }
+
     // This patch makes the stick change when a player spawns
     [HarmonyPatch(typeof(Stick), nameof(Stick.ApplyCustomizations))]
     public static class StickApplyCustomizationsPatch

@@ -288,8 +288,19 @@ public static class AppearanceAPI
             Plugin.Log($"[AppearanceAPI] Cached {appearanceCache.Count} player appearances");
 
             // Apply to any already-spawned players
-            ApplyToAllSpawnedPlayers();
+            ReapplyAllAppearances();
         });
+    }
+
+    /// <summary>
+    /// Called when a player disconnects. Clears their cached appearance so it
+    /// will be re-fetched if they rejoin (they may have changed it while away).
+    /// </summary>
+    public static void OnPlayerLeft(string steamId)
+    {
+        if (string.IsNullOrEmpty(steamId)) return;
+        appearanceCache.Remove(steamId);
+        requestedIds.Remove(steamId);
     }
 
     /// <summary>
@@ -368,7 +379,11 @@ public static class AppearanceAPI
         return ids;
     }
 
-    private static void ApplyToAllSpawnedPlayers()
+    /// <summary>
+    /// Re-applies cached appearances to all spawned players.
+    /// Call when display settings change (e.g. show/hide hats or skin tones).
+    /// </summary>
+    public static void ReapplyAllAppearances()
     {
         try
         {
@@ -420,15 +435,21 @@ public static class AppearanceAPI
 
         try
         {
-            // Apply body type (player-keyed so each player tracks their own spawned objects)
+            if (!Plugin.modSettings.ShowPersonalization)
+            {
+                ResetPlayerToDefaults(player);
+                return;
+            }
+
             GenderSwapper.ApplyToPlayer(player, data.bodyType == 1);
 
-            // Apply skin tone + hair color
-            GenderSwapper.ApplyHeadColors(player.PlayerBody.PlayerMesh.PlayerHead, data.skinTone, data.hairColor);
+            Color skinTone = data.skinTone;
+            if (!Plugin.modSettings.ShowNonNaturalSkinTones && !IsNaturalSkinTone(skinTone))
+                skinTone = GetRandomNaturalTone(player.SteamId.Value.ToString());
+            GenderSwapper.ApplyHeadColors(player.PlayerBody.PlayerMesh.PlayerHead, skinTone, data.hairColor);
 
-            // Apply hat
-            ulong clientId = player.OwnerClientId;
-            HatSwapper.AttachToPlayer(player, data.hatId);
+            if (Plugin.modSettings.ShowOtherPlayersHats)
+                HatSwapper.AttachToPlayer(player, data.hatId);
 
             Plugin.LogDebug($"[AppearanceAPI] Applied appearance to {player.Username.Value}: body={data.bodyType}, hat={data.hatId}");
         }
@@ -436,6 +457,45 @@ public static class AppearanceAPI
         {
             Plugin.LogError($"[AppearanceAPI] Error applying appearance: {e.Message}");
         }
+    }
+
+    // The game's default head/facial hair color (vanilla untinted white)
+    private static readonly Color VANILLA_SKIN_COLOR = Color.white;
+    private static readonly Color VANILLA_HAIR_COLOR = Color.white;
+
+    private static void ResetPlayerToDefaults(Player player)
+    {
+        if (player?.PlayerBody?.PlayerMesh == null) return;
+
+        // Reset to male body
+        GenderSwapper.ApplyToPlayer(player, false);
+        // Reset skin + facial hair to vanilla colors
+        GenderSwapper.ApplyHeadColors(player.PlayerBody.PlayerMesh.PlayerHead, VANILLA_SKIN_COLOR, VANILLA_HAIR_COLOR);
+        // Remove hat
+        HatSwapper.RemoveFromPlayer(player.OwnerClientId);
+    }
+
+    /// <summary>
+    /// Returns a consistent random natural skin tone for a given steam ID,
+    /// so the same player always gets the same fallback tone within a session.
+    /// </summary>
+    private static Color GetRandomNaturalTone(string steamId)
+    {
+        int hash = steamId.GetHashCode();
+        int index = ((hash % GenderSwapper.SKIN_TONES.Length) + GenderSwapper.SKIN_TONES.Length) % GenderSwapper.SKIN_TONES.Length;
+        return GenderSwapper.SKIN_TONES[index];
+    }
+
+    private static bool IsNaturalSkinTone(Color c)
+    {
+        foreach (var natural in GenderSwapper.SKIN_TONES)
+        {
+            if (Mathf.Abs(c.r - natural.r) < 0.05f &&
+                Mathf.Abs(c.g - natural.g) < 0.05f &&
+                Mathf.Abs(c.b - natural.b) < 0.05f)
+                return true;
+        }
+        return false;
     }
 
     // ==================== SERIALIZATION ====================

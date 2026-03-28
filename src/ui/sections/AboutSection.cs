@@ -1,7 +1,7 @@
-﻿using ToasterReskinLoader.swappers;
+﻿using ToasterReskinLoader.api;
+using ToasterReskinLoader.swappers;
 using UnityEngine;
 using UnityEngine.UIElements;
-using Object = UnityEngine.Object;
 
 namespace ToasterReskinLoader.ui.sections;
 
@@ -103,78 +103,52 @@ public static class AboutSection
         bigHeadRow.Add(bigHeadToggle);
         contentScrollViewContent.Add(bigHeadRow);
 
-        // Random skin tone button
-        VisualElement skinToneRow = UITools.CreateConfigurationRow();
-        skinToneRow.Add(UITools.CreateConfigurationLabel("Random Skin Tones"));
-        Button skinToneButton = new Button
+        // -- Personalization master toggle + sub-settings --
+        var dependentControls = new System.Collections.Generic.List<VisualElement>();
+
+        VisualElement showPersonalizationRow = UITools.CreateConfigurationRow();
+        showPersonalizationRow.Add(UITools.CreateConfigurationLabel("Show Personalization"));
+        Toggle showPersonalizationToggle = UITools.CreateConfigurationCheckbox(Plugin.modSettings.ShowPersonalization);
+        showPersonalizationToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
         {
-            text = "Randomize",
-            style =
-            {
-                backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f)),
-                paddingLeft = 8,
-                paddingRight = 8,
-                paddingTop = 8,
-                paddingBottom = 8
-            }
-        };
-        UITools.AddHoverEffectsForButton(skinToneButton);
-        skinToneButton.RegisterCallback<ClickEvent>(evt =>
-        {
-            RandomizeSkinTones();
+            Plugin.modSettings.ShowPersonalization = evt.newValue;
+            Plugin.modSettings.Save();
+            UITools.UpdateDependentControlsState(dependentControls, evt.newValue);
+            if (!evt.newValue)
+                HatSwapper.ClearHats();
+            AppearanceAPI.ReapplyAllAppearances();
         });
-        skinToneRow.Add(skinToneButton);
-        contentScrollViewContent.Add(skinToneRow);
-    }
+        showPersonalizationRow.Add(showPersonalizationToggle);
+        contentScrollViewContent.Add(showPersonalizationRow);
 
-    private static void RandomizeSkinTones()
-    {
-        var random = new System.Random();
-        var players = Object.FindObjectsByType<Player>(FindObjectsSortMode.None);
-        foreach (var player in players)
+        VisualElement showHatsRow = UITools.CreateConfigurationRow();
+        showHatsRow.Add(UITools.CreateConfigurationLabel("Show Other Players' Hats"));
+        Toggle showHatsToggle = UITools.CreateConfigurationCheckbox(Plugin.modSettings.ShowOtherPlayersHats);
+        showHatsToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
         {
-            if (player?.PlayerBody?.PlayerMesh?.PlayerHead == null) continue;
+            Plugin.modSettings.ShowOtherPlayersHats = evt.newValue;
+            Plugin.modSettings.Save();
+            if (!evt.newValue)
+                HatSwapper.ClearHats();
+            AppearanceAPI.ReapplyAllAppearances();
+        });
+        showHatsRow.Add(showHatsToggle);
+        contentScrollViewContent.Add(showHatsRow);
+        dependentControls.Add(showHatsRow);
 
-            var renderers = player.PlayerBody.PlayerMesh.PlayerHead.GetComponentsInChildren<Renderer>();
-            foreach (var renderer in renderers)
-            {
-                if (renderer.name == "Head")
-                {
-                    Color randomColor = new Color(
-                        (float)random.NextDouble(),
-                        (float)random.NextDouble(),
-                        (float)random.NextDouble(),
-                        1f);
-                    renderer.material.color = randomColor;
-                    if (renderer.material.HasProperty("_BaseColor"))
-                        renderer.material.SetColor("_BaseColor", randomColor);
-                }
-            }
-        }
-
-        // Also apply to locker room preview
-        if (ChangingRoomHelper.IsInMainMenu())
+        VisualElement showSkinRow = UITools.CreateConfigurationRow();
+        showSkinRow.Add(UITools.CreateConfigurationLabel("Show Non-Natural Skin Tones"));
+        Toggle showSkinToggle = UITools.CreateConfigurationCheckbox(Plugin.modSettings.ShowNonNaturalSkinTones);
+        showSkinToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
         {
-            var playerMesh = ChangingRoomHelper.GetPlayerMesh();
-            if (playerMesh?.PlayerHead != null)
-            {
-                var renderers = playerMesh.PlayerHead.GetComponentsInChildren<Renderer>();
-                foreach (var renderer in renderers)
-                {
-                    if (renderer.name == "Head")
-                    {
-                        Color randomColor = new Color(
-                            (float)random.NextDouble(),
-                            (float)random.NextDouble(),
-                            (float)random.NextDouble(),
-                            1f);
-                        renderer.material.color = randomColor;
-                        if (renderer.material.HasProperty("_BaseColor"))
-                            renderer.material.SetColor("_BaseColor", randomColor);
-                    }
-                }
-            }
-        }
+            Plugin.modSettings.ShowNonNaturalSkinTones = evt.newValue;
+            Plugin.modSettings.Save();
+            AppearanceAPI.ReapplyAllAppearances();
+        });
+        showSkinRow.Add(showSkinToggle);
+        contentScrollViewContent.Add(showSkinRow);
+        dependentControls.Add(showSkinRow);
+
+        UITools.UpdateDependentControlsState(dependentControls, Plugin.modSettings.ShowPersonalization);
     }
-    
 }

@@ -94,6 +94,26 @@ public static class TeamColorSwapper
                     }
                 }
             }
+            // Refresh score HUD text colors
+            var gameState = uiManager.GameState;
+            if (gameState != null)
+            {
+                var blueField = typeof(UIGameState).GetField("blueScoreLabel",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+                var redField = typeof(UIGameState).GetField("redScoreLabel",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+
+                Color? blueColor = GetOverrideColor(PlayerTeam.Blue);
+                Color? redColor = GetOverrideColor(PlayerTeam.Red);
+
+                var blueLabel = (Label)blueField?.GetValue(gameState);
+                if (blueLabel != null)
+                    blueLabel.style.color = blueColor.HasValue ? new StyleColor(blueColor.Value) : StyleKeyword.Null;
+
+                var redLabel = (Label)redField?.GetValue(gameState);
+                if (redLabel != null)
+                    redLabel.style.color = redColor.HasValue ? new StyleColor(redColor.Value) : StyleKeyword.Null;
+            }
         }
         catch (Exception e)
         {
@@ -383,11 +403,59 @@ public static class TeamColorSwapper
                 if (overrideColor == null) return;
 
                 __result = $"<color={ColorToHex(overrideColor.Value)}>{username}</color>";
-                Plugin.LogDebug($"TeamColorSwapper.WrapInTeamColor: {username} -> {ColorToHex(overrideColor.Value)}");
             }
             catch (Exception e)
             {
                 Plugin.LogDebug($"TeamColorSwapper.WrapInTeamColor error: {e.Message}");
+            }
+        }
+    }
+
+    // ── System chat messages (server-sent join/leave/etc) ────────────────
+    // These arrive with color tags already baked in using the default hex
+    // values. Replace them with the custom team colors.
+
+    private const string DEFAULT_BLUE_HEX = "#3b82f6";
+    private const string DEFAULT_RED_HEX = "#d13333";
+
+    [HarmonyPatch(typeof(ChatManager), nameof(ChatManager.AddChatMessage))]
+    public static class ChatManagerAddMessagePatch
+    {
+        [HarmonyPrefix]
+        public static void Prefix(ChatMessage chatMessage)
+        {
+            try
+            {
+                if (!chatMessage.IsSystem) return;
+
+                var profile = ReskinProfileManager.currentProfile;
+                if (profile == null || !profile.teamColorsEnabled) return;
+
+                string content = chatMessage.Content.ToString();
+                bool changed = false;
+
+                string blueHex = ColorToHex(profile.blueTeamColor);
+                string redHex = ColorToHex(profile.redTeamColor);
+
+                if (content.Contains(DEFAULT_BLUE_HEX, StringComparison.OrdinalIgnoreCase) && blueHex != DEFAULT_BLUE_HEX)
+                {
+                    content = content.Replace(DEFAULT_BLUE_HEX, blueHex, StringComparison.OrdinalIgnoreCase);
+                    changed = true;
+                }
+                if (content.Contains(DEFAULT_RED_HEX, StringComparison.OrdinalIgnoreCase) && redHex != DEFAULT_RED_HEX)
+                {
+                    content = content.Replace(DEFAULT_RED_HEX, redHex, StringComparison.OrdinalIgnoreCase);
+                    changed = true;
+                }
+
+                if (changed)
+                {
+                    chatMessage.Content = new Unity.Collections.FixedString512Bytes(content);
+                }
+            }
+            catch (Exception e)
+            {
+                Plugin.LogDebug($"TeamColorSwapper.ChatMessage error: {e.Message}");
             }
         }
     }
