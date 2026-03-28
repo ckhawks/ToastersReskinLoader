@@ -2,6 +2,7 @@ using System;
 using System.Reflection;
 using HarmonyLib;
 using ToasterReskinLoader.swappers;
+using ToasterReskinLoader.ui.sections;
 using UnityEngine;
 
 namespace ToasterReskinLoader
@@ -38,7 +39,7 @@ namespace ToasterReskinLoader
                     ApplyLegPadsToPlayerMesh(playerMesh, team);
 
                     // Apply body model swap to locker room preview
-                    GenderSwapper.ApplyToPlayerMesh(playerMesh, false);
+                    GenderSwapper.ApplyToPlayerMesh(playerMesh, PlayerCustomizationSection.IsFemaleBodyType);
                 }
                 catch (Exception e)
                 {
@@ -71,7 +72,7 @@ namespace ToasterReskinLoader
                         ApplySkaterHelmetToPlayerMesh(playerMesh, team);
                     }
 
-                    PartyHatSwapper.AttachToPlayerMesh(playerMesh);
+                    HatSwapper.AttachToPlayerMesh(playerMesh, PlayerCustomizationSection.SelectedHatId);
                 }
                 catch (Exception e)
                 {

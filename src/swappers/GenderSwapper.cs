@@ -23,11 +23,6 @@ public static class GenderSwapper
     private static Dictionary<ulong, GameObject> spawnedTorsos = new Dictionary<ulong, GameObject>();
     private static Dictionary<ulong, GameObject> spawnedGroins = new Dictionary<ulong, GameObject>();
 
-    // Skin tone + hair color: track assigned colors per player
-    private static Dictionary<ulong, Color> assignedSkinTones = new Dictionary<ulong, Color>();
-    private static Dictionary<ulong, Color> assignedHairColors = new Dictionary<ulong, Color>();
-    private static System.Random colorRng = new System.Random();
-
     public static readonly Color[] SKIN_TONES = new Color[]
     {
         new Color(1.00f, 0.87f, 0.75f), // Light / fair
@@ -49,11 +44,6 @@ public static class GenderSwapper
         new Color(0.62f, 0.22f, 0.10f), // Auburn / red
         new Color(0.75f, 0.75f, 0.75f), // Grey
     };
-
-    // Toggle state for the alternation test
-    private static bool useFemale = true;
-    private static GenderAlternator alternatorInstance;
-    private static int toggleCount = 0;
 
     public static void Initialize()
     {
@@ -82,9 +72,9 @@ public static class GenderSwapper
             }
 
             string[] allAssets = genderBundle.GetAllAssetNames();
-            Plugin.Log($"[Gender] Bundle contains {allAssets.Length} assets:");
+            Plugin.LogDebug($"[Gender] Bundle contains {allAssets.Length} assets");
             foreach (string asset in allAssets)
-                Plugin.Log($"[Gender]   - {asset}");
+                Plugin.LogDebug($"[Gender]   - {asset}");
 
             femaleTorsoPrefab = genderBundle.LoadAsset<GameObject>(FEMALE_TORSO_PATH);
             maleTorsoPrefab = genderBundle.LoadAsset<GameObject>(MALE_TORSO_PATH);
@@ -105,34 +95,6 @@ public static class GenderSwapper
         {
             Plugin.LogError($"[Gender] Error loading asset bundle: {ex.Message}\n{ex.StackTrace}");
             loadFailed = true;
-        }
-    }
-
-    public static void ApplyToPlayer(Player player)
-    {
-        if (femaleTorsoPrefab == null)
-        {
-            Initialize();
-            if (femaleTorsoPrefab == null) return;
-        }
-
-        if (player?.PlayerBody?.PlayerMesh == null)
-            return;
-
-        if (player.IsLocalPlayer)
-            return;
-
-        PlayerTeam team = player.Team;
-        if (team is not (PlayerTeam.Blue or PlayerTeam.Red))
-            return;
-
-        try
-        {
-            ApplyForPlayer(player, useFemale);
-        }
-        catch (Exception ex)
-        {
-            Plugin.LogError($"[Gender] Error applying to {player.Username.Value}: {ex.Message}\n{ex.StackTrace}");
         }
     }
 
@@ -161,14 +123,29 @@ public static class GenderSwapper
         }
     }
 
-    private static void ApplyForPlayer(Player player, bool female)
+    /// <summary>
+    /// Apply body model to an in-game player (uses their clientId as key for tracking spawned objects).
+    /// </summary>
+    public static void ApplyToPlayer(Player player, bool female)
     {
-        ulong clientId = player.OwnerClientId;
-        PlayerMesh playerMesh = player.PlayerBody.PlayerMesh;
-        ApplyForMesh(playerMesh, female, clientId);
+        if (femaleTorsoPrefab == null)
+        {
+            Initialize();
+            if (femaleTorsoPrefab == null) return;
+        }
 
-        // Apply randomized skin tone to head
-        ApplySkinTone(player);
+        if (player?.PlayerBody?.PlayerMesh == null) return;
+
+        try
+        {
+            ulong clientId = player.OwnerClientId;
+            ApplyForMesh(player.PlayerBody.PlayerMesh, female, clientId);
+            Plugin.LogDebug($"[Gender] Applied {(female ? "female" : "male")} model to {player.Username.Value}");
+        }
+        catch (Exception ex)
+        {
+            Plugin.LogError($"[Gender] Error applying to player: {ex.Message}\n{ex.StackTrace}");
+        }
     }
 
     private static void ApplyForMesh(PlayerMesh playerMesh, bool female, ulong key)
@@ -215,20 +192,13 @@ public static class GenderSwapper
         }
     }
 
-    private static void ApplySkinTone(Player player)
+    /// <summary>
+    /// Applies skin tone and facial hair color to a player's head renderers.
+    /// Shared by both the locker room preview and in-game appearance application.
+    /// </summary>
+    public static void ApplyHeadColors(PlayerHead playerHead, Color skinTone, Color hairColor)
     {
-        if (player?.PlayerBody?.PlayerMesh?.PlayerHead == null) return;
-
-        ulong clientId = player.OwnerClientId;
-
-        // Randomize each time for testing
-        assignedSkinTones[clientId] = SKIN_TONES[colorRng.Next(SKIN_TONES.Length)];
-        assignedHairColors[clientId] = HAIR_COLORS[colorRng.Next(HAIR_COLORS.Length)];
-
-        Color skin = assignedSkinTones[clientId];
-        Color hair = assignedHairColors[clientId];
-
-        Transform playerHead = player.PlayerBody.PlayerMesh.PlayerHead.transform;
+        if (playerHead == null) return;
 
         var renderers = playerHead.GetComponentsInChildren<MeshRenderer>(true);
         foreach (var renderer in renderers)
@@ -236,9 +206,9 @@ public static class GenderSwapper
             string name = renderer.name.ToLower();
             Color color;
             if (name == "head")
-                color = skin;
+                color = skinTone;
             else if (name.Contains("beard") || name.Contains("mustache"))
-                color = hair;
+                color = hairColor;
             else
                 continue;
 
@@ -247,10 +217,10 @@ public static class GenderSwapper
                 mat.color = color;
                 if (mat.HasProperty("_BaseColor"))
                     mat.SetColor("_BaseColor", color);
+                if (mat.HasProperty("baseColorFactor"))
+                    mat.SetColor("baseColorFactor", color);
             }
         }
-
-        Plugin.LogDebug($"[Gender] Applied skin=({skin.r:F2},{skin.g:F2},{skin.b:F2}), hair=({hair.r:F2},{hair.g:F2},{hair.b:F2}) to {player.Username.Value}");
     }
 
     private static GameObject SpawnReplacement(GameObject prefab, Transform originalChild, MeshRenderer originalRenderer)
@@ -318,67 +288,6 @@ public static class GenderSwapper
         return null;
     }
 
-    /// <summary>
-    /// Toggles between male and female models on all spawned players.
-    /// </summary>
-    public static void ToggleAll()
-    {
-        useFemale = !useFemale;
-        toggleCount++;
-        if (toggleCount <= 10)
-            Plugin.Log($"[Gender] Toggling to {(useFemale ? "female" : "male")} (toggle #{toggleCount})");
-
-        try
-        {
-            var bluePlayers = PlayerManager.Instance.GetSpawnedPlayersByTeam(PlayerTeam.Blue);
-            var redPlayers = PlayerManager.Instance.GetSpawnedPlayersByTeam(PlayerTeam.Red);
-
-            foreach (var player in bluePlayers)
-                ApplyToExistingPlayer(player);
-            foreach (var player in redPlayers)
-                ApplyToExistingPlayer(player);
-        }
-        catch (Exception ex)
-        {
-            Plugin.LogError($"[Gender] Error during toggle: {ex.Message}");
-        }
-    }
-
-    private static void ApplyToExistingPlayer(Player player)
-    {
-        if (player?.PlayerBody?.PlayerMesh == null) return;
-        if (player.IsLocalPlayer) return;
-
-        try
-        {
-            ApplyForPlayer(player, useFemale);
-        }
-        catch (Exception ex)
-        {
-            Plugin.LogError($"[Gender] Error applying to existing player: {ex.Message}");
-        }
-    }
-
-    public static void StartAlternating()
-    {
-        if (alternatorInstance != null) return;
-
-        GameObject go = new GameObject("GenderAlternator");
-        UnityEngine.Object.DontDestroyOnLoad(go);
-        alternatorInstance = go.AddComponent<GenderAlternator>();
-        Plugin.Log("[Gender] Alternation test started (toggling every 1s)");
-    }
-
-    public static void StopAlternating()
-    {
-        if (alternatorInstance != null)
-        {
-            UnityEngine.Object.Destroy(alternatorInstance.gameObject);
-            alternatorInstance = null;
-            Plugin.Log("[Gender] Alternation test stopped");
-        }
-    }
-
     public static void ClearCache()
     {
         // Destroy all spawned replacements
@@ -388,13 +297,10 @@ public static class GenderSwapper
             if (groin != null) UnityEngine.Object.Destroy(groin);
         spawnedTorsos.Clear();
         spawnedGroins.Clear();
-        assignedSkinTones.Clear();
-        assignedHairColors.Clear();
     }
 
     public static void Cleanup()
     {
-        StopAlternating();
         ClearCache();
         if (genderBundle != null)
         {
@@ -405,24 +311,5 @@ public static class GenderSwapper
         maleTorsoPrefab = null;
         femaleGroinPrefab = null;
         loadFailed = false;
-    }
-}
-
-/// <summary>
-/// Simple MonoBehaviour that toggles gender meshes every second for alignment testing.
-/// </summary>
-public class GenderAlternator : MonoBehaviour
-{
-    private float timer;
-    private const float INTERVAL = 1f;
-
-    void Update()
-    {
-        timer += Time.deltaTime;
-        if (timer >= INTERVAL)
-        {
-            timer = 0f;
-            GenderSwapper.ToggleAll();
-        }
     }
 }

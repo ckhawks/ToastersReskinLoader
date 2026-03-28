@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using HarmonyLib;
 using UnityEngine.SceneManagement;
+using ToasterReskinLoader.api;
 using ToasterReskinLoader.swappers;
 
 namespace ToasterReskinLoader.swappers;
@@ -103,8 +104,8 @@ public static class SwapperManager
             GoalieEquipmentSwapper.SetLegPadsForPlayer(__instance.Player);
             GoalieHelmetSwapper.SetHeadgearForPlayer(__instance.Player);
             SkaterHelmetSwapper.SetHelmetForPlayer(__instance.Player);
-            PartyHatSwapper.AttachToPlayer(__instance.Player);
-            GenderSwapper.ApplyToPlayer(__instance.Player);
+            // Hat + body type + skin/hair color are handled by AppearanceAPI based on server data
+            AppearanceAPI.OnPlayerSpawned(__instance.Player);
         }
     }
 
@@ -126,16 +127,15 @@ public static class SwapperManager
     {
         global::UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
         FullArenaSwapper.Initialize();
-        PartyHatSwapper.Initialize();
+        HatSwapper.Initialize();
         GenderSwapper.Initialize();
-        GenderSwapper.StartAlternating();
         TeamIndicatorSwapper.Setup();
     }
 
     public static void Destroy()
     {
         global::UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
-        PartyHatSwapper.Cleanup();
+        HatSwapper.Cleanup();
         GenderSwapper.Cleanup();
         TeamIndicatorSwapper.Cleanup();
     }
@@ -150,9 +150,15 @@ public static class SwapperManager
             GoalieEquipmentSwapper.ClearEquipmentCache();
             GoalieHelmetSwapper.ClearHelmetCache();
             SkaterHelmetSwapper.ClearHelmetCache();
-            PartyHatSwapper.ClearHats();
+            HatSwapper.ClearHats();
             GenderSwapper.ClearCache();
+            AppearanceAPI.ClearCache();
             Plugin.Log($"Local player caches reset from switching to locker room");
+        }
+        else
+        {
+            // Entering a game scene — fetch appearances for all players on the server
+            AppearanceAPI.FetchAllPlayersOnServer();
         }
 
         SetAll();

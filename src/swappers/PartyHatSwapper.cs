@@ -84,13 +84,7 @@ namespace ToasterReskinLoader.swappers
 
             ulong clientId = player.OwnerClientId;
 
-            // Destroy existing hat if present
-            if (spawnedHats.TryGetValue(clientId, out GameObject existingHat))
-            {
-                if (existingHat != null)
-                    UnityEngine.Object.Destroy(existingHat);
-                spawnedHats.Remove(clientId);
-            }
+            RemoveFromPlayer(clientId);
 
             try
             {
@@ -105,16 +99,30 @@ namespace ToasterReskinLoader.swappers
                 if (Plugin.modSettings.BigHeadsEnabled)
                     ScaleHead(player.PlayerBody.PlayerMesh.PlayerHead.transform);
 
-                if (Plugin.modSettings.PartyHatsEnabled)
-                {
-                    GameObject hat = SpawnHat(helmetTransform);
-                    spawnedHats[clientId] = hat;
-                    Plugin.LogDebug($"[PartyHat] Attached to {player.Username.Value}");
-                }
+                GameObject hat = SpawnHat(helmetTransform);
+                spawnedHats[clientId] = hat;
+                Plugin.LogDebug($"[PartyHat] Attached to {player.Username.Value}");
             }
             catch (Exception ex)
             {
                 Plugin.LogError($"[PartyHat] Error attaching to {player.Username.Value}: {ex.Message}");
+            }
+        }
+
+        private const ulong LOCKER_ROOM_KEY = 0;
+
+        public static void RemoveFromPlayerMesh()
+        {
+            RemoveFromPlayer(LOCKER_ROOM_KEY);
+        }
+
+        public static void RemoveFromPlayer(ulong clientId)
+        {
+            if (spawnedHats.TryGetValue(clientId, out GameObject existingHat))
+            {
+                if (existingHat != null)
+                    UnityEngine.Object.Destroy(existingHat);
+                spawnedHats.Remove(clientId);
             }
         }
 
@@ -129,34 +137,18 @@ namespace ToasterReskinLoader.swappers
             if (playerMesh?.PlayerHead == null)
                 return;
 
-            // Use a fixed key for the locker room model
-            const ulong LOCKER_ROOM_KEY = 0;
-
-            if (spawnedHats.TryGetValue(LOCKER_ROOM_KEY, out GameObject existingHat))
-            {
-                if (existingHat != null)
-                    UnityEngine.Object.Destroy(existingHat);
-                spawnedHats.Remove(LOCKER_ROOM_KEY);
-            }
+            RemoveFromPlayer(LOCKER_ROOM_KEY);
 
             try
             {
                 Transform helmetTransform = FindHelmetTransform(playerMesh.PlayerHead);
-                if (helmetTransform == null)
-                {
-                    Plugin.LogDebug("[PartyHat] No helmet transform found for locker room player");
-                    return;
-                }
+                if (helmetTransform == null) return;
 
                 if (Plugin.modSettings.BigHeadsEnabled)
                     ScaleHead(playerMesh.PlayerHead.transform);
 
-                if (Plugin.modSettings.PartyHatsEnabled)
-                {
-                    GameObject hat = SpawnHat(helmetTransform);
-                    spawnedHats[LOCKER_ROOM_KEY] = hat;
-                    Plugin.Log($"[PartyHat] Attached to locker room player at world pos={hat.transform.position}");
-                }
+                GameObject hat = SpawnHat(helmetTransform);
+                spawnedHats[LOCKER_ROOM_KEY] = hat;
             }
             catch (Exception ex)
             {

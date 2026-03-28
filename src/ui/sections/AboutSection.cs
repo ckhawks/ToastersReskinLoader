@@ -88,21 +88,6 @@ public static class AboutSection
         funLabel.style.marginBottom = 4;
         contentScrollViewContent.Add(funLabel);
 
-        VisualElement partyHatRow = UITools.CreateConfigurationRow();
-        partyHatRow.Add(UITools.CreateConfigurationLabel("Party Hats"));
-        Toggle partyHatToggle = UITools.CreateConfigurationCheckbox(Plugin.modSettings.PartyHatsEnabled);
-        partyHatToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
-        {
-            Plugin.modSettings.PartyHatsEnabled = evt.newValue;
-            Plugin.modSettings.Save();
-            if (evt.newValue)
-                PartyHatSwapper.ReapplyAll();
-            else
-                PartyHatSwapper.ClearHats();
-        });
-        partyHatRow.Add(partyHatToggle);
-        contentScrollViewContent.Add(partyHatRow);
-
         VisualElement bigHeadRow = UITools.CreateConfigurationRow();
         bigHeadRow.Add(UITools.CreateConfigurationLabel("Big Heads"));
         Toggle bigHeadToggle = UITools.CreateConfigurationCheckbox(Plugin.modSettings.BigHeadsEnabled);
@@ -111,9 +96,9 @@ public static class AboutSection
             Plugin.modSettings.BigHeadsEnabled = evt.newValue;
             Plugin.modSettings.Save();
             if (evt.newValue)
-                PartyHatSwapper.ReapplyAll();
+                HatSwapper.ResetHeadScales();
             else
-                PartyHatSwapper.ResetHeadScales();
+                HatSwapper.ResetHeadScales();
         });
         bigHeadRow.Add(bigHeadToggle);
         contentScrollViewContent.Add(bigHeadRow);

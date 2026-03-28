@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ToasterReskinLoader.api;
 using ToasterReskinLoader.swappers;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -7,12 +8,43 @@ namespace ToasterReskinLoader.ui.sections;
 
 public static class PlayerCustomizationSection
 {
-    // Current customization state (will be sent to server later)
     private static int selectedBodyTypeIndex = 0;
     private static Color selectedSkinTone = GenderSwapper.SKIN_TONES[0];
     private static Color selectedHairColor = GenderSwapper.HAIR_COLORS[0];
+    private static int selectedHatId = 0;
+    private static bool subscribedToLoad;
+
+    /// <summary>Whether the local player has selected body type 2 (female model).</summary>
+    public static bool IsFemaleBodyType => selectedBodyTypeIndex == 1;
+
+    /// <summary>The local player's selected hat ID (-1 = none).</summary>
+    public static int SelectedHatId => selectedHatId;
 
     private static readonly List<string> BODY_TYPE_CHOICES = new List<string> { "Body Type 1", "Body Type 2" };
+
+    // Hat choices are driven by HatSwapper.AllHats
+
+    /// <summary>
+    /// Subscribe to the server appearance load event (called once).
+    /// Updates static state and applies to locker room when data arrives.
+    /// </summary>
+    public static void SubscribeToServerLoad()
+    {
+        if (subscribedToLoad) return;
+        subscribedToLoad = true;
+
+        AppearanceAPI.OnLocalAppearanceLoaded += data =>
+        {
+            selectedBodyTypeIndex = data.bodyType;
+            selectedSkinTone = data.skinTone;
+            selectedHairColor = data.hairColor;
+            selectedHatId = data.hatId;
+            Plugin.Log($"[Appearance] Loaded from server: bodyType={data.bodyType}, skin=({data.skinTone.r:F2},{data.skinTone.g:F2},{data.skinTone.b:F2}), hair=({data.hairColor.r:F2},{data.hairColor.g:F2},{data.hairColor.b:F2})");
+
+            // Apply to locker room visuals only — don't POST back what we just loaded
+            ApplyToLockerRoom(syncToServer: false);
+        };
+    }
 
     // Beard: -1 = none, 1536-1540
     private static readonly List<string> BEARD_CHOICES = new List<string>
@@ -32,8 +64,21 @@ public static class PlayerCustomizationSection
     {
         ChangingRoomHelper.ShowBody();
 
+        // Appearance editing is only available from the main menu
+        if (!ChangingRoomHelper.IsInMainMenu())
+        {
+            Label inGameNotice = new Label();
+            inGameNotice.text = "Appearance customization is only available from the main menu.";
+            inGameNotice.style.fontSize = 16;
+            inGameNotice.style.color = new Color(0.7f, 0.7f, 0.7f);
+            inGameNotice.style.whiteSpace = WhiteSpace.Normal;
+            inGameNotice.style.marginTop = 20;
+            contentScrollViewContent.Add(inGameNotice);
+            return;
+        }
+
         Label description = new Label();
-        description.text = "Customize your player's appearance. These settings will be synced to other players in the future.";
+        description.text = "Customize your player's appearance. These settings are synced to other players.";
         description.style.fontSize = 14;
         description.style.color = new Color(0.7f, 0.7f, 0.7f);
         description.style.whiteSpace = WhiteSpace.Normal;
@@ -66,8 +111,8 @@ public static class PlayerCustomizationSection
         // Get current game settings for defaults
         int currentBeardId = SettingsManager.BeardID;
         int currentMustacheId = SettingsManager.MustacheID;
-        string currentBeard = GetBeardNameFromId(currentBeardId);
-        string currentMustache = GetMustacheNameFromId(currentMustacheId);
+        string currentBeard = GetNameFromId(currentBeardId, BEARD_IDS, BEARD_CHOICES);
+        string currentMustache = GetNameFromId(currentMustacheId, MUSTACHE_IDS, MUSTACHE_CHOICES);
 
         VisualElement beardRow = UITools.CreateConfigurationRow();
         beardRow.Add(UITools.CreateConfigurationLabel("Beard"));
@@ -106,6 +151,32 @@ public static class PlayerCustomizationSection
         AddColorPicker(contentScrollViewContent, "Custom Hair Color", GenderSwapper.HAIR_COLORS, selectedHairColor,
             color => { selectedHairColor = color; ApplyToLockerRoom(); });
 
+        // -- Hat --
+        AddSectionLabel(contentScrollViewContent, "Hat");
+
+        var hatNames = new List<string>();
+        foreach (var h in HatSwapper.AllHats)
+            hatNames.Add(h.Name);
+
+        string currentHat = HatSwapper.GetHatName(selectedHatId);
+        VisualElement hatRow = UITools.CreateConfigurationRow();
+        hatRow.Add(UITools.CreateConfigurationLabel("Hat"));
+        var hatDropdown = UITools.CreateStringDropdownField(hatNames, currentHat);
+        hatDropdown.RegisterCallback<ChangeEvent<string>>(evt =>
+        {
+            foreach (var h in HatSwapper.AllHats)
+            {
+                if (h.Name == evt.newValue)
+                {
+                    selectedHatId = h.Id;
+                    ApplyToLockerRoom();
+                    break;
+                }
+            }
+        });
+        hatRow.Add(hatDropdown);
+        contentScrollViewContent.Add(hatRow);
+
         // -- Hair Style (TODO) --
         AddSectionLabel(contentScrollViewContent, "Hair Style");
         Label hairTodo = new Label("Coming soon - hair style customization is not yet available.");
@@ -115,24 +186,14 @@ public static class PlayerCustomizationSection
         hairTodo.style.marginTop = 4;
         contentScrollViewContent.Add(hairTodo);
 
-        // Log facial hair mappings once for debugging
-        ChangingRoomHelper.LogFacialHairMappings();
-
         // Initial apply to locker room preview
         ApplyToLockerRoom();
     }
 
-    private static string GetBeardNameFromId(int id)
+    private static string GetNameFromId(int id, int[] ids, List<string> names)
     {
-        for (int i = 0; i < BEARD_IDS.Length; i++)
-            if (BEARD_IDS[i] == id) return BEARD_CHOICES[i];
-        return "None";
-    }
-
-    private static string GetMustacheNameFromId(int id)
-    {
-        for (int i = 0; i < MUSTACHE_IDS.Length; i++)
-            if (MUSTACHE_IDS[i] == id) return MUSTACHE_CHOICES[i];
+        for (int i = 0; i < ids.Length; i++)
+            if (ids[i] == id) return names[i];
         return "None";
     }
 
@@ -255,35 +316,28 @@ public static class PlayerCustomizationSection
                Mathf.Abs(a.b - b.b) < 0.01f;
     }
 
-    private static void ApplyToLockerRoom()
+    private static void ApplyToLockerRoom(bool syncToServer = true)
     {
         if (!ChangingRoomHelper.IsInMainMenu()) return;
 
+        ChangingRoomHelper.Scan();
         var playerMesh = ChangingRoomHelper.GetPlayerMesh();
         if (playerMesh?.PlayerHead == null) return;
 
-        // Apply skin tone and facial hair color
-        var renderers = playerMesh.PlayerHead.GetComponentsInChildren<MeshRenderer>(true);
-        foreach (var renderer in renderers)
-        {
-            string name = renderer.name.ToLower();
-            Color color;
-            if (name == "head")
-                color = selectedSkinTone;
-            else if (name.Contains("beard") || name.Contains("mustache"))
-                color = selectedHairColor;
-            else
-                continue;
-
-            foreach (var mat in renderer.materials)
-            {
-                mat.color = color;
-                if (mat.HasProperty("_BaseColor"))
-                    mat.SetColor("_BaseColor", color);
-            }
-        }
-
-        // Apply body type to locker room preview
+        GenderSwapper.ApplyHeadColors(playerMesh.PlayerHead, selectedSkinTone, selectedHairColor);
         GenderSwapper.ApplyToPlayerMesh(playerMesh, selectedBodyTypeIndex == 1);
+
+        HatSwapper.AttachToPlayerMesh(playerMesh, selectedHatId);
+
+        if (syncToServer)
+        {
+            AppearanceAPI.QueuePostAppearance(
+                selectedBodyTypeIndex,
+                selectedSkinTone,
+                selectedHairColor,
+                hatId: selectedHatId,
+                hairId: -1
+            );
+        }
     }
 }
