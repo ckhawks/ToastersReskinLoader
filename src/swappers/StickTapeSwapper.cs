@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using UnityEngine;
 
@@ -189,119 +188,6 @@ public static class StickTapeSwapper
         Plugin.LogDebug($"=== ApplyTapeTexture COMPLETE ===");
     }
 
-    // Helper method to read texture pixels using RenderTexture (works with non-readable textures)
-    private static Texture2D ReadTexturePixels(Texture texture)
-    {
-        try
-        {
-            RenderTexture rt = RenderTexture.GetTemporary(texture.width, texture.height, 0, RenderTextureFormat.ARGB32);
-            Graphics.Blit(texture, rt);
-
-            RenderTexture prevRT = RenderTexture.active;
-            RenderTexture.active = rt;
-
-            Texture2D readable = new Texture2D(texture.width, texture.height, TextureFormat.RGBA32, false);
-            readable.ReadPixels(new Rect(0, 0, texture.width, texture.height), 0, 0);
-            readable.Apply();
-
-            RenderTexture.active = prevRT;
-            RenderTexture.ReleaseTemporary(rt);
-
-            return readable;
-        }
-        catch (Exception ex)
-        {
-            Plugin.LogError($"Failed to read texture pixels: {ex.Message}");
-            return null;
-        }
-    }
-
-    // Helper method to composite two textures: RGB from source, A from mask
-    private static Texture2D CompositeTextureWithAlpha(Texture sourceTexture, Texture maskTexture)
-    {
-        if (sourceTexture == null || maskTexture == null) return null;
-
-        try
-        {
-            // Read pixels from both textures using RenderTexture (works with non-readable textures)
-            Texture2D sourceReadable = ReadTexturePixels(sourceTexture);
-            Texture2D maskReadable = ReadTexturePixels(maskTexture);
-
-            if (sourceReadable == null || maskReadable == null)
-            {
-                if (sourceReadable != null) UnityEngine.Object.Destroy(sourceReadable);
-                if (maskReadable != null) UnityEngine.Object.Destroy(maskReadable);
-                return null;
-            }
-
-            int width = sourceReadable.width;
-            int height = sourceReadable.height;
-
-            Plugin.LogDebug($"Read textures - Source: {width}x{height}, Mask: {maskReadable.width}x{maskReadable.height}");
-
-            Color[] sourcePixels = sourceReadable.GetPixels();
-            Color[] maskPixels = maskReadable.GetPixels();
-
-            Plugin.LogDebug($"Sample source pixel [0]: {sourcePixels[0]}, Sample mask pixel [0]: {maskPixels[0]}");
-
-            // Log multiple sample mask pixels to see if it's uniform
-            int maskSampleCount = Mathf.Min(5, maskPixels.Length);
-            for (int s = 0; s < maskSampleCount; s++)
-            {
-                int idx = (s * maskPixels.Length) / maskSampleCount;
-                Plugin.LogDebug($"  Mask pixel [{idx}]: {maskPixels[idx]} (grayscale: {maskPixels[idx].grayscale})");
-            }
-
-            // Scale mask to match source dimensions if needed
-            if (maskReadable.width != width || maskReadable.height != height)
-            {
-                // Use Resize to properly scale while preserving data
-                maskReadable.Resize(width, height, TextureFormat.RGBA32, false);
-                maskPixels = maskReadable.GetPixels();
-                Plugin.LogDebug($"Resized mask to {width}x{height}");
-
-                // Log scaled mask samples
-                for (int s = 0; s < maskSampleCount; s++)
-                {
-                    int idx = (s * maskPixels.Length) / maskSampleCount;
-                    Plugin.LogDebug($"  Resized mask pixel [{idx}]: {maskPixels[idx]} (grayscale: {maskPixels[idx].grayscale})");
-                }
-            }
-
-            // Create output texture
-            Texture2D composited = new Texture2D(width, height, TextureFormat.RGBA32, false);
-
-            // Composite: RGB from source, A from mask's grayscale value (brightness)
-            Color[] compositedPixels = new Color[sourcePixels.Length];
-            for (int i = 0; i < sourcePixels.Length; i++)
-            {
-                compositedPixels[i] = new Color(
-                    sourcePixels[i].r,
-                    sourcePixels[i].g,
-                    sourcePixels[i].b,
-                    maskPixels[i].grayscale  // Use mask's brightness as alpha
-                );
-            }
-
-            Plugin.LogDebug($"Sample composited pixel [0]: {compositedPixels[0]}");
-
-            composited.SetPixels(compositedPixels);
-            composited.Apply();
-
-            // Clean up
-            UnityEngine.Object.Destroy(sourceReadable);
-            UnityEngine.Object.Destroy(maskReadable);
-
-            Plugin.LogDebug($"✓ Composited textures: {width}x{height} (RGB from source, A from mask)");
-            return composited;
-        }
-        catch (Exception ex)
-        {
-            Plugin.LogError($"✗ Failed to composite textures: {ex.Message}");
-            return null;
-        }
-    }
-
     // Helper method to apply color to tape renderer
     private static void ApplyTapeColor(MeshRenderer renderer, Color color)
     {
@@ -312,54 +198,7 @@ public static class StickTapeSwapper
         Plugin.LogDebug($"Applied color {color} to tape material");
     }
 
-    // Helper method to discover all texture properties on a material dynamically using reflection
-    private static void LogAllTextureProperties(MeshRenderer renderer, string rendererName)
-    {
-        if (renderer == null) return;
-
-        try
-        {
-            Material mat = renderer.material;
-            Shader shader = mat.shader;
-
-            Plugin.LogDebug($"{rendererName} - Attempting dynamic property discovery:");
-
-            // Try to get shader properties via reflection
-            var shaderType = shader.GetType();
-            var fieldsInfo = shaderType.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-            if (fieldsInfo.Length > 0)
-            {
-                Plugin.LogDebug($"  Found {fieldsInfo.Length} fields on Shader");
-                foreach (var field in fieldsInfo)
-                {
-                    Plugin.LogDebug($"    - {field.Name} ({field.FieldType})");
-                }
-            }
-
-            // Try Material's internal data
-            var matType = mat.GetType();
-            var matFields = matType.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-            if (matFields.Length > 0)
-            {
-                Plugin.LogDebug($"  Found {matFields.Length} fields on Material");
-                foreach (var field in matFields.Take(10)) // Limit output
-                {
-                    if (field.Name.Contains("Property") || field.Name.Contains("Shader"))
-                    {
-                        Plugin.LogDebug($"    - {field.Name} ({field.FieldType})");
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Plugin.LogError($"Error discovering properties dynamically: {ex.Message}");
-        }
-    }
-
-    // Apply tape customization based on mode: Unchanged (restore original), RGB (color), or Textured (swap shader and apply texture)
+    // Apply tape customization based on mode: "Unchanged" (restore original), "RGB" (solid color), or "Textured" (swap shader and apply texture)
     private static void ApplyTapeCustomization(
         MeshRenderer renderer,
         ulong playerId,
@@ -689,16 +528,6 @@ public static class StickTapeSwapper
                 }
             }
 
-            // // Fallback: if no player was marked as local, just return the first valid stick
-            // // This handles single-player or test scenarios
-            // foreach (var player in players)
-            // {
-            //     if (player?.Stick != null && player.PlayerBody != null && player.PlayerBody.PlayerMesh != null)
-            //     {
-            //         Plugin.LogDebug($"No IsLocalPlayer/IsOwner found, using first available player: {player.Username.Value}");
-            //         return player.Stick;
-            //     }
-            // }
         }
         catch (Exception ex)
         {

@@ -11,6 +11,7 @@ namespace ToasterReskinLoader.swappers;
 
 public static class PuckFXSwapper
 {
+    // Puck trails are disabled on PHL Official/Pickup servers to comply with league rules
     public static bool IsPHLServer = false;
 
     static readonly FieldInfo _lineRendererField = typeof(PuckElevationIndicator)

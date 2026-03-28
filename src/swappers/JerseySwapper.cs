@@ -69,12 +69,6 @@ public static class JerseySwapper
         MeshRenderer torsoMeshRenderer = (MeshRenderer) _meshRendererField.GetValue(torsoMeshRendererTexturer);
         MeshRenderer groinMeshRenderer = (MeshRenderer) _meshRendererField.GetValue(groinMeshRendererTexturer);
 
-        // SwapperUtils.FindTextureProperties(torsoMeshRenderer.material);
-        // Plugin.Log($"Texture torso property: {SwapperUtils.FindTextureProperty(torsoMeshRenderer.material)}");
-        // Plugin.Log($"Texture groin property: {SwapperUtils.FindTextureProperty(groinMeshRenderer.material)}");
-        
-        // player.PlayerBody.PlayerMesh.SetJersey(player.Team, player.GetPlayerJerseySkin().ToString());
-        
         if (team == PlayerTeam.Blue)
         {
             if (originalBlueGroin == null)
@@ -145,14 +139,4 @@ public static class JerseySwapper
         PlayerTextSwapper.SetPlayerTextColors(player);
     }
 
-    // [HarmonyPatch(typeof(PlayerMesh), nameof(PlayerMesh.SetJersey))]
-    // public static class PlayerMeshSetJersey
-    // {
-    //     [HarmonyPrefix]
-    //     public static void Prefix(PlayerMesh __instance)
-    //     {
-    //         Player player = __instance.
-    //     }
-    // }
-    
 }

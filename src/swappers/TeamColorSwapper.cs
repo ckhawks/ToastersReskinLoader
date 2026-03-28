@@ -7,6 +7,13 @@ using UnityEngine.UIElements;
 
 namespace ToasterReskinLoader.swappers;
 
+/// <summary>
+/// Overrides team colors across all game UI elements via Harmony patches:
+/// minimap player dots, tab scoreboard rows, position select circles,
+/// team select buttons, goal announcements, score HUD, chat username colors,
+/// and goal frame meshes. Also handles custom team names in announcements
+/// and team select buttons with player counts.
+/// </summary>
 public static class TeamColorSwapper
 {
     public static string ColorToHex(Color color)

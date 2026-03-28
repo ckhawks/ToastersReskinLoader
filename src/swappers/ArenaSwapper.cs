@@ -414,7 +414,6 @@ public static class ArenaSwapper
         try
         {
             GameObject glassGameObject = GameObject.Find("Glass");
-            // Plugin.Log($"GlassGameObject name: {glassGameObject.name}");
             if (glassGameObject == null)
             {
                 Plugin.LogError($"Could not locate Glass GameObject.");
@@ -429,8 +428,6 @@ public static class ArenaSwapper
                 return;
             }
 
-            // Plugin.Log($"glassMeshRenderer name: {glassMeshRenderer.name}");
-            // Plugin.Log($"glassMeshRenderer.material name: {glassMeshRenderer.material.name}");
             glassMeshRenderer.material.SetFloat("_Smoothness", ReskinProfileManager.currentProfile.glassSmoothness);
 
             GameObject pillarsGameObject = GameObject.Find("Pillars");
@@ -533,26 +530,12 @@ public static class ArenaSwapper
 
                 if (gameObject.name.Equals("Net"))
                 {
-                    // Plugin.LogDebug($"net: {gameObject.name} {gameObject.transform.position.ToString()}");
                     SkinnedMeshRenderer netMeshRenderer = gameObject.GetComponent<SkinnedMeshRenderer>();
-
-                    // MeshRenderer netMeshRenderer2 = (MeshRenderer) gameObject.GetComponentsInChildren<Component>(true).First(component => component.GetType() == typeof(MeshRenderer));
-                    //
-                    // Plugin.Log($"netMeshRenderer2: {netMeshRenderer.name}");
-                    // Plugin.Log($"netMeshRenderer23: {netMeshRenderer.gameObject.name}");
-                    // Plugin.Log($"netMeshRenderer24: {netMeshRenderer.gameObject.transform.parent.name}");
                     if (netMeshRenderer == null)
                     {
                         Debug.LogError("No SkinnedMeshRenderer found on GameObject Net.");
                         return;
                     }
-
-                    // string texturePropertyName = SwapperUtils.FindTextureProperty(iceBottomMeshRenderer.material);
-                    // if (texturePropertyName == null)
-                    // {
-                    //     Plugin.LogError("No texture property found in the shader.");
-                    //     return false;
-                    // }
 
                     if (_netOriginalTexture == null)
                     {
@@ -568,10 +551,8 @@ public static class ArenaSwapper
                     else
                     {
                         netMeshRenderer.material.SetTexture("_BaseMap", TextureManager.GetTexture(reskinEntry));
-                        // Plugin.Log("Texture applied to property: _BaseMap");
                     }
 
-                    // Plugin.Log($"Set the Net texture to {reskinEntry.Name} {reskinEntry.Path}");
                     netCount++;
                 }
             }

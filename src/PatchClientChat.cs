@@ -8,6 +8,10 @@ using Object = System.Object;
 
 namespace ToasterReskinLoader;
 
+/// <summary>
+/// Debug-only chat command handler. Type "/hierarchy" in chat to dump
+/// the full scene GameObject tree to a file for inspection.
+/// </summary>
 public static class PatchClientChat
 {
     [HarmonyPatch(typeof(ChatManagerController), "Event_OnChatSubmitMessage")]

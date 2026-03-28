@@ -3,20 +3,11 @@ using System.Collections.Generic;
 using HarmonyLib;
 using UnityEngine.SceneManagement;
 using ToasterReskinLoader.swappers;
-using ToasterReskinLoader.ui.sections;
 
 namespace ToasterReskinLoader.swappers;
 
 public static class SwapperManager
 {
-    // TODO this class should call the various swappers to trigger them to set textures/reskins whenever game events happen.
-    // TODO we also need like a SettingsManager or something that handles the state of which reskins are selected, and handles saving/loading profiles
-
-    // TODO all selected skins' Texture2D's should be loaded into memory.
-    // TODO when someone selects a new skin we can load that one into memory
-
-    // TODO we need to save each player's vanilla setup (stick, jersey) before applying anything
-
     // Intended to be called whenever we need to update the local player's stick
     public static void OnPersonalStickChanged()
     {
@@ -61,6 +52,7 @@ public static class SwapperManager
         Plugin.LogDebug($"player.Team {player.Team.ToString()}");
         Plugin.LogDebug($"player.Role {player.Role.ToString()}");
 
+        // Replay players have their OwnerClientId offset by 1337 from the original player
         bool isReplayLocalPlayer = player.IsReplay.Value &&
                                    PlayerManager.Instance.GetLocalPlayer()?.OwnerClientId == player.OwnerClientId - 1337UL;
 
@@ -135,9 +127,6 @@ public static class SwapperManager
         FullArenaSwapper.Initialize();
         PartyHatSwapper.Initialize();
         TeamIndicatorSwapper.Setup();
-        // // We register patches for Changing Room
-        // var harmony = new Harmony("com.toaster.reskinloader");
-        // harmony.PatchAll(typeof(ChangingRoomPatcher));
     }
 
     public static void Destroy()
@@ -197,7 +186,6 @@ public static class SwapperManager
             }
         }
     }
-    // TODO add to when players spawn to call these
 
     public static void OnBlueLegPadsChanged()
     {
@@ -211,32 +199,30 @@ public static class SwapperManager
 
     public static void SetAll()
     {
-        {
-            IceSwapper.SetIceTexture();
-            IceSwapper.UpdateIceSmoothness();
-            ArenaSwapper.UpdateCrowdState();
-            ArenaSwapper.UpdateHangarState();
-            ArenaSwapper.UpdateScoreboardState();
-            ArenaSwapper.UpdateGlassState();
-            ArenaSwapper.UpdateBoards();
-            ArenaSwapper.UpdateGlassAndPillars();
-            ArenaSwapper.UpdateSpectators();
-            ArenaSwapper.SetNetTexture();
-            ArenaSwapper.UpdateGoalFrameColors();
-            OnBlueJerseyChanged();
-            OnRedJerseyChanged();
-            OnBlueLegPadsChanged();
-            OnRedLegPadsChanged();
-            OnBlueHelmetsChanged();
-            OnRedHelmetsChanged();
-            SkaterHelmetSwapper.OnBlueHelmetsChanged();
-            SkaterHelmetSwapper.OnRedHelmetsChanged();
-            FullArenaSwapper.ApplyFromProfile();
-            SkyboxSwapper.UpdateSkybox();
-            CrispyShadowsSwapper.Apply();
-            TeamIndicatorSwapper.Setup();
-            TeamIndicatorSwapper.UpdateVisibility();
-            PuckFXSwapper.ApplyAll();
-        }
+        IceSwapper.SetIceTexture();
+        IceSwapper.UpdateIceSmoothness();
+        ArenaSwapper.UpdateCrowdState();
+        ArenaSwapper.UpdateHangarState();
+        ArenaSwapper.UpdateScoreboardState();
+        ArenaSwapper.UpdateGlassState();
+        ArenaSwapper.UpdateBoards();
+        ArenaSwapper.UpdateGlassAndPillars();
+        ArenaSwapper.UpdateSpectators();
+        ArenaSwapper.SetNetTexture();
+        ArenaSwapper.UpdateGoalFrameColors();
+        OnBlueJerseyChanged();
+        OnRedJerseyChanged();
+        OnBlueLegPadsChanged();
+        OnRedLegPadsChanged();
+        OnBlueHelmetsChanged();
+        OnRedHelmetsChanged();
+        SkaterHelmetSwapper.OnBlueHelmetsChanged();
+        SkaterHelmetSwapper.OnRedHelmetsChanged();
+        FullArenaSwapper.ApplyFromProfile();
+        SkyboxSwapper.UpdateSkybox();
+        CrispyShadowsSwapper.Apply();
+        TeamIndicatorSwapper.Setup();
+        TeamIndicatorSwapper.UpdateVisibility();
+        PuckFXSwapper.ApplyAll();
     }
 }

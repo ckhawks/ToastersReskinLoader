@@ -303,14 +303,6 @@ public static class UITools
                 width = 300,
                 height = 30,
                 backgroundColor = initialColor,
-                // borderTopWidth = 1,
-                // borderBottomWidth = 1,
-                // borderLeftWidth = 1,
-                // borderRightWidth = 1,
-                // borderTopColor = Color.white,
-                // borderBottomColor = Color.white,
-                // borderLeftColor = Color.white,
-                // borderRightColor = Color.white,
             },
         };
         topRow.Add(colorPreview);
@@ -347,13 +339,13 @@ public static class UITools
                 colorPreview.style.backgroundColor = currentColor;
                 // Fire the external callback for live updates
                 onValueChanged?.Invoke(currentColor);
-                onSave?.Invoke(); // TODO  i don't like how expensive this is but oh well for now
+                onSave?.Invoke();
             });
 
             // Register callback for when the user is done dragging (save)
             slider.RegisterCallback<PointerUpEvent>(evt =>
             {
-                onSave?.Invoke(); // TODO can you think of any reason why this would only fire when the user right clicks the slider instead of left clicks it?
+                onSave?.Invoke();
             });
 
             row.Add(slider);
