@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ToasterReskinLoader.api;
 using ToasterReskinLoader.swappers;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -9,7 +10,7 @@ namespace ToasterReskinLoader.ui.sections;
 public static class ExtrasSection
 {
     // Session-only state — not saved to ModSettings or profile
-    private static readonly HashSet<string> RedeemedCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    private static readonly HashSet<string> LocalCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     private static bool bigHeadsEnabled;
 
     public static void CreateSection(VisualElement contentScrollViewContent)
@@ -22,7 +23,7 @@ public static class ExtrasSection
         codeLabel.style.marginBottom = 4;
         contentScrollViewContent.Add(codeLabel);
 
-        Label codeDescription = new Label("Enter a code to unlock hidden features for this session.");
+        Label codeDescription = new Label("Enter a code to unlock items or hidden features.");
         codeDescription.style.fontSize = 14;
         codeDescription.style.color = new Color(0.7f, 0.7f, 0.7f);
         codeDescription.style.whiteSpace = WhiteSpace.Normal;
@@ -37,6 +38,17 @@ public static class ExtrasSection
         TextField codeField = new TextField();
         codeField.style.flexGrow = 1;
         codeField.style.marginRight = 8;
+        codeField.style.backgroundColor = new StyleColor(new Color(0.1f, 0.1f, 0.1f));
+        codeField.style.paddingLeft = 8;
+        codeField.style.paddingRight = 8;
+        codeField.style.paddingTop = 4;
+        codeField.style.paddingBottom = 4;
+        codeField.RegisterValueChangedCallback(evt =>
+        {
+            string upper = evt.newValue?.ToUpperInvariant() ?? "";
+            if (upper != evt.newValue)
+                codeField.SetValueWithoutNotify(upper);
+        });
         codeRow.Add(codeField);
 
         Label feedbackLabel = new Label();
@@ -57,39 +69,67 @@ public static class ExtrasSection
             if (string.IsNullOrEmpty(code))
                 return;
 
-            if (RedeemedCodes.Contains(code))
+            // Check local-only codes first
+            if (TryRedeemLocalCode(code, unlockedContainer, feedbackLabel))
             {
-                feedbackLabel.text = "Code already redeemed.";
-                feedbackLabel.style.color = new Color(0.7f, 0.7f, 0.5f);
-            }
-            else if (TryRedeemCode(code, unlockedContainer))
-            {
-                feedbackLabel.text = "Code accepted!";
-                feedbackLabel.style.color = new Color(0.4f, 0.9f, 0.4f);
                 codeField.value = "";
+                return;
             }
-            else
+
+            // Otherwise try the server API
+            redeemButton.SetEnabled(false);
+            feedbackLabel.text = "Redeeming...";
+            feedbackLabel.style.color = new Color(0.7f, 0.7f, 0.7f);
+
+            AppearanceAPI.RedeemCode(code, (success, message) =>
             {
-                feedbackLabel.text = "Invalid code.";
-                feedbackLabel.style.color = new Color(0.9f, 0.4f, 0.4f);
-            }
+                redeemButton.SetEnabled(true);
+                feedbackLabel.text = message;
+                if (success)
+                {
+                    feedbackLabel.style.color = new Color(0.4f, 0.9f, 0.4f);
+                    codeField.value = "";
+                }
+                else
+                {
+                    feedbackLabel.style.color = new Color(0.9f, 0.4f, 0.4f);
+                }
+            });
         });
         codeRow.Add(redeemButton);
         contentScrollViewContent.Add(codeRow);
         contentScrollViewContent.Add(feedbackLabel);
         contentScrollViewContent.Add(unlockedContainer);
 
-        // Show settings for any codes already redeemed this session
+        // Show settings for any local codes already redeemed this session
         RebuildUnlockedSettings(unlockedContainer);
     }
 
-    private static bool TryRedeemCode(string code, VisualElement unlockedContainer)
+    private static bool TryRedeemLocalCode(string code, VisualElement unlockedContainer, Label feedbackLabel)
     {
-        switch (code.ToUpperInvariant())
+        string upper = code.ToUpperInvariant();
+        switch (upper)
         {
             case "BIGHEADS":
-                RedeemedCodes.Add(code);
-                RebuildUnlockedSettings(unlockedContainer);
+                if (LocalCodes.Contains(upper))
+                {
+                    feedbackLabel.text = "Code already redeemed.";
+                    feedbackLabel.style.color = new Color(0.7f, 0.7f, 0.5f);
+                }
+                else
+                {
+                    LocalCodes.Add(upper);
+                    RebuildUnlockedSettings(unlockedContainer);
+                    feedbackLabel.text = "Code accepted!";
+                    feedbackLabel.style.color = new Color(0.4f, 0.9f, 0.4f);
+                }
+                return true;
+            case "UNLOCKALLHATS":
+                foreach (var hat in HatSwapper.AllHats)
+                    AppearanceAPI.UnlockedHatIds.Add(hat.Id);
+                AppearanceAPI.NotifyUnlocksChanged();
+                feedbackLabel.text = "All hats unlocked (debug, session only).";
+                feedbackLabel.style.color = new Color(0.4f, 0.9f, 0.4f);
                 return true;
             default:
                 return false;
@@ -100,7 +140,7 @@ public static class ExtrasSection
     {
         container.Clear();
 
-        if (RedeemedCodes.Contains("BIGHEADS"))
+        if (LocalCodes.Contains("BIGHEADS"))
         {
             Label sectionLabel = new Label("<b>Big Heads</b>");
             sectionLabel.style.fontSize = 16;
@@ -117,6 +157,7 @@ public static class ExtrasSection
                 bigHeadsEnabled = evt.newValue;
                 Plugin.modSettings.BigHeadsEnabled = evt.newValue;
                 HatSwapper.ResetHeadScales();
+                AppearanceAPI.ReapplyAllAppearances();
             });
             bigHeadRow.Add(bigHeadToggle);
             container.Add(bigHeadRow);

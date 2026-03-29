@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using ToasterReskinLoader.api;
 using ToasterReskinLoader.swappers;
+using ToasterReskinLoader.ui;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -44,6 +45,24 @@ public static class PlayerCustomizationSection
             // Apply to locker room visuals only — don't POST back what we just loaded
             ApplyToLockerRoom(syncToServer: false);
         };
+
+        // Rebuild the Appearance panel when unlocks change (XP bar + hat dropdown)
+        int lastKnownLevel = AppearanceAPI.PlayerLevel;
+        AppearanceAPI.OnUnlocksChanged += () =>
+        {
+            int currentLevel = AppearanceAPI.PlayerLevel;
+            if (currentLevel != lastKnownLevel && lastKnownLevel > 0)
+            {
+                lastKnownLevel = currentLevel;
+                if (ReskinMenu.rootContainer != null && ReskinMenu.rootContainer.visible)
+                    ReskinMenu.Hide();
+                return;
+            }
+            lastKnownLevel = currentLevel;
+
+            if (ReskinMenu.sections[ReskinMenu.selectedSectionIndex] == "Appearance")
+                ReskinMenu.CreateContentForSection(ReskinMenu.selectedSectionIndex);
+        };
     }
 
     // Beard: -1 = none, 1536-1540
@@ -62,23 +81,14 @@ public static class PlayerCustomizationSection
 
     public static void CreateSection(VisualElement contentScrollViewContent)
     {
-        ChangingRoomHelper.ShowBody();
-
-        // Appearance editing is only available from the main menu
-        if (!ChangingRoomHelper.IsInMainMenu())
-        {
-            Label inGameNotice = new Label();
-            inGameNotice.text = "Appearance customization is only available from the main menu.";
-            inGameNotice.style.fontSize = 16;
-            inGameNotice.style.color = new Color(0.7f, 0.7f, 0.7f);
-            inGameNotice.style.whiteSpace = WhiteSpace.Normal;
-            inGameNotice.style.marginTop = 20;
-            contentScrollViewContent.Add(inGameNotice);
-            return;
-        }
+        bool inMenu = ChangingRoomHelper.IsInMainMenu();
+        if (inMenu)
+            ChangingRoomHelper.ShowBody();
 
         Label description = new Label();
-        description.text = "Customize your player's appearance. These settings are synced to other players.";
+        description.text = inMenu
+            ? "Customize your player's appearance. These settings are synced to other players."
+            : "Appearance customization can only be changed from the main menu.";
         description.style.fontSize = 14;
         description.style.color = new Color(0.7f, 0.7f, 0.7f);
         description.style.whiteSpace = WhiteSpace.Normal;
@@ -86,8 +96,53 @@ public static class PlayerCustomizationSection
         description.style.marginBottom = 12;
         contentScrollViewContent.Add(description);
 
+        // -- XP / Level Bar --
+        AddXpBar(contentScrollViewContent);
+
+        // Controls container — disabled when in-game
+        VisualElement controlsContainer = new VisualElement();
+        if (!inMenu)
+        {
+            controlsContainer.SetEnabled(false);
+            controlsContainer.style.opacity = 0.5f;
+        }
+        contentScrollViewContent.Add(controlsContainer);
+
+        // -- Hat --
+        AddSectionLabel(controlsContainer, "Hat");
+
+        var hatNames = new List<string>();
+        foreach (var h in HatSwapper.AllHats)
+        {
+            if (AppearanceAPI.IsHatUnlocked(h.Id))
+                hatNames.Add(h.Name);
+        }
+
+        // If current hat isn't unlocked, fall back to "None"
+        string currentHat = AppearanceAPI.IsHatUnlocked(selectedHatId)
+            ? HatSwapper.GetHatName(selectedHatId)
+            : "None";
+
+        VisualElement hatRow = UITools.CreateConfigurationRow();
+        hatRow.Add(UITools.CreateConfigurationLabel("Hat"));
+        var hatDropdown = UITools.CreateStringDropdownField(hatNames, currentHat);
+        hatDropdown.RegisterCallback<ChangeEvent<string>>(evt =>
+        {
+            foreach (var h in HatSwapper.AllHats)
+            {
+                if (h.Name == evt.newValue)
+                {
+                    selectedHatId = h.Id;
+                    ApplyToLockerRoom();
+                    break;
+                }
+            }
+        });
+        hatRow.Add(hatDropdown);
+        controlsContainer.Add(hatRow);
+
         // -- Body Type --
-        AddSectionLabel(contentScrollViewContent, "Body Type");
+        AddSectionLabel(controlsContainer, "Body Type");
 
         VisualElement bodyRow = UITools.CreateConfigurationRow();
         bodyRow.Add(UITools.CreateConfigurationLabel("Body Model"));
@@ -98,15 +153,15 @@ public static class PlayerCustomizationSection
             ApplyToLockerRoom();
         });
         bodyRow.Add(bodyDropdown);
-        contentScrollViewContent.Add(bodyRow);
+        controlsContainer.Add(bodyRow);
 
         // -- Skin Tone --
-        AddSectionLabel(contentScrollViewContent, "Skin Tone");
-        AddColorPicker(contentScrollViewContent, "Custom Skin Tone", GenderSwapper.SKIN_TONES, selectedSkinTone,
+        AddSectionLabel(controlsContainer, "Skin Tone");
+        AddColorPicker(controlsContainer, "Custom Skin Tone", GenderSwapper.SKIN_TONES, selectedSkinTone,
             color => { selectedSkinTone = color; ApplyToLockerRoom(); });
 
         // -- Facial Hair Style --
-        AddSectionLabel(contentScrollViewContent, "Facial Hair Style");
+        AddSectionLabel(controlsContainer, "Facial Hair Style");
 
         // Get current game settings for defaults
         int currentBeardId = SettingsManager.BeardID;
@@ -128,7 +183,7 @@ public static class PlayerCustomizationSection
             }
         });
         beardRow.Add(beardDropdown);
-        contentScrollViewContent.Add(beardRow);
+        controlsContainer.Add(beardRow);
 
         VisualElement mustacheRow = UITools.CreateConfigurationRow();
         mustacheRow.Add(UITools.CreateConfigurationLabel("Mustache"));
@@ -144,50 +199,78 @@ public static class PlayerCustomizationSection
             }
         });
         mustacheRow.Add(mustacheDropdown);
-        contentScrollViewContent.Add(mustacheRow);
+        controlsContainer.Add(mustacheRow);
 
         // -- Facial Hair Color --
-        AddSectionLabel(contentScrollViewContent, "Facial Hair Color");
-        AddColorPicker(contentScrollViewContent, "Custom Hair Color", GenderSwapper.HAIR_COLORS, selectedHairColor,
+        AddSectionLabel(controlsContainer, "Facial Hair Color");
+        AddColorPicker(controlsContainer, "Custom Hair Color", GenderSwapper.HAIR_COLORS, selectedHairColor,
             color => { selectedHairColor = color; ApplyToLockerRoom(); });
 
-        // -- Hat --
-        AddSectionLabel(contentScrollViewContent, "Hat");
-
-        var hatNames = new List<string>();
-        foreach (var h in HatSwapper.AllHats)
-            hatNames.Add(h.Name);
-
-        string currentHat = HatSwapper.GetHatName(selectedHatId);
-        VisualElement hatRow = UITools.CreateConfigurationRow();
-        hatRow.Add(UITools.CreateConfigurationLabel("Hat"));
-        var hatDropdown = UITools.CreateStringDropdownField(hatNames, currentHat);
-        hatDropdown.RegisterCallback<ChangeEvent<string>>(evt =>
-        {
-            foreach (var h in HatSwapper.AllHats)
-            {
-                if (h.Name == evt.newValue)
-                {
-                    selectedHatId = h.Id;
-                    ApplyToLockerRoom();
-                    break;
-                }
-            }
-        });
-        hatRow.Add(hatDropdown);
-        contentScrollViewContent.Add(hatRow);
-
         // -- Hair Style (TODO) --
-        AddSectionLabel(contentScrollViewContent, "Hair Style");
+        AddSectionLabel(controlsContainer, "Hair Style");
         Label hairTodo = new Label("Coming soon - hair style customization is not yet available.");
         hairTodo.style.fontSize = 14;
         hairTodo.style.color = new Color(0.5f, 0.5f, 0.5f);
         hairTodo.style.whiteSpace = WhiteSpace.Normal;
         hairTodo.style.marginTop = 4;
-        contentScrollViewContent.Add(hairTodo);
+        controlsContainer.Add(hairTodo);
 
         // Initial apply to locker room preview
-        ApplyToLockerRoom();
+        if (inMenu)
+            ApplyToLockerRoom();
+
+        // -- Display Settings (always enabled, even in-game) --
+        AddSectionLabel(contentScrollViewContent, "Display Settings");
+
+        var dependentControls = new System.Collections.Generic.List<VisualElement>();
+
+        VisualElement showPersonalizationRow = UITools.CreateConfigurationRow();
+        showPersonalizationRow.Add(UITools.CreateConfigurationLabel("Show Personalization"));
+        Toggle showPersonalizationToggle = UITools.CreateConfigurationCheckbox(Plugin.modSettings.ShowPersonalization);
+        showPersonalizationToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
+        {
+            Plugin.modSettings.ShowPersonalization = evt.newValue;
+            Plugin.modSettings.Save();
+            UITools.UpdateDependentControlsState(dependentControls, evt.newValue);
+            if (!evt.newValue)
+                HatSwapper.ClearHats();
+            AppearanceAPI.ReapplyAllAppearances();
+            // Re-apply hat to locker room preview when toggling back on
+            if (evt.newValue && inMenu)
+                ApplyToLockerRoom(syncToServer: false);
+        });
+        showPersonalizationRow.Add(showPersonalizationToggle);
+        contentScrollViewContent.Add(showPersonalizationRow);
+
+        VisualElement showHatsRow = UITools.CreateConfigurationRow();
+        showHatsRow.Add(UITools.CreateConfigurationLabel("Show Other Players' Hats"));
+        Toggle showHatsToggle = UITools.CreateConfigurationCheckbox(Plugin.modSettings.ShowOtherPlayersHats);
+        showHatsToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
+        {
+            Plugin.modSettings.ShowOtherPlayersHats = evt.newValue;
+            Plugin.modSettings.Save();
+            if (!evt.newValue)
+                HatSwapper.ClearHats();
+            AppearanceAPI.ReapplyAllAppearances();
+        });
+        showHatsRow.Add(showHatsToggle);
+        contentScrollViewContent.Add(showHatsRow);
+        dependentControls.Add(showHatsRow);
+
+        VisualElement showSkinRow = UITools.CreateConfigurationRow();
+        showSkinRow.Add(UITools.CreateConfigurationLabel("Show Non-Natural Skin Tones"));
+        Toggle showSkinToggle = UITools.CreateConfigurationCheckbox(Plugin.modSettings.ShowNonNaturalSkinTones);
+        showSkinToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
+        {
+            Plugin.modSettings.ShowNonNaturalSkinTones = evt.newValue;
+            Plugin.modSettings.Save();
+            AppearanceAPI.ReapplyAllAppearances();
+        });
+        showSkinRow.Add(showSkinToggle);
+        contentScrollViewContent.Add(showSkinRow);
+        dependentControls.Add(showSkinRow);
+
+        UITools.UpdateDependentControlsState(dependentControls, Plugin.modSettings.ShowPersonalization);
     }
 
     private static string GetNameFromId(int id, int[] ids, List<string> names)
@@ -205,6 +288,58 @@ public static class PlayerCustomizationSection
         label.style.marginTop = 16;
         label.style.marginBottom = 4;
         parent.Add(label);
+    }
+
+    private static void AddXpBar(VisualElement parent)
+    {
+        int level = AppearanceAPI.PlayerLevel;
+        int xpToNext = AppearanceAPI.XpToNextLevel;
+        int levelTotal = AppearanceAPI.LevelXpTotal;
+
+        // Progress within the current level:
+        // levelTotal is the full XP span for this level (snapshotted when the level changed).
+        // xpToNext is how much XP remains. So xpEarned = levelTotal - xpToNext.
+        int xpEarned = levelTotal > 0 ? levelTotal - xpToNext : 0;
+        float progress = levelTotal > 0 ? Mathf.Clamp01((float)xpEarned / levelTotal) : 0f;
+
+        // Level label
+        Label levelLabel = new Label($"<b>Level {level}</b>");
+        levelLabel.style.fontSize = 18;
+        levelLabel.style.color = Color.white;
+        levelLabel.style.marginBottom = 4;
+        parent.Add(levelLabel);
+
+        // XP bar container (background)
+        VisualElement barBg = new VisualElement();
+        barBg.style.height = 20;
+        barBg.style.backgroundColor = new StyleColor(new Color(0.15f, 0.15f, 0.15f));
+        barBg.style.borderTopLeftRadius = 4;
+        barBg.style.borderTopRightRadius = 4;
+        barBg.style.borderBottomLeftRadius = 4;
+        barBg.style.borderBottomRightRadius = 4;
+        barBg.style.marginBottom = 2;
+
+        // XP bar fill
+        VisualElement barFill = new VisualElement();
+        barFill.style.height = new StyleLength(new Length(100, LengthUnit.Percent));
+        barFill.style.width = new StyleLength(new Length(Mathf.Clamp01(progress) * 100f, LengthUnit.Percent));
+        barFill.style.backgroundColor = new StyleColor(new Color(0.3f, 0.6f, 1f));
+        barFill.style.borderTopLeftRadius = 4;
+        barFill.style.borderTopRightRadius = 4;
+        barFill.style.borderBottomLeftRadius = 4;
+        barFill.style.borderBottomRightRadius = 4;
+        barBg.Add(barFill);
+        parent.Add(barBg);
+
+        // XP text
+        string xpText = levelTotal > 0
+            ? $"{xpEarned} / {levelTotal} XP to level {level + 1}"
+            : $"{AppearanceAPI.PlayerXP} XP";
+        Label xpLabel = new Label(xpText);
+        xpLabel.style.fontSize = 12;
+        xpLabel.style.color = new Color(0.6f, 0.6f, 0.6f);
+        xpLabel.style.marginBottom = 8;
+        parent.Add(xpLabel);
     }
 
     /// <summary>

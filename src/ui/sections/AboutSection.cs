@@ -1,6 +1,4 @@
-﻿using ToasterReskinLoader.api;
-using ToasterReskinLoader.swappers;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace ToasterReskinLoader.ui.sections;
@@ -79,52 +77,5 @@ public static class AboutSection
             Application.OpenURL("http://ko-fi.com/stellaric");
         }
 
-        // -- Personalization master toggle + sub-settings --
-        var dependentControls = new System.Collections.Generic.List<VisualElement>();
-
-        VisualElement showPersonalizationRow = UITools.CreateConfigurationRow();
-        showPersonalizationRow.Add(UITools.CreateConfigurationLabel("Show Personalization"));
-        Toggle showPersonalizationToggle = UITools.CreateConfigurationCheckbox(Plugin.modSettings.ShowPersonalization);
-        showPersonalizationToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
-        {
-            Plugin.modSettings.ShowPersonalization = evt.newValue;
-            Plugin.modSettings.Save();
-            UITools.UpdateDependentControlsState(dependentControls, evt.newValue);
-            if (!evt.newValue)
-                HatSwapper.ClearHats();
-            AppearanceAPI.ReapplyAllAppearances();
-        });
-        showPersonalizationRow.Add(showPersonalizationToggle);
-        contentScrollViewContent.Add(showPersonalizationRow);
-
-        VisualElement showHatsRow = UITools.CreateConfigurationRow();
-        showHatsRow.Add(UITools.CreateConfigurationLabel("Show Other Players' Hats"));
-        Toggle showHatsToggle = UITools.CreateConfigurationCheckbox(Plugin.modSettings.ShowOtherPlayersHats);
-        showHatsToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
-        {
-            Plugin.modSettings.ShowOtherPlayersHats = evt.newValue;
-            Plugin.modSettings.Save();
-            if (!evt.newValue)
-                HatSwapper.ClearHats();
-            AppearanceAPI.ReapplyAllAppearances();
-        });
-        showHatsRow.Add(showHatsToggle);
-        contentScrollViewContent.Add(showHatsRow);
-        dependentControls.Add(showHatsRow);
-
-        VisualElement showSkinRow = UITools.CreateConfigurationRow();
-        showSkinRow.Add(UITools.CreateConfigurationLabel("Show Non-Natural Skin Tones"));
-        Toggle showSkinToggle = UITools.CreateConfigurationCheckbox(Plugin.modSettings.ShowNonNaturalSkinTones);
-        showSkinToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
-        {
-            Plugin.modSettings.ShowNonNaturalSkinTones = evt.newValue;
-            Plugin.modSettings.Save();
-            AppearanceAPI.ReapplyAllAppearances();
-        });
-        showSkinRow.Add(showSkinToggle);
-        contentScrollViewContent.Add(showSkinRow);
-        dependentControls.Add(showSkinRow);
-
-        UITools.UpdateDependentControlsState(dependentControls, Plugin.modSettings.ShowPersonalization);
     }
 }

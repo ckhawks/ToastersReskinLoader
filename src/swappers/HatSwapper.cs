@@ -14,6 +14,8 @@ namespace ToasterReskinLoader.swappers
         // All available hats, keyed by hat ID. ID 0 is reserved for "None".
         private static readonly Dictionary<int, HatDefinition> hatDefinitions = new();
         private static readonly Dictionary<int, GameObject> loadedPrefabs = new();
+        private static readonly FieldInfo BladeHandleField = typeof(Stick)
+            .GetField("bladeHandle", BindingFlags.Instance | BindingFlags.NonPublic);
 
         // Track spawned hats per player (clientId -> spawned instance)
         private static readonly Dictionary<ulong, GameObject> spawnedHats = new();
@@ -32,6 +34,7 @@ namespace ToasterReskinLoader.swappers
             public string Name;
             public string AssetPath;
             public bool AttachToTorso;
+            public bool AttachToStick;
             public bool IsPrefab;  // prefab vs raw FBX (affects default scale/offset/rotation)
             public float Scale;    // 0 = use default for type
             public float YOffset;  // 0 = use default for type
@@ -59,6 +62,7 @@ namespace ToasterReskinLoader.swappers
             new HatDefinition { Id = 12, Name = "Ears",           AssetPath = ASSET_PREFIX + "ears1.fbx" },
             new HatDefinition { Id = 13, Name = "Extra Helmet",   AssetPath = ASSET_PREFIX + "extra_helmet.fbx" },
             new HatDefinition { Id = 14, Name = "Backup Stick",   AssetPath = ASSET_PREFIX + "backup_stick_torso.fbx", AttachToTorso = true, Scale = 120f, YOffset = 1.7f, ZOffset = -0.1f },
+            new HatDefinition { Id = 15, Name = "Deltapoint",     AssetPath = ASSET_PREFIX + "deltapoint.fbx", AttachToStick = true, Scale = 100f, YOffset = -0.25f, ZOffset = 0f },
         };
 
         public static void Initialize()
@@ -119,7 +123,9 @@ namespace ToasterReskinLoader.swappers
         public static void AttachToPlayer(Player player, int hatId)
         {
             if (player?.PlayerBody?.PlayerMesh == null) return;
-            if (player.IsLocalPlayer) return;
+            // Skip local player for body/head items (camera clips), but allow stick items
+            hatDefinitions.TryGetValue(hatId, out var defCheck);
+            if (player.IsLocalPlayer && !defCheck.AttachToStick) return;
             if (player.Team is not (PlayerTeam.Blue or PlayerTeam.Red)) return;
 
             ulong clientId = player.OwnerClientId;
@@ -133,7 +139,11 @@ namespace ToasterReskinLoader.swappers
             try
             {
                 Transform attachPoint;
-                if (def.AttachToTorso)
+                if (def.AttachToStick)
+                {
+                    attachPoint = player.Stick?.StickMesh?.transform;
+                }
+                else if (def.AttachToTorso)
                 {
                     attachPoint = player.PlayerBody.PlayerMesh.PlayerTorso?.transform;
                 }
@@ -146,7 +156,7 @@ namespace ToasterReskinLoader.swappers
 
                 if (attachPoint == null) return;
 
-                var hat = SpawnHatFromDef(prefab, attachPoint, def);
+                var hat = SpawnHatFromDef(prefab, attachPoint, def, player.Role);
                 spawnedHats[clientId] = hat;
                 Plugin.LogDebug($"[Hats] Attached '{GetHatName(hatId)}' to {player.Username.Value}");
             }
@@ -172,7 +182,12 @@ namespace ToasterReskinLoader.swappers
             try
             {
                 Transform attachPoint;
-                if (def.AttachToTorso)
+                if (def.AttachToStick)
+                {
+                    // In locker room, find the StickMesh's blade collider as attach point
+                    attachPoint = FindLockerRoomBlade();
+                }
+                else if (def.AttachToTorso)
                 {
                     attachPoint = playerMesh.PlayerTorso?.transform;
                 }
@@ -185,7 +200,7 @@ namespace ToasterReskinLoader.swappers
 
                 if (attachPoint == null) return;
 
-                var hat = SpawnHatFromDef(prefab, attachPoint, def);
+                var hat = SpawnHatFromDef(prefab, attachPoint, def, SettingsManager.Role);
                 spawnedHats[LOCKER_ROOM_KEY] = hat;
             }
             catch (Exception ex)
@@ -223,16 +238,37 @@ namespace ToasterReskinLoader.swappers
             return hatsBundle != null && !loadFailed;
         }
 
-        private static GameObject SpawnHatFromDef(GameObject prefab, Transform parent, HatDefinition def)
+        private static GameObject SpawnHatFromDef(GameObject prefab, Transform parent, HatDefinition def, PlayerRole role = PlayerRole.Attacker)
         {
             float scale = def.Scale > 0 ? def.Scale : DEFAULT_FBX_SCALE;
-            float yOffset = def.YOffset != 0 ? def.YOffset : (def.IsPrefab ? HAT_Y_OFFSET : FBX_Y_OFFSET);
+            float yOffset;
+            if (def.AttachToStick)
+                yOffset = role == PlayerRole.Goalie ? def.YOffset * 2f : def.YOffset;
+            else
+                yOffset = def.YOffset != 0 ? def.YOffset : (def.IsPrefab ? HAT_Y_OFFSET : FBX_Y_OFFSET);
             float yRot = def.IsPrefab ? 0f : 180f;
+            Quaternion rotation;
+            if (def.AttachToStick)
+            {
+                bool isLockerRoom = ChangingRoomHelper.IsInMainMenu();
+                rotation = isLockerRoom
+                    ? Quaternion.Euler(-90f, 0f, 0f)
+                    : Quaternion.Euler(0f, 0f, 0f);
+            }
+            else
+            {
+                rotation = Quaternion.Euler(-90f, yRot, 0f);
+            }
 
             var hat = UnityEngine.Object.Instantiate(prefab, parent);
-            hat.transform.localPosition = new Vector3(0f, yOffset, def.ZOffset);
-            hat.transform.localRotation = Quaternion.Euler(-90f, yRot, 0f);
+            if (def.AttachToStick && !ChangingRoomHelper.IsInMainMenu())
+                hat.transform.localPosition = new Vector3(0f, 0f, yOffset); // in-game: Z axis runs along shaft
+            else
+                hat.transform.localPosition = new Vector3(0f, yOffset, def.ZOffset);
+            hat.transform.localRotation = rotation;
             hat.transform.localScale = InverseScale(parent.lossyScale) * scale;
+
+            Plugin.LogDebug($"[Hats] Spawned '{def.Name}' at parent={parent.name} lossyScale={parent.lossyScale} localScale={hat.transform.localScale} pos={hat.transform.localPosition}");
 
             FixMaterials(hat, parent, def.Emissive);
 
@@ -310,6 +346,24 @@ namespace ToasterReskinLoader.swappers
             if (!originalHeadScales.ContainsKey(headTransform))
                 originalHeadScales[headTransform] = headTransform.localScale;
             headTransform.localScale = originalHeadScales[headTransform] * BIG_HEAD_SCALE;
+        }
+
+        private static Transform FindBladeHandle(Stick stick)
+        {
+            if (stick == null || BladeHandleField == null) return null;
+            var bladeHandle = BladeHandleField.GetValue(stick) as GameObject;
+            return bladeHandle?.transform;
+        }
+
+        private static Transform FindLockerRoomBlade()
+        {
+            var stickMeshes = UnityEngine.Object.FindObjectsByType<StickMesh>(FindObjectsSortMode.None);
+            foreach (var sm in stickMeshes)
+            {
+                if (sm.gameObject.activeInHierarchy && sm.BladeCollider != null)
+                    return sm.BladeCollider.transform;
+            }
+            return null;
         }
 
         private static Transform FindHelmetTransform(PlayerHead playerHead)

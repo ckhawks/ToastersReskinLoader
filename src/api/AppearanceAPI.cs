@@ -1,11 +1,13 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Steamworks;
 using ToasterReskinLoader.swappers;
+using ToasterReskinLoader.ui.sections;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -17,12 +19,14 @@ namespace ToasterReskinLoader.api;
 /// </summary>
 public static class AppearanceAPI
 {
-    private const string BASE_URL = "https://puckstats.io";
+    private const string BASE_URL = "http://localhost:3010";
     private const float DEBOUNCE_DELAY = 2f;
 
     private static MonoBehaviour coroutineRunner;
     private static Coroutine pendingPost;
     private static AppearancePayload pendingPayload;
+    private static Coroutine heartbeatCoroutine;
+    private static Coroutine timeTrackingCoroutine;
 
     // Steam ticket — fetched once at init, reused for all POSTs.
     // Requesting a ticket fires a global Steamworks callback that the game's
@@ -40,12 +44,23 @@ public static class AppearanceAPI
         // Request the ticket immediately so it's ready before the first POST
         RequestTicket();
 
-        // Fetch the local player's saved appearance from the server
+        // Fetch the local player's saved appearance and unlocks from the server
         FetchLocalPlayerAppearance();
+        FetchLocalPlayerUnlocks();
+
+        // Start the XP heartbeat loop and time tracking
+        heartbeatCoroutine = coroutineRunner.StartCoroutine(HeartbeatLoop());
+        timeTrackingCoroutine = coroutineRunner.StartCoroutine(TimeTrackingLoop());
     }
 
     public static void Cleanup()
     {
+        if (heartbeatCoroutine != null && coroutineRunner != null)
+            coroutineRunner.StopCoroutine(heartbeatCoroutine);
+        if (timeTrackingCoroutine != null && coroutineRunner != null)
+            coroutineRunner.StopCoroutine(timeTrackingCoroutine);
+        heartbeatCoroutine = null;
+        timeTrackingCoroutine = null;
         ticketCallback?.Dispose();
         ticketCallback = null;
         coroutineRunner = null;
@@ -112,7 +127,10 @@ public static class AppearanceAPI
 
         if (request.result != UnityWebRequest.Result.Success)
         {
-            Plugin.LogError($"[AppearanceAPI] POST failed: {request.error} - {request.downloadHandler?.text}");
+            if (request.responseCode == 403)
+                Plugin.LogWarning("[AppearanceAPI] POST rejected: hat not unlocked");
+            else
+                Plugin.LogError($"[AppearanceAPI] POST failed: {request.error} - {request.downloadHandler?.text}");
         }
         else
         {
@@ -306,6 +324,39 @@ public static class AppearanceAPI
     /// <summary>
     /// Called when a new player spawns. If we don't have their appearance cached, fetch it.
     /// </summary>
+    /// <summary>
+    /// Called when a player's stick is ready. Attaches stick-based apparel
+    /// if the player has a cached appearance with a stick item.
+    /// </summary>
+    public static void OnStickReady(Player player)
+    {
+        if (player == null) return;
+
+        // For the local player, use their selected hat
+        if (player.IsLocalPlayer)
+        {
+            int localHatId = PlayerCustomizationSection.SelectedHatId;
+            if (localHatId > 0)
+            {
+                var hatDef = HatSwapper.AllHats.Find(h => h.Id == localHatId);
+                if (hatDef.AttachToStick)
+                    HatSwapper.AttachToPlayer(player, localHatId);
+            }
+            return;
+        }
+
+        string steamId = player.SteamId.Value.ToString();
+        if (appearanceCache.TryGetValue(steamId, out var data) && data != null)
+        {
+            if (data.hatId > 0 && Plugin.modSettings.ShowPersonalization && Plugin.modSettings.ShowOtherPlayersHats)
+            {
+                var hatDef = HatSwapper.AllHats.Find(h => h.Id == data.hatId);
+                if (hatDef.AttachToStick)
+                    HatSwapper.AttachToPlayer(player, data.hatId);
+            }
+        }
+    }
+
     public static void OnPlayerSpawned(Player player)
     {
         if (player == null || player.IsLocalPlayer) return;
@@ -498,6 +549,289 @@ public static class AppearanceAPI
         return false;
     }
 
+    // ==================== HEARTBEAT (XP) ====================
+
+    private const float HEARTBEAT_INTERVAL = 300f; // 5 minutes
+
+    // Accumulated time counters (reset after each heartbeat send)
+    private static float inGameSeconds;
+    private static float inWarmupSeconds;
+    private static float inMenuSeconds;
+    private static int inputCount;
+
+    /// <summary>Call when the player provides meaningful input (stick move, shot, etc).</summary>
+    public static void TrackInput()
+    {
+        inputCount++;
+    }
+
+    /// <summary>
+    /// Runs every frame to accumulate time by game state.
+    /// Unlike the PlayerInput patch (which only exists when spawned in-game),
+    /// this coroutine runs in all scenes including the menu.
+    /// </summary>
+    private static IEnumerator TimeTrackingLoop()
+    {
+        while (true)
+        {
+            yield return null;
+            float dt = Time.deltaTime;
+
+            bool inGame = false;
+            bool inWarmup = false;
+
+            try
+            {
+                string scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                if (scene != "locker_room")
+                {
+                    var gm = NetworkBehaviourSingleton<GameManager>.Instance;
+                    if (gm != null)
+                    {
+                        var phase = gm.Phase;
+                        inWarmup = phase == GamePhase.Warmup;
+                        inGame = phase == GamePhase.Play || phase == GamePhase.FaceOff ||
+                                 phase == GamePhase.BlueScore || phase == GamePhase.RedScore ||
+                                 phase == GamePhase.Replay || phase == GamePhase.Intermission;
+                    }
+                }
+            }
+            catch { /* GameManager not available */ }
+
+            if (inGame) inGameSeconds += dt;
+            else if (inWarmup) inWarmupSeconds += dt;
+            else inMenuSeconds += dt;
+        }
+    }
+
+    private static IEnumerator HeartbeatLoop()
+    {
+        while (true)
+        {
+            yield return new WaitForSeconds(HEARTBEAT_INTERVAL);
+            yield return SendHeartbeat();
+        }
+    }
+
+    private static IEnumerator SendHeartbeat()
+    {
+        // Wait for ticket
+        float elapsed = 0f;
+        while (cachedTicket == null && elapsed < 10f)
+        {
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+        if (cachedTicket == null) yield break;
+
+        var payload = new HeartbeatPayload
+        {
+            ticket = cachedTicket,
+            in_game_seconds = (int)inGameSeconds,
+            in_warmup_seconds = (int)inWarmupSeconds,
+            in_menu_seconds = (int)inMenuSeconds,
+            input_count = inputCount,
+            mod_version = Plugin.MOD_VERSION,
+        };
+
+        // Reset accumulators
+        inGameSeconds = 0f;
+        inWarmupSeconds = 0f;
+        inMenuSeconds = 0f;
+        inputCount = 0;
+
+        string json = JsonConvert.SerializeObject(payload);
+        using var request = new UnityWebRequest($"{BASE_URL}/api/appearance/xp", "POST");
+        request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(json));
+        request.downloadHandler = new DownloadHandlerBuffer();
+        request.SetRequestHeader("Content-Type", "application/json");
+
+        yield return request.SendWebRequest();
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            Plugin.LogError($"[AppearanceAPI] Heartbeat failed: {request.error}");
+            yield break;
+        }
+
+        try
+        {
+            var resp = JObject.Parse(request.downloadHandler.text);
+            int xp = (int)resp["xp"];
+            int level = (int)resp["level"];
+            int xpToNext = (int)(resp["xp_to_next_level"] ?? 0);
+            bool leveledUp = (bool)(resp["leveled_up"] ?? false);
+
+            UpdateXpState(xp, level, xpToNext);
+            Plugin.LogDebug($"[AppearanceAPI] Heartbeat OK: xp={xp}, level={level}, leveled_up={leveledUp}");
+
+            var newHats = resp["new_hats"] as JArray;
+            if (newHats != null && newHats.Count > 0)
+            {
+                foreach (var hat in newHats)
+                {
+                    int hatId = (int)hat["id"];
+                    string hatName = (string)hat["name"];
+                    UnlockedHatIds.Add(hatId);
+                    Plugin.Log($"[AppearanceAPI] New hat unlocked: {hatName} (id={hatId})");
+                }
+
+                string hatList = string.Join(", ", newHats.Select(h => (string)h["name"]));
+                string title = leveledUp ? $"TRL: Level {level}!" : "TRL: New Hat!";
+                MonoBehaviourSingleton<UIManager>.Instance?.ToastManager?.ShowToast(
+                    title, $"Level {level} — You unlocked: {hatList}", 5f);
+            }
+
+            OnUnlocksChanged?.Invoke();
+        }
+        catch (Exception e)
+        {
+            Plugin.LogError($"[AppearanceAPI] Failed to parse heartbeat response: {e.Message}");
+        }
+    }
+
+    // ==================== UNLOCKS ====================
+
+    /// <summary>Set of hat IDs the local player has unlocked. Hat 0 ("None") is always allowed.</summary>
+    public static readonly HashSet<int> UnlockedHatIds = new() { 0 };
+    public static int PlayerXP { get; private set; }
+    public static int PlayerLevel { get; private set; }
+    public static int XpToNextLevel { get; private set; }
+    /// <summary>Total XP span of the current level. Used to compute progress bar fill.</summary>
+    public static int LevelXpTotal { get; private set; }
+
+    private static void UpdateXpState(int xp, int level, int xpToNext)
+    {
+        PlayerXP = xp;
+        PlayerLevel = level;
+        XpToNextLevel = xpToNext;
+        // Level N→N+1 costs 50 + N*50 XP (matches server formula in xp.ts)
+        LevelXpTotal = 50 + level * 50;
+    }
+
+    /// <summary>Fired when the unlock set changes (initial fetch, heartbeat, or code redeem).</summary>
+    public static event Action OnUnlocksChanged;
+
+    /// <summary>Manually fire the unlocks-changed event (e.g. after debug commands).</summary>
+    public static void NotifyUnlocksChanged() => OnUnlocksChanged?.Invoke();
+
+    /// <summary>Returns true if the local player owns the given hat.</summary>
+    public static bool IsHatUnlocked(int hatId) => hatId == 0 || UnlockedHatIds.Contains(hatId);
+
+    private static void FetchLocalPlayerUnlocks()
+    {
+        if (!SteamManager.IsInitialized || coroutineRunner == null) return;
+        string steamId = SteamUser.GetSteamID().ToString();
+        coroutineRunner.StartCoroutine(FetchUnlocksCoroutine(steamId));
+    }
+
+    private static IEnumerator FetchUnlocksCoroutine(string steamId)
+    {
+        string url = $"{BASE_URL}/api/appearance/unlocks?steamId={steamId}";
+        using var request = UnityWebRequest.Get(url);
+        yield return request.SendWebRequest();
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            Plugin.LogError($"[AppearanceAPI] Unlocks fetch failed: {request.error}");
+            yield break;
+        }
+
+        try
+        {
+            var resp = JObject.Parse(request.downloadHandler.text);
+            UpdateXpState((int)resp["xp"], (int)resp["level"], (int)(resp["xp_to_next_level"] ?? 0));
+
+            var hats = resp["unlocked_hats"] as JArray;
+            if (hats != null)
+            {
+                foreach (var hat in hats)
+                    UnlockedHatIds.Add((int)hat["hat_id"]);
+            }
+
+            Plugin.Log($"[AppearanceAPI] Unlocks loaded: level={PlayerLevel}, xp={PlayerXP}, hats={UnlockedHatIds.Count}");
+            OnUnlocksChanged?.Invoke();
+        }
+        catch (Exception e)
+        {
+            Plugin.LogError($"[AppearanceAPI] Failed to parse unlocks: {e.Message}");
+        }
+    }
+
+    // ==================== CODE REDEMPTION ====================
+
+    /// <summary>
+    /// Redeems a code via the server API. Calls onResult with (success, message).
+    /// </summary>
+    public static void RedeemCode(string code, Action<bool, string> onResult)
+    {
+        if (coroutineRunner == null)
+        {
+            onResult?.Invoke(false, "Not initialized");
+            return;
+        }
+        coroutineRunner.StartCoroutine(RedeemCodeCoroutine(code, onResult));
+    }
+
+    private static IEnumerator RedeemCodeCoroutine(string code, Action<bool, string> onResult)
+    {
+        // Wait for ticket
+        float elapsed = 0f;
+        while (cachedTicket == null && elapsed < 10f)
+        {
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+        if (cachedTicket == null)
+        {
+            onResult?.Invoke(false, "No Steam ticket available");
+            yield break;
+        }
+
+        var payload = new RedeemPayload { ticket = cachedTicket, code = code };
+        string json = JsonConvert.SerializeObject(payload);
+
+        using var request = new UnityWebRequest($"{BASE_URL}/api/appearance/redeem", "POST");
+        request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(json));
+        request.downloadHandler = new DownloadHandlerBuffer();
+        request.SetRequestHeader("Content-Type", "application/json");
+
+        yield return request.SendWebRequest();
+
+        string body = request.downloadHandler?.text ?? "";
+
+        if (request.responseCode == 400)
+        {
+            onResult?.Invoke(false, "Invalid code.");
+            yield break;
+        }
+        if (request.responseCode == 409)
+        {
+            onResult?.Invoke(false, "Already unlocked.");
+            yield break;
+        }
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            onResult?.Invoke(false, $"Error: {request.error}");
+            yield break;
+        }
+
+        try
+        {
+            var resp = JObject.Parse(body);
+            int hatId = (int)resp["hat_id"];
+            string hatName = (string)resp["name"];
+            UnlockedHatIds.Add(hatId);
+            OnUnlocksChanged?.Invoke();
+            onResult?.Invoke(true, $"Unlocked: {hatName}!");
+        }
+        catch (Exception e)
+        {
+            Plugin.LogError($"[AppearanceAPI] Failed to parse redeem response: {e.Message}");
+            onResult?.Invoke(false, "Unexpected response");
+        }
+    }
+
     // ==================== SERIALIZATION ====================
 
     [Serializable]
@@ -517,6 +851,24 @@ public static class AppearanceAPI
         public float r;
         public float g;
         public float b;
+    }
+
+    [Serializable]
+    private class HeartbeatPayload
+    {
+        public string ticket;
+        public int in_game_seconds;
+        public int in_warmup_seconds;
+        public int in_menu_seconds;
+        public int input_count;
+        public string mod_version;
+    }
+
+    [Serializable]
+    private class RedeemPayload
+    {
+        public string ticket;
+        public string code;
     }
 
     /// <summary>

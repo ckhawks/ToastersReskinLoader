@@ -122,6 +122,23 @@ public static class SwapperManager
         }
     }
 
+    // Track player input for XP heartbeats (time is tracked by AppearanceAPI coroutine)
+    [HarmonyPatch(typeof(PlayerInput), "Update")]
+    public static class PlayerInputUpdatePatch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(PlayerInput __instance)
+        {
+            if (__instance.Player == null || !__instance.Player.IsLocalPlayer) return;
+
+            if (__instance.MoveInput.ClientValue.sqrMagnitude > 0.01f ||
+                __instance.StickRaycastOriginAngleInput.ClientValue.sqrMagnitude > 0.01f)
+            {
+                AppearanceAPI.TrackInput();
+            }
+        }
+    }
+
     // This patch makes the stick change when a player spawns
     [HarmonyPatch(typeof(Stick), nameof(Stick.ApplyCustomizations))]
     public static class StickApplyCustomizationsPatch
@@ -133,6 +150,9 @@ public static class SwapperManager
             SetStickReskinForPlayer(__instance.Player);
             if (__instance.Player.IsLocalPlayer)
                 StickTapeSwapper.SetStickTapeForPlayer(__instance.Player.Stick);
+
+            // Attach stick-based apparel (e.g. Deltapoint) now that the stick exists
+            AppearanceAPI.OnStickReady(__instance.Player);
         }
     }
 
