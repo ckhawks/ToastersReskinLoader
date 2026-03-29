@@ -476,6 +476,8 @@ public static class ReskinProfileManager
                     ?? defaultProfile.quickChatX,
                 quickChatY = serializableProfile.QuickChatY
                     ?? defaultProfile.quickChatY,
+                chatRenderAllEmojis = serializableProfile.ChatRenderAllEmojis
+                    ?? defaultProfile.chatRenderAllEmojis,
 
                 // Shadows (CrispyShadows)
                 crispyShadowsEnabled = serializableProfile.CrispyShadowsEnabled
@@ -734,6 +736,7 @@ public static class ReskinProfileManager
                 ChatBackground = currentProfile.chatBackground,
                 QuickChatX = currentProfile.quickChatX,
                 QuickChatY = currentProfile.quickChatY,
+                ChatRenderAllEmojis = currentProfile.chatRenderAllEmojis,
 
                 // Shadows (CrispyShadows)
                 CrispyShadowsEnabled = currentProfile.crispyShadowsEnabled,
@@ -1170,6 +1173,7 @@ public static class ReskinProfileManager
         public bool chatBackground = false;
         public float quickChatX = 0f;
         public float quickChatY = 50f;
+        public bool chatRenderAllEmojis = true;
 
         // Shadows section (CrispyShadows)
         public bool crispyShadowsEnabled = true;
@@ -1457,6 +1461,8 @@ public static class ReskinProfileManager
         public float? QuickChatX { get; set; }
         [JsonProperty("quickChatY")]
         public float? QuickChatY { get; set; }
+        [JsonProperty("chatRenderAllEmojis")]
+        public bool? ChatRenderAllEmojis { get; set; }
 
         // SHADOWS (CrispyShadows)
         [JsonProperty("crispyShadowsEnabled")]

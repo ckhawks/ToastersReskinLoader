@@ -459,4 +459,27 @@ public static class TeamColorSwapper
             }
         }
     }
+
+    // ── Emoji filter bypass ──────────────────────────────────────────
+
+    [HarmonyPatch(typeof(UIChat), "ParseChatContent")]
+    public static class UIChatParseChatContentPatch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(ref string __result, string content, bool isSystem, Units units, bool filterProfanity)
+        {
+            if (!ReskinProfileManager.currentProfile.chatRenderAllEmojis) return true;
+            if (isSystem) return true;
+
+            // Non-system: filter rich text and profanity, but skip
+            // FilterStringSpecialCharacters entirely so all Unicode (emojis) passes through.
+            content = StringUtils.FilterStringRichText(content);
+            if (filterProfanity)
+            {
+                content = StringUtils.FilterStringProfanity(content, true);
+            }
+            __result = content;
+            return false;
+        }
+    }
 }

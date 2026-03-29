@@ -322,6 +322,17 @@ public static class UISection
         chatBgRow.Add(chatBgToggle);
         contentScrollViewContent.Add(chatBgRow);
 
+        VisualElement emojiRow = UITools.CreateConfigurationRow();
+        emojiRow.Add(UITools.CreateConfigurationLabel("Render All Emojis in Chat"));
+        Toggle emojiToggle = UITools.CreateConfigurationCheckbox(ReskinProfileManager.currentProfile.chatRenderAllEmojis);
+        emojiToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
+        {
+            ReskinProfileManager.currentProfile.chatRenderAllEmojis = evt.newValue;
+            ReskinProfileManager.SaveProfile();
+        });
+        emojiRow.Add(emojiToggle);
+        contentScrollViewContent.Add(emojiRow);
+
         CreateSliderRow(contentScrollViewContent, "Quick Chat Menu X Position", 0f, 100f,
             () => ReskinProfileManager.currentProfile.quickChatX,
             val =>

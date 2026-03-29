@@ -5,8 +5,32 @@ namespace ToasterReskinLoader;
 
 /// <summary>
 /// Public API for other mods to read TRL settings.
-/// Other mods can reference ToasterReskinLoader.dll and use this directly,
-/// or use reflection for a soft/optional dependency.
+///
+/// Hard dependency (reference ToasterReskinLoader.dll):
+///   var blue = ToasterReskinLoaderAPI.BlueTeamColor;
+///   ToasterReskinLoaderAPI.OnTeamColorsChanged += () => { /* re-read colors */ };
+///
+/// Soft/optional dependency (reflection, no DLL reference needed):
+///   Type api = null;
+///   foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+///   {
+///       api = asm.GetType("ToasterReskinLoader.ToasterReskinLoaderAPI");
+///       if (api != null) break;
+///   }
+///   if (api != null)
+///   {
+///       // Read properties
+///       bool enabled = (bool)api.GetProperty("TeamColorsEnabled").GetValue(null);
+///       Color blue   = (Color)api.GetProperty("BlueTeamColor").GetValue(null);
+///       Color red    = (Color)api.GetProperty("RedTeamColor").GetValue(null);
+///       string blueName = (string)api.GetProperty("BlueTeamName").GetValue(null);
+///       string redName  = (string)api.GetProperty("RedTeamName").GetValue(null);
+///
+///       // Subscribe to changes
+///       var evt = api.GetEvent("OnTeamColorsChanged");
+///       var handler = Delegate.CreateDelegate(evt.EventHandlerType, myObj, "OnColorsChanged");
+///       evt.AddEventHandler(null, handler);
+///   }
 /// </summary>
 public static class ToasterReskinLoaderAPI
 {
