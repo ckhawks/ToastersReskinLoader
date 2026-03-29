@@ -39,6 +39,40 @@ public static class ToasterReskinLoaderAPI
     public static string RedTeamName =>
         ReskinProfileManager.currentProfile?.redTeamName ?? "";
 
+    // ── Minimap settings ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Fired whenever the user changes minimap settings (colors, scales).
+    /// Subscribe to this to react to changes in real time.
+    /// </summary>
+    public static event Action OnMinimapSettingsChanged;
+
+    /// <summary>The user's minimap puck color.</summary>
+    public static Color MinimapPuckColor =>
+        ReskinProfileManager.currentProfile?.minimapPuckColor ?? Color.black;
+
+    /// <summary>The user's minimap puck icon scale multiplier (default 1.0).</summary>
+    public static float MinimapPuckScale =>
+        ReskinProfileManager.currentProfile?.minimapPuckScale ?? 1f;
+
+    /// <summary>The user's minimap player icon scale multiplier (default 1.0).</summary>
+    public static float MinimapPlayerScale =>
+        ReskinProfileManager.currentProfile?.minimapPlayerScale ?? 1f;
+
+    /// <summary>Call this internally whenever minimap settings change.</summary>
+    internal static void NotifyMinimapSettingsChanged()
+    {
+        try
+        {
+            swappers.MinimapSwapper.RefreshAll();
+            OnMinimapSettingsChanged?.Invoke();
+        }
+        catch (Exception e)
+        {
+            Plugin.LogDebug($"ToasterReskinLoaderAPI.OnMinimapSettingsChanged handler error: {e.Message}");
+        }
+    }
+
     /// <summary>Call this internally whenever team color settings change.</summary>
     internal static void NotifyTeamColorsChanged()
     {

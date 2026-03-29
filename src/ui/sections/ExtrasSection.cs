@@ -49,14 +49,22 @@ public static class ExtrasSection
             if (upper != evt.newValue)
                 codeField.SetValueWithoutNotify(upper);
         });
+        Button redeemButton = new Button { text = "Redeem" };
+        codeField.RegisterCallback<KeyDownEvent>(evt =>
+        {
+            if (evt.keyCode == KeyCode.Return || evt.keyCode == KeyCode.KeypadEnter)
+            {
+                evt.StopPropagation();
+                using var click = ClickEvent.GetPooled();
+                redeemButton.SendEvent(click);
+            }
+        });
         codeRow.Add(codeField);
 
         Label feedbackLabel = new Label();
         feedbackLabel.style.fontSize = 14;
         feedbackLabel.style.marginTop = 8;
         feedbackLabel.style.marginBottom = 4;
-
-        Button redeemButton = new Button { text = "Redeem" };
         redeemButton.style.backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f));
         redeemButton.style.paddingLeft = 12;
         redeemButton.style.paddingRight = 12;

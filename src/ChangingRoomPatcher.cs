@@ -12,6 +12,12 @@ namespace ToasterReskinLoader
         private static readonly FieldInfo _playerMeshField = typeof(LockerRoomPlayer)
             .GetField("playerMesh", BindingFlags.Instance | BindingFlags.NonPublic);
 
+        // Cache of original locker room leg pad textures: key is side ("left"/"right")
+        private static readonly System.Collections.Generic.Dictionary<string, Texture> originalLegPadTextures =
+            new System.Collections.Generic.Dictionary<string, Texture>();
+
+        public static void ClearLegPadCache() => originalLegPadTextures.Clear();
+
         private static PlayerMesh GetPlayerMesh(LockerRoomPlayer instance)
         {
             return (PlayerMesh)_playerMeshField?.GetValue(instance);
@@ -113,34 +119,43 @@ namespace ToasterReskinLoader
                 return;
             }
 
-            Texture2D texture = null;
+            // Cache the original texture on first encounter
+            if (!originalLegPadTextures.ContainsKey(side))
+            {
+                originalLegPadTextures[side] = renderer.material.mainTexture;
+            }
+
+            ReskinRegistry.ReskinEntry entry = null;
             if (team == PlayerTeam.Blue)
             {
-                var entry = side == "left"
+                entry = side == "left"
                     ? ReskinProfileManager.currentProfile.blueLegPadLeft
                     : ReskinProfileManager.currentProfile.blueLegPadRight;
-
-                if (entry != null && entry.Path != null)
-                {
-                    texture = TextureManager.GetTexture(entry);
-                }
             }
             else if (team == PlayerTeam.Red)
             {
-                var entry = side == "left"
+                entry = side == "left"
                     ? ReskinProfileManager.currentProfile.redLegPadLeft
                     : ReskinProfileManager.currentProfile.redLegPadRight;
-
-                if (entry != null && entry.Path != null)
-                {
-                    texture = TextureManager.GetTexture(entry);
-                }
             }
 
-            if (texture != null)
+            if (entry?.Path != null)
             {
-                SwapperUtils.ApplyTextureToMaterial(renderer.material, texture);
-                Plugin.LogDebug($"Applied {side} leg pad texture for {team}");
+                var texture = TextureManager.GetTexture(entry);
+                if (texture != null)
+                {
+                    SwapperUtils.ApplyTextureToMaterial(renderer.material, texture);
+                    Plugin.LogDebug($"Applied {side} leg pad texture for {team}");
+                }
+            }
+            else
+            {
+                // Restore original texture when set to "unchanged"
+                Color defaultColor = team == PlayerTeam.Blue
+                    ? ReskinProfileManager.currentProfile.blueLegPadDefaultColor
+                    : ReskinProfileManager.currentProfile.redLegPadDefaultColor;
+                SwapperUtils.RestoreOriginalTexture(renderer.material, originalLegPadTextures[side], defaultColor);
+                Plugin.LogDebug($"Restored {side} leg pad to original for {team}");
             }
         }
 

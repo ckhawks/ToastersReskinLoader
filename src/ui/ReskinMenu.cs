@@ -62,7 +62,10 @@ public static class ReskinMenu
         {
             MonoBehaviourSingleton<UIManager>.Instance?.PauseMenu.Hide();
             MonoBehaviourSingleton<UIManager>.Instance?.GameState.Hide();
-            MonoBehaviourSingleton<UIManager>.Instance?.Minimap.Hide();
+            // Keep minimap visible if on the User Interface tab (for previewing minimap settings)
+            // but not in the main menu where the minimap doesn't exist
+            if (sections[selectedSectionIndex] != "User Interface" || ChangingRoomHelper.IsInMainMenu())
+                MonoBehaviourSingleton<UIManager>.Instance?.Minimap.Hide();
         }
 
         // Tell the game's state system that the mouse should be visible
@@ -397,6 +400,21 @@ public static class ReskinMenu
         ChangingRoomHelper.Scan();
         int oldSectionIndex = selectedSectionIndex;
         selectedSectionIndex = sectionIndex;
+
+        // Show minimap when on the User Interface tab so the user can preview changes
+        // (only in-game — minimap doesn't exist in the main menu)
+        if (!ChangingRoomHelper.IsInMainMenu())
+        {
+            var minimap = MonoBehaviourSingleton<UIManager>.Instance?.Minimap;
+            if (minimap != null)
+            {
+                if (sections[sectionIndex] == "User Interface")
+                    minimap.Show();
+                else if (sections[oldSectionIndex] == "User Interface")
+                    minimap.Hide();
+            }
+        }
+
         CreateContentForSection(sectionIndex);
 
         List<VisualElement> sidebarSectionButtons =

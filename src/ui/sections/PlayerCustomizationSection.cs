@@ -96,6 +96,17 @@ public static class PlayerCustomizationSection
         description.style.marginBottom = 12;
         contentScrollViewContent.Add(description);
 
+        // -- Backend warning --
+        if (AppearanceAPI.BackendReachable == false)
+        {
+            Label backendWarning = new Label("Unable to reach appearance server — customizations may not save or load.");
+            backendWarning.style.fontSize = 13;
+            backendWarning.style.color = new Color(1f, 0.35f, 0.35f);
+            backendWarning.style.whiteSpace = WhiteSpace.Normal;
+            backendWarning.style.marginBottom = 8;
+            contentScrollViewContent.Add(backendWarning);
+        }
+
         // -- XP / Level Bar --
         AddXpBar(contentScrollViewContent);
 

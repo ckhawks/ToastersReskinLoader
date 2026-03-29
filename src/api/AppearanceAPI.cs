@@ -28,6 +28,12 @@ public static class AppearanceAPI
     private static Coroutine heartbeatCoroutine;
     private static Coroutine timeTrackingCoroutine;
 
+    /// <summary>
+    /// True once we've gotten at least one successful response from the backend.
+    /// Starts null (unknown), set to true/false after the first fetch attempt completes.
+    /// </summary>
+    public static bool? BackendReachable { get; private set; }
+
     // Steam ticket — fetched once at init, reused for all POSTs.
     // Requesting a ticket fires a global Steamworks callback that the game's
     // BackendManagerController also listens on, causing a re-auth + UI reset.
@@ -66,6 +72,7 @@ public static class AppearanceAPI
         coroutineRunner = null;
         cachedTicket = null;
         ticketRequested = false;
+        BackendReachable = null;
     }
 
     /// <summary>
@@ -166,9 +173,12 @@ public static class AppearanceAPI
         if (request.result != UnityWebRequest.Result.Success)
         {
             Plugin.LogError($"[AppearanceAPI] GET failed: {request.error}");
+            if (BackendReachable == null) BackendReachable = false;
             onComplete?.Invoke(result);
             yield break;
         }
+
+        BackendReachable = true;
 
         try
         {
@@ -677,9 +687,9 @@ public static class AppearanceAPI
                 }
 
                 string hatList = string.Join(", ", newHats.Select(h => (string)h["name"]));
-                string title = leveledUp ? $"TRL: Level {level}!" : "TRL: New Hat!";
+                string body = $"TRL: Level {level} — You unlocked: {hatList}";
                 MonoBehaviourSingleton<UIManager>.Instance?.ToastManager?.ShowToast(
-                    title, $"Level {level} — You unlocked: {hatList}", 5f);
+                    "TRL", body, 5f);
             }
 
             OnUnlocksChanged?.Invoke();
@@ -734,8 +744,11 @@ public static class AppearanceAPI
         if (request.result != UnityWebRequest.Result.Success)
         {
             Plugin.LogError($"[AppearanceAPI] Unlocks fetch failed: {request.error}");
+            if (BackendReachable == null) BackendReachable = false;
             yield break;
         }
+
+        BackendReachable = true;
 
         try
         {

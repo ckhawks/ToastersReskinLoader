@@ -262,7 +262,7 @@ public static class ChangingRoomHelper
 
     private static void ApplyLegPadColors(PlayerMesh playerMesh, PlayerTeam team)
     {
-        // Leg pad default colors (when no custom texture)
+        // Leg pad default colors (when no custom texture) — applied per-pad independently
         if (playerMesh.PlayerLegPadLeft == null || playerMesh.PlayerLegPadRight == null) return;
 
         var leftEntry = team == PlayerTeam.Blue
@@ -272,15 +272,18 @@ public static class ChangingRoomHelper
             ? ReskinProfileManager.currentProfile.blueLegPadRight
             : ReskinProfileManager.currentProfile.redLegPadRight;
 
-        if ((leftEntry == null || leftEntry.Path == null) && (rightEntry == null || rightEntry.Path == null))
-        {
-            Color padColor = team == PlayerTeam.Blue
-                ? ReskinProfileManager.currentProfile.blueLegPadDefaultColor
-                : ReskinProfileManager.currentProfile.redLegPadDefaultColor;
+        Color padColor = team == PlayerTeam.Blue
+            ? ReskinProfileManager.currentProfile.blueLegPadDefaultColor
+            : ReskinProfileManager.currentProfile.redLegPadDefaultColor;
 
+        if (leftEntry == null || leftEntry.Path == null)
+        {
             var leftRenderer = playerMesh.PlayerLegPadLeft.GetComponent<Renderer>();
             if (leftRenderer != null) SetMaterialColor(leftRenderer.material, padColor);
+        }
 
+        if (rightEntry == null || rightEntry.Path == null)
+        {
             var rightRenderer = playerMesh.PlayerLegPadRight.GetComponent<Renderer>();
             if (rightRenderer != null) SetMaterialColor(rightRenderer.material, padColor);
         }

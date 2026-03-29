@@ -253,5 +253,6 @@ public static class SwapperManager
         TeamIndicatorSwapper.Setup();
         TeamIndicatorSwapper.UpdateVisibility();
         PuckFXSwapper.ApplyAll();
+        MinimapSwapper.RefreshAll();
     }
 }

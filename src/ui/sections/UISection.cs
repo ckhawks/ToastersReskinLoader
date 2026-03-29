@@ -182,11 +182,136 @@ public static class UISection
         });
         contentScrollViewContent.Add(resetButton);
 
+        // ── Minimap ─────────────────────────────────────────────────────
+        VisualElement minimapSeparator = new VisualElement();
+        minimapSeparator.style.height = 1;
+        minimapSeparator.style.backgroundColor = new Color(0.4f, 0.4f, 0.4f);
+        minimapSeparator.style.marginTop = 16;
+        minimapSeparator.style.marginBottom = 16;
+        contentScrollViewContent.Add(minimapSeparator);
+
+        Label minimapHeader = new Label("<b>Minimap</b>");
+        minimapHeader.style.fontSize = 20;
+        minimapHeader.style.color = Color.white;
+        minimapHeader.style.marginBottom = 8;
+        contentScrollViewContent.Add(minimapHeader);
+
+        // Blue number text color
+        var blueNumberColor = UITools.CreateColorConfigurationRow(
+            "Blue Number Text Color",
+            ReskinProfileManager.currentProfile.blueMinimapNumberColor,
+            false,
+            newColor =>
+            {
+                ReskinProfileManager.currentProfile.blueMinimapNumberColor = newColor;
+                ToasterReskinLoaderAPI.NotifyMinimapSettingsChanged();
+            },
+            () => { ReskinProfileManager.SaveProfile(); }
+        );
+        contentScrollViewContent.Add(blueNumberColor);
+
+        // Red number text color
+        var redNumberColor = UITools.CreateColorConfigurationRow(
+            "Red Number Text Color",
+            ReskinProfileManager.currentProfile.redMinimapNumberColor,
+            false,
+            newColor =>
+            {
+                ReskinProfileManager.currentProfile.redMinimapNumberColor = newColor;
+                ToasterReskinLoaderAPI.NotifyMinimapSettingsChanged();
+            },
+            () => { ReskinProfileManager.SaveProfile(); }
+        );
+        contentScrollViewContent.Add(redNumberColor);
+
+        // Puck color
+        var puckColor = UITools.CreateColorConfigurationRow(
+            "Puck Color",
+            ReskinProfileManager.currentProfile.minimapPuckColor,
+            false,
+            newColor =>
+            {
+                ReskinProfileManager.currentProfile.minimapPuckColor = newColor;
+                ToasterReskinLoaderAPI.NotifyMinimapSettingsChanged();
+            },
+            () => { ReskinProfileManager.SaveProfile(); }
+        );
+        contentScrollViewContent.Add(puckColor);
+
+        // Player icon scale
+        CreateSliderRow(contentScrollViewContent, "Player Icon Scale", 0.5f, 3f,
+            () => ReskinProfileManager.currentProfile.minimapPlayerScale,
+            val =>
+            {
+                ReskinProfileManager.currentProfile.minimapPlayerScale = val;
+                ReskinProfileManager.SaveProfile();
+                ToasterReskinLoaderAPI.NotifyMinimapSettingsChanged();
+            });
+
+        // Puck icon scale
+        CreateSliderRow(contentScrollViewContent, "Puck Icon Scale", 0.5f, 3f,
+            () => ReskinProfileManager.currentProfile.minimapPuckScale,
+            val =>
+            {
+                ReskinProfileManager.currentProfile.minimapPuckScale = val;
+                ReskinProfileManager.SaveProfile();
+                ToasterReskinLoaderAPI.NotifyMinimapSettingsChanged();
+            });
+
+        // Minimap reset button
+        Button minimapResetButton = new Button
+        {
+            text = "Reset minimap to default",
+            style =
+            {
+                backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f)),
+                unityTextAlign = TextAnchor.MiddleLeft,
+                fontSize = 18,
+                marginTop = 8,
+                paddingTop = 8,
+                paddingBottom = 8,
+                paddingLeft = 15
+            }
+        };
+        UITools.AddHoverEffectsForButton(minimapResetButton);
+        minimapResetButton.RegisterCallback<ClickEvent>(evt =>
+        {
+            ReskinProfileManager.ResetMinimapToDefault();
+            ToasterReskinLoaderAPI.NotifyMinimapSettingsChanged();
+
+            Label title = (Label)contentScrollViewContent.Children().First();
+            contentScrollViewContent.Clear();
+            contentScrollViewContent.Add(title);
+            CreateSection(contentScrollViewContent);
+        });
+        contentScrollViewContent.Add(minimapResetButton);
+
         // Set initial state
         UITools.UpdateDependentControlsState(dependentControls, ReskinProfileManager.currentProfile.teamColorsEnabled);
     }
 
+    private static void CreateSliderRow(
+        VisualElement container,
+        string label,
+        float min,
+        float max,
+        System.Func<float> getter,
+        System.Action<float> setter)
+    {
+        var row = UITools.CreateConfigurationRow();
+        row.Add(UITools.CreateConfigurationLabel(label));
+        var slider = UITools.CreateConfigurationSlider(min, max, getter(), 300);
 
+        slider.RegisterCallback<ChangeEvent<float>>(evt =>
+        {
+            setter(evt.newValue);
+            ReskinProfileManager.SaveProfile();
+        });
+        slider.RegisterCallback<PointerUpEvent>(evt => ReskinProfileManager.SaveProfile());
+
+        row.Add(slider);
+        container.Add(row);
+    }
 
     private static TextField CreateTextInput(string value, string placeholder, System.Action<string> onChanged)
     {

@@ -452,6 +452,21 @@ public static class ReskinProfileManager
                 redTeamName = serializableProfile.RedTeamName
                     ?? defaultProfile.redTeamName,
 
+                // Minimap
+                blueMinimapNumberColor = serializableProfile.BlueMinimapNumberColor != null
+                    ? (Color)serializableProfile.BlueMinimapNumberColor
+                    : defaultProfile.blueMinimapNumberColor,
+                redMinimapNumberColor = serializableProfile.RedMinimapNumberColor != null
+                    ? (Color)serializableProfile.RedMinimapNumberColor
+                    : defaultProfile.redMinimapNumberColor,
+                minimapPuckColor = serializableProfile.MinimapPuckColor != null
+                    ? (Color)serializableProfile.MinimapPuckColor
+                    : defaultProfile.minimapPuckColor,
+                minimapPlayerScale = serializableProfile.MinimapPlayerScale
+                    ?? defaultProfile.minimapPlayerScale,
+                minimapPuckScale = serializableProfile.MinimapPuckScale
+                    ?? defaultProfile.minimapPuckScale,
+
                 // Shadows (CrispyShadows)
                 crispyShadowsEnabled = serializableProfile.CrispyShadowsEnabled
                     ?? defaultProfile.crispyShadowsEnabled,
@@ -696,6 +711,13 @@ public static class ReskinProfileManager
                 TeamIndicatorEnabled = currentProfile.teamIndicatorEnabled,
                 BlueTeamName = currentProfile.blueTeamName,
                 RedTeamName = currentProfile.redTeamName,
+
+                // Minimap
+                BlueMinimapNumberColor = new SerializableColor(currentProfile.blueMinimapNumberColor),
+                RedMinimapNumberColor = new SerializableColor(currentProfile.redMinimapNumberColor),
+                MinimapPuckColor = new SerializableColor(currentProfile.minimapPuckColor),
+                MinimapPlayerScale = currentProfile.minimapPlayerScale,
+                MinimapPuckScale = currentProfile.minimapPuckScale,
 
                 // Shadows (CrispyShadows)
                 CrispyShadowsEnabled = currentProfile.crispyShadowsEnabled,
@@ -957,13 +979,11 @@ public static class ReskinProfileManager
         currentProfile.teamColorsEnabled = defaultValues.teamColorsEnabled;
         currentProfile.blueTeamColor = defaultValues.blueTeamColor;
         currentProfile.redTeamColor = defaultValues.redTeamColor;
-        currentProfile.teamIndicatorEnabled = defaultValues.teamIndicatorEnabled;
         currentProfile.blueTeamName = defaultValues.blueTeamName;
         currentProfile.redTeamName = defaultValues.redTeamName;
 
         SaveProfile();
 
-        swappers.TeamIndicatorSwapper.UpdateVisibility();
         ToasterReskinLoaderAPI.NotifyTeamColorsChanged();
     }
 
@@ -986,6 +1006,21 @@ public static class ReskinProfileManager
         SaveProfile();
 
         swappers.CrispyShadowsSwapper.Apply();
+    }
+
+    public static void ResetMinimapToDefault()
+    {
+        Plugin.Log("Resetting minimap settings to their default values.");
+
+        var defaultValues = new Profile();
+
+        currentProfile.blueMinimapNumberColor = defaultValues.blueMinimapNumberColor;
+        currentProfile.redMinimapNumberColor = defaultValues.redMinimapNumberColor;
+        currentProfile.minimapPuckColor = defaultValues.minimapPuckColor;
+        currentProfile.minimapPlayerScale = defaultValues.minimapPlayerScale;
+        currentProfile.minimapPuckScale = defaultValues.minimapPuckScale;
+
+        SaveProfile();
     }
 
     public class Profile
@@ -1106,6 +1141,13 @@ public static class ReskinProfileManager
         public bool teamIndicatorEnabled = false;
         public string blueTeamName = "";
         public string redTeamName = "";
+
+        // Minimap section
+        public Color blueMinimapNumberColor = Color.white;
+        public Color redMinimapNumberColor = Color.white;
+        public Color minimapPuckColor = new Color(0f, 0f, 0f, 1f);
+        public float minimapPlayerScale = 1f;
+        public float minimapPuckScale = 1f;
 
         // Shadows section (CrispyShadows)
         public bool crispyShadowsEnabled = true;
@@ -1371,6 +1413,18 @@ public static class ReskinProfileManager
         public string BlueTeamName { get; set; }
         [JsonProperty("redTeamName")]
         public string RedTeamName { get; set; }
+
+        // MINIMAP
+        [JsonProperty("blueMinimapNumberColor")]
+        public SerializableColor BlueMinimapNumberColor { get; set; }
+        [JsonProperty("redMinimapNumberColor")]
+        public SerializableColor RedMinimapNumberColor { get; set; }
+        [JsonProperty("minimapPuckColor")]
+        public SerializableColor MinimapPuckColor { get; set; }
+        [JsonProperty("minimapPlayerScale")]
+        public float? MinimapPlayerScale { get; set; }
+        [JsonProperty("minimapPuckScale")]
+        public float? MinimapPuckScale { get; set; }
 
         // SHADOWS (CrispyShadows)
         [JsonProperty("crispyShadowsEnabled")]
