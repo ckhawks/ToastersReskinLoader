@@ -75,6 +75,7 @@ public class Plugin : IPuckMod
                 PlayerCustomizationSection.SubscribeToServerLoad();
                 UISection.ApplyChatHeight(ReskinProfileManager.currentProfile.chatHeight);
                 UISection.ApplyQuickChatPosition();
+                ModMenuEnhancer.RegisterEvents();
                 ToothbrushFilter.ResetIfActive();
 
                 // The locker room scene is already loaded before the mod loads,

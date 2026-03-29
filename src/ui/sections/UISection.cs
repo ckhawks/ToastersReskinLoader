@@ -301,7 +301,7 @@ public static class UISection
         chatHeader.style.marginBottom = 8;
         contentScrollViewContent.Add(chatHeader);
 
-        CreateSliderRow(contentScrollViewContent, "Chat Height", 200f, 800f,
+        CreateSliderRow(contentScrollViewContent, "Chat Height", 200f, 1300f,
             () => ReskinProfileManager.currentProfile.chatHeight,
             val =>
             {
