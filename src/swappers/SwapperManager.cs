@@ -186,12 +186,14 @@ public static class SwapperManager
             HatSwapper.ClearHats();
             GenderSwapper.ClearCache();
             AppearanceAPI.ClearCache();
+            ui.sections.UISection.ApplyChatBackground(false);
             Plugin.Log($"Local player caches reset from switching to locker room");
         }
         else
         {
             // Entering a game scene — fetch appearances for all players on the server
             AppearanceAPI.FetchAllPlayersOnServer();
+            ui.sections.UISection.ApplyChatBackground(ReskinProfileManager.currentProfile.chatBackground);
         }
 
         SetAll();

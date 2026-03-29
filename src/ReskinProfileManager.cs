@@ -467,6 +467,16 @@ public static class ReskinProfileManager
                 minimapPuckScale = serializableProfile.MinimapPuckScale
                     ?? defaultProfile.minimapPuckScale,
 
+                // Chat
+                chatHeight = serializableProfile.ChatHeight
+                    ?? defaultProfile.chatHeight,
+                chatBackground = serializableProfile.ChatBackground
+                    ?? defaultProfile.chatBackground,
+                quickChatX = serializableProfile.QuickChatX
+                    ?? defaultProfile.quickChatX,
+                quickChatY = serializableProfile.QuickChatY
+                    ?? defaultProfile.quickChatY,
+
                 // Shadows (CrispyShadows)
                 crispyShadowsEnabled = serializableProfile.CrispyShadowsEnabled
                     ?? defaultProfile.crispyShadowsEnabled,
@@ -718,6 +728,12 @@ public static class ReskinProfileManager
                 MinimapPuckColor = new SerializableColor(currentProfile.minimapPuckColor),
                 MinimapPlayerScale = currentProfile.minimapPlayerScale,
                 MinimapPuckScale = currentProfile.minimapPuckScale,
+
+                // Chat
+                ChatHeight = currentProfile.chatHeight,
+                ChatBackground = currentProfile.chatBackground,
+                QuickChatX = currentProfile.quickChatX,
+                QuickChatY = currentProfile.quickChatY,
 
                 // Shadows (CrispyShadows)
                 CrispyShadowsEnabled = currentProfile.crispyShadowsEnabled,
@@ -1149,6 +1165,12 @@ public static class ReskinProfileManager
         public float minimapPlayerScale = 1f;
         public float minimapPuckScale = 1f;
 
+        // Chat section
+        public float chatHeight = 300f; // game default
+        public bool chatBackground = false;
+        public float quickChatX = 0f;
+        public float quickChatY = 50f;
+
         // Shadows section (CrispyShadows)
         public bool crispyShadowsEnabled = true;
         public int shadowResolution = 8192;
@@ -1425,6 +1447,16 @@ public static class ReskinProfileManager
         public float? MinimapPlayerScale { get; set; }
         [JsonProperty("minimapPuckScale")]
         public float? MinimapPuckScale { get; set; }
+
+        // CHAT
+        [JsonProperty("chatHeight")]
+        public float? ChatHeight { get; set; }
+        [JsonProperty("chatBackground")]
+        public bool? ChatBackground { get; set; }
+        [JsonProperty("quickChatX")]
+        public float? QuickChatX { get; set; }
+        [JsonProperty("quickChatY")]
+        public float? QuickChatY { get; set; }
 
         // SHADOWS (CrispyShadows)
         [JsonProperty("crispyShadowsEnabled")]

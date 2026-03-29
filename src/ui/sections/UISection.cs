@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using ToasterReskinLoader.swappers;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -286,6 +287,59 @@ public static class UISection
         });
         contentScrollViewContent.Add(minimapResetButton);
 
+        // ── Chat ────────────────────────────────────────────────────────
+        VisualElement chatSeparator = new VisualElement();
+        chatSeparator.style.height = 1;
+        chatSeparator.style.backgroundColor = new Color(0.4f, 0.4f, 0.4f);
+        chatSeparator.style.marginTop = 16;
+        chatSeparator.style.marginBottom = 16;
+        contentScrollViewContent.Add(chatSeparator);
+
+        Label chatHeader = new Label("<b>Chat</b>");
+        chatHeader.style.fontSize = 20;
+        chatHeader.style.color = Color.white;
+        chatHeader.style.marginBottom = 8;
+        contentScrollViewContent.Add(chatHeader);
+
+        CreateSliderRow(contentScrollViewContent, "Chat Height", 200f, 800f,
+            () => ReskinProfileManager.currentProfile.chatHeight,
+            val =>
+            {
+                ReskinProfileManager.currentProfile.chatHeight = val;
+                ReskinProfileManager.SaveProfile();
+                ApplyChatHeight(val);
+            });
+
+        VisualElement chatBgRow = UITools.CreateConfigurationRow();
+        chatBgRow.Add(UITools.CreateConfigurationLabel("Chat Background"));
+        Toggle chatBgToggle = UITools.CreateConfigurationCheckbox(ReskinProfileManager.currentProfile.chatBackground);
+        chatBgToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
+        {
+            ReskinProfileManager.currentProfile.chatBackground = evt.newValue;
+            ReskinProfileManager.SaveProfile();
+            ApplyChatBackground(evt.newValue);
+        });
+        chatBgRow.Add(chatBgToggle);
+        contentScrollViewContent.Add(chatBgRow);
+
+        CreateSliderRow(contentScrollViewContent, "Quick Chat Menu X Position", 0f, 100f,
+            () => ReskinProfileManager.currentProfile.quickChatX,
+            val =>
+            {
+                ReskinProfileManager.currentProfile.quickChatX = val;
+                ReskinProfileManager.SaveProfile();
+                ApplyQuickChatPosition();
+            });
+
+        CreateSliderRow(contentScrollViewContent, "Quick Chat Menu Y Position", 0f, 100f,
+            () => ReskinProfileManager.currentProfile.quickChatY,
+            val =>
+            {
+                ReskinProfileManager.currentProfile.quickChatY = val;
+                ReskinProfileManager.SaveProfile();
+                ApplyQuickChatPosition();
+            });
+
         // Set initial state
         UITools.UpdateDependentControlsState(dependentControls, ReskinProfileManager.currentProfile.teamColorsEnabled);
     }
@@ -311,6 +365,57 @@ public static class UISection
 
         row.Add(slider);
         container.Add(row);
+    }
+
+    // ── Chat height ────────────────────────────────────────────────
+
+    private static readonly FieldInfo _chatField = typeof(UIChat)
+        .GetField("chat", BindingFlags.Instance | BindingFlags.NonPublic);
+    private static readonly FieldInfo _scrollViewField = typeof(UIChat)
+        .GetField("scrollView", BindingFlags.Instance | BindingFlags.NonPublic);
+
+    public static void ApplyChatHeight(float height)
+    {
+        var uiChat = MonoBehaviourSingleton<UIManager>.Instance?.Chat;
+        if (uiChat == null) return;
+
+        var chat = _chatField?.GetValue(uiChat) as VisualElement;
+        var scrollView = _scrollViewField?.GetValue(uiChat) as ScrollView;
+
+        if (chat != null) chat.style.minHeight = new StyleLength(height);
+        if (scrollView != null) scrollView.style.minHeight = new StyleLength(height);
+    }
+
+    public static void ApplyChatBackground(bool enabled)
+    {
+        var uiChat = MonoBehaviourSingleton<UIManager>.Instance?.Chat;
+        if (uiChat == null) return;
+
+        var chat = _chatField?.GetValue(uiChat) as VisualElement;
+        if (chat == null) return;
+
+        chat.style.backgroundColor = enabled
+            ? new StyleColor(new Color(0f, 0f, 0f, 0.1f))
+            : new StyleColor(StyleKeyword.None);
+
+        var scrollView = _scrollViewField?.GetValue(uiChat) as ScrollView;
+        if (scrollView != null)
+            scrollView.style.paddingTop = enabled ? 10 : 0;
+    }
+
+    private static readonly FieldInfo _quickChatField = typeof(UIChat)
+        .GetField("quickChat", BindingFlags.Instance | BindingFlags.NonPublic);
+
+    public static void ApplyQuickChatPosition()
+    {
+        var uiChat = MonoBehaviourSingleton<UIManager>.Instance?.Chat;
+        if (uiChat == null) return;
+
+        var quickChat = _quickChatField?.GetValue(uiChat) as VisualElement;
+        if (quickChat == null) return;
+
+        quickChat.style.left = new StyleLength(new Length(ReskinProfileManager.currentProfile.quickChatX, LengthUnit.Percent));
+        quickChat.style.top = new StyleLength(new Length(ReskinProfileManager.currentProfile.quickChatY, LengthUnit.Percent));
     }
 
     private static TextField CreateTextInput(string value, string placeholder, System.Action<string> onChanged)
