@@ -54,9 +54,15 @@ public static class TeamColorSwapper
                 var map = (Dictionary<PlayerBody, VisualElement>)mapField?.GetValue(minimap);
                 if (map != null)
                 {
+                    var profile = ReskinProfileManager.currentProfile;
                     foreach (var kvp in map)
                     {
                         if (!kvp.Key || !kvp.Key.Player) continue;
+
+                        // Local player icon color is handled by MinimapSwapper
+                        if (profile != null && profile.localPlayerMinimapIconEnabled && kvp.Key.Player.IsLocalPlayer)
+                            continue;
+
                         Color? c = GetOverrideColor(kvp.Key.Player.Team);
                         VisualElement bodyEl = kvp.Value.Q("Player")?.Q("Body");
                         if (bodyEl != null)
@@ -137,6 +143,13 @@ public static class TeamColorSwapper
             try
             {
                 if (!playerBody || !playerBody.Player) return;
+
+                var profile = ReskinProfileManager.currentProfile;
+
+                // Local player icon color takes priority over team color
+                if (profile != null && profile.localPlayerMinimapIconEnabled && playerBody.Player.IsLocalPlayer)
+                    return;
+
                 Color? c = GetOverrideColor(playerBody.Player.Team);
                 if (c == null) return;
 

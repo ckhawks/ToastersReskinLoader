@@ -468,6 +468,14 @@ public static class ReskinProfileManager
                     ?? defaultProfile.minimapPuckScale,
                 minimapRefreshRate = serializableProfile.MinimapRefreshRate
                     ?? defaultProfile.minimapRefreshRate,
+                localPlayerMinimapIconEnabled = serializableProfile.LocalPlayerMinimapIconEnabled
+                    ?? defaultProfile.localPlayerMinimapIconEnabled,
+                blueLocalPlayerMinimapIconColor = serializableProfile.BlueLocalPlayerMinimapIconColor != null
+                    ? (Color)serializableProfile.BlueLocalPlayerMinimapIconColor
+                    : defaultProfile.blueLocalPlayerMinimapIconColor,
+                redLocalPlayerMinimapIconColor = serializableProfile.RedLocalPlayerMinimapIconColor != null
+                    ? (Color)serializableProfile.RedLocalPlayerMinimapIconColor
+                    : defaultProfile.redLocalPlayerMinimapIconColor,
 
                 // Chat
                 chatHeight = serializableProfile.ChatHeight
@@ -733,6 +741,9 @@ public static class ReskinProfileManager
                 MinimapPlayerScale = currentProfile.minimapPlayerScale,
                 MinimapPuckScale = currentProfile.minimapPuckScale,
                 MinimapRefreshRate = currentProfile.minimapRefreshRate,
+                LocalPlayerMinimapIconEnabled = currentProfile.localPlayerMinimapIconEnabled,
+                BlueLocalPlayerMinimapIconColor = new SerializableColor(currentProfile.blueLocalPlayerMinimapIconColor),
+                RedLocalPlayerMinimapIconColor = new SerializableColor(currentProfile.redLocalPlayerMinimapIconColor),
 
                 // Chat
                 ChatHeight = currentProfile.chatHeight,
@@ -1042,6 +1053,9 @@ public static class ReskinProfileManager
         currentProfile.minimapPlayerScale = defaultValues.minimapPlayerScale;
         currentProfile.minimapPuckScale = defaultValues.minimapPuckScale;
         currentProfile.minimapRefreshRate = defaultValues.minimapRefreshRate;
+        currentProfile.localPlayerMinimapIconEnabled = defaultValues.localPlayerMinimapIconEnabled;
+        currentProfile.blueLocalPlayerMinimapIconColor = defaultValues.blueLocalPlayerMinimapIconColor;
+        currentProfile.redLocalPlayerMinimapIconColor = defaultValues.redLocalPlayerMinimapIconColor;
 
         SaveProfile();
     }
@@ -1172,6 +1186,9 @@ public static class ReskinProfileManager
         public float minimapPlayerScale = 1f;
         public float minimapPuckScale = 1f;
         public int minimapRefreshRate = 60;
+        public bool localPlayerMinimapIconEnabled = false;
+        public Color blueLocalPlayerMinimapIconColor = new Color(0f, 1f, 0f, 1f);
+        public Color redLocalPlayerMinimapIconColor = new Color(0f, 1f, 0f, 1f);
 
         // Chat section
         public float chatHeight = 300f; // game default
@@ -1458,6 +1475,12 @@ public static class ReskinProfileManager
         public float? MinimapPuckScale { get; set; }
         [JsonProperty("minimapRefreshRate")]
         public int? MinimapRefreshRate { get; set; }
+        [JsonProperty("localPlayerMinimapIconEnabled")]
+        public bool? LocalPlayerMinimapIconEnabled { get; set; }
+        [JsonProperty("blueLocalPlayerMinimapIconColor")]
+        public SerializableColor BlueLocalPlayerMinimapIconColor { get; set; }
+        [JsonProperty("redLocalPlayerMinimapIconColor")]
+        public SerializableColor RedLocalPlayerMinimapIconColor { get; set; }
 
         // CHAT
         [JsonProperty("chatHeight")]

@@ -239,6 +239,54 @@ public static class UISection
         );
         contentScrollViewContent.Add(puckColor);
 
+        // ── Local Player Icon Color ──
+        var localIconDependentControls = new List<VisualElement>();
+
+        VisualElement localIconRow = UITools.CreateConfigurationRow();
+        localIconRow.Add(UITools.CreateConfigurationLabel("Custom Local Player Icon Color"));
+
+        Toggle localIconToggle = UITools.CreateConfigurationCheckbox(ReskinProfileManager.currentProfile.localPlayerMinimapIconEnabled);
+        localIconToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
+        {
+            ReskinProfileManager.currentProfile.localPlayerMinimapIconEnabled = evt.newValue;
+            ReskinProfileManager.SaveProfile();
+            ToasterReskinLoaderAPI.NotifyMinimapSettingsChanged();
+            TeamColorSwapper.RefreshAll();
+            UITools.UpdateDependentControlsState(localIconDependentControls, evt.newValue);
+        });
+        localIconRow.Add(localIconToggle);
+        contentScrollViewContent.Add(localIconRow);
+
+        var blueLocalIconColor = UITools.CreateColorConfigurationRow(
+            "Blue Local Player Icon Color",
+            ReskinProfileManager.currentProfile.blueLocalPlayerMinimapIconColor,
+            false,
+            newColor =>
+            {
+                ReskinProfileManager.currentProfile.blueLocalPlayerMinimapIconColor = newColor;
+                ToasterReskinLoaderAPI.NotifyMinimapSettingsChanged();
+            },
+            () => { ReskinProfileManager.SaveProfile(); }
+        );
+        contentScrollViewContent.Add(blueLocalIconColor);
+        localIconDependentControls.Add(blueLocalIconColor);
+
+        var redLocalIconColor = UITools.CreateColorConfigurationRow(
+            "Red Local Player Icon Color",
+            ReskinProfileManager.currentProfile.redLocalPlayerMinimapIconColor,
+            false,
+            newColor =>
+            {
+                ReskinProfileManager.currentProfile.redLocalPlayerMinimapIconColor = newColor;
+                ToasterReskinLoaderAPI.NotifyMinimapSettingsChanged();
+            },
+            () => { ReskinProfileManager.SaveProfile(); }
+        );
+        contentScrollViewContent.Add(redLocalIconColor);
+        localIconDependentControls.Add(redLocalIconColor);
+
+        UITools.UpdateDependentControlsState(localIconDependentControls, ReskinProfileManager.currentProfile.localPlayerMinimapIconEnabled);
+
         // Player icon scale
         CreateSliderRow(contentScrollViewContent, "Player Icon Scale", 0.5f, 3f,
             () => ReskinProfileManager.currentProfile.minimapPlayerScale,

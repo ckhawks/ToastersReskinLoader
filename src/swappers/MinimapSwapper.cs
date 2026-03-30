@@ -66,7 +66,7 @@ public static class MinimapSwapper
                 foreach (var kvp in playerMap)
                 {
                     if (!kvp.Key || !kvp.Key.Player) continue;
-                    ApplyPlayerStyle(kvp.Value, kvp.Key.Player.Team, profile);
+                    ApplyPlayerStyle(kvp.Value, kvp.Key.Player.Team, kvp.Key.Player.IsLocalPlayer, profile);
                 }
             }
 
@@ -84,7 +84,7 @@ public static class MinimapSwapper
         }
     }
 
-    private static void ApplyPlayerStyle(VisualElement rootEl, PlayerTeam team, ReskinProfileManager.Profile profile)
+    private static void ApplyPlayerStyle(VisualElement rootEl, PlayerTeam team, bool isLocalPlayer, ReskinProfileManager.Profile profile)
     {
         if (rootEl == null) return;
 
@@ -97,6 +97,19 @@ public static class MinimapSwapper
         {
             Color textColor = team == PlayerTeam.Red ? profile.redMinimapNumberColor : profile.blueMinimapNumberColor;
             numberLabel.style.color = textColor;
+        }
+
+        // Local player icon color override
+        if (isLocalPlayer && profile.localPlayerMinimapIconEnabled)
+        {
+            VisualElement bodyEl = playerEl.Q("Body");
+            if (bodyEl != null)
+            {
+                Color iconColor = team == PlayerTeam.Red
+                    ? profile.redLocalPlayerMinimapIconColor
+                    : profile.blueLocalPlayerMinimapIconColor;
+                bodyEl.style.unityBackgroundImageTintColor = iconColor;
+            }
         }
 
         // Player icon scale
@@ -165,7 +178,7 @@ public static class MinimapSwapper
                 var map = (Dictionary<PlayerBody, VisualElement>)PlayerMapField?.GetValue(__instance);
                 if (map == null || !map.ContainsKey(playerBody)) return;
 
-                ApplyPlayerStyle(map[playerBody], playerBody.Player.Team, profile);
+                ApplyPlayerStyle(map[playerBody], playerBody.Player.Team, playerBody.Player.IsLocalPlayer, profile);
             }
             catch (Exception e)
             {
