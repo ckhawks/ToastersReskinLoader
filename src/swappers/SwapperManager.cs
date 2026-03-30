@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using HarmonyLib;
 using UnityEngine.SceneManagement;
+using UnityEngine.UIElements;
 using ToasterReskinLoader.api;
 using ToasterReskinLoader.swappers;
 
@@ -148,7 +149,10 @@ public static class SwapperManager
         {
             Plugin.LogDebug($"Stick.ApplyCustomizations");
             SetStickReskinForPlayer(__instance.Player);
-            if (__instance.Player.IsLocalPlayer)
+            // Apply stick tape for local player and their replay counterpart
+            bool isReplayLocal = __instance.Player.IsReplay.Value &&
+                PlayerManager.Instance.GetLocalPlayer()?.OwnerClientId == __instance.Player.OwnerClientId - 1337UL;
+            if (__instance.Player.IsLocalPlayer || isReplayLocal)
                 StickTapeSwapper.SetStickTapeForPlayer(__instance.Player.Stick);
 
             // Attach stick-based apparel (e.g. Deltapoint) now that the stick exists
@@ -194,6 +198,7 @@ public static class SwapperManager
             // Entering a game scene — fetch appearances for all players on the server
             AppearanceAPI.FetchAllPlayersOnServer();
             ui.sections.UISection.ApplyChatBackground(ReskinProfileManager.currentProfile.chatBackground);
+            MinimapSwapper.ApplyRefreshRate();
         }
 
         SetAll();
@@ -256,5 +261,44 @@ public static class SwapperManager
         TeamIndicatorSwapper.UpdateVisibility();
         PuckFXSwapper.ApplyAll();
         MinimapSwapper.RefreshAll();
+    }
+
+    // ── Matchmaking queue info overlay ──────────────────────────────
+
+    public static void SetupMatchmakingListeners()
+    {
+        // No setup needed — the postfix reads stats directly from BackendManager
+    }
+
+    [HarmonyPatch(typeof(UIMatchmaking), nameof(UIMatchmaking.SetMatchingPhaseText))]
+    public static class UIMatchmakingPhasePatch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(UIMatchmaking __instance, string text)
+        {
+            if (text != "LOOKING FOR A MATCH...") return;
+
+            try
+            {
+                var stats = BackendManager.PlayerState.PlayerStatistics;
+                if (stats?.matchmakingManager?.pools == null) return;
+
+                int total = 0;
+                foreach (var pool in stats.matchmakingManager.pools)
+                    total += pool.groupPlayers;
+
+                if (total <= 0) return;
+
+                var labelField = typeof(UIMatchmaking).GetField("matchingPhaseLabel",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                var label = labelField?.GetValue(__instance) as Label;
+                if (label != null)
+                    label.text = $"LOOKING FOR A MATCH...  ({total} in queue)";
+            }
+            catch (System.Exception e)
+            {
+                Plugin.LogDebug($"MatchmakingPhasePatch error: {e.Message}");
+            }
+        }
     }
 }

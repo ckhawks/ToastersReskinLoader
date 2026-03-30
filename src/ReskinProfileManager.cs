@@ -466,6 +466,8 @@ public static class ReskinProfileManager
                     ?? defaultProfile.minimapPlayerScale,
                 minimapPuckScale = serializableProfile.MinimapPuckScale
                     ?? defaultProfile.minimapPuckScale,
+                minimapRefreshRate = serializableProfile.MinimapRefreshRate
+                    ?? defaultProfile.minimapRefreshRate,
 
                 // Chat
                 chatHeight = serializableProfile.ChatHeight
@@ -730,6 +732,7 @@ public static class ReskinProfileManager
                 MinimapPuckColor = new SerializableColor(currentProfile.minimapPuckColor),
                 MinimapPlayerScale = currentProfile.minimapPlayerScale,
                 MinimapPuckScale = currentProfile.minimapPuckScale,
+                MinimapRefreshRate = currentProfile.minimapRefreshRate,
 
                 // Chat
                 ChatHeight = currentProfile.chatHeight,
@@ -1038,6 +1041,7 @@ public static class ReskinProfileManager
         currentProfile.minimapPuckColor = defaultValues.minimapPuckColor;
         currentProfile.minimapPlayerScale = defaultValues.minimapPlayerScale;
         currentProfile.minimapPuckScale = defaultValues.minimapPuckScale;
+        currentProfile.minimapRefreshRate = defaultValues.minimapRefreshRate;
 
         SaveProfile();
     }
@@ -1167,6 +1171,7 @@ public static class ReskinProfileManager
         public Color minimapPuckColor = new Color(0f, 0f, 0f, 1f);
         public float minimapPlayerScale = 1f;
         public float minimapPuckScale = 1f;
+        public int minimapRefreshRate = 60;
 
         // Chat section
         public float chatHeight = 300f; // game default
@@ -1451,6 +1456,8 @@ public static class ReskinProfileManager
         public float? MinimapPlayerScale { get; set; }
         [JsonProperty("minimapPuckScale")]
         public float? MinimapPuckScale { get; set; }
+        [JsonProperty("minimapRefreshRate")]
+        public int? MinimapRefreshRate { get; set; }
 
         // CHAT
         [JsonProperty("chatHeight")]

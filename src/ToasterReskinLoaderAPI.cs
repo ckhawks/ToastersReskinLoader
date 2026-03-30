@@ -79,6 +79,10 @@ public static class ToasterReskinLoaderAPI
     public static float MinimapPuckScale =>
         ReskinProfileManager.currentProfile?.minimapPuckScale ?? 1f;
 
+    /// <summary>The user's minimap refresh rate in updates per second (default 60).</summary>
+    public static int MinimapRefreshRate =>
+        ReskinProfileManager.currentProfile?.minimapRefreshRate ?? 60;
+
     /// <summary>The user's minimap player icon scale multiplier (default 1.0).</summary>
     public static float MinimapPlayerScale =>
         ReskinProfileManager.currentProfile?.minimapPlayerScale ?? 1f;
@@ -89,6 +93,7 @@ public static class ToasterReskinLoaderAPI
         try
         {
             swappers.MinimapSwapper.RefreshAll();
+            swappers.MinimapSwapper.ApplyRefreshRate();
             OnMinimapSettingsChanged?.Invoke();
         }
         catch (Exception e)

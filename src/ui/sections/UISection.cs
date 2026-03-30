@@ -259,6 +259,16 @@ public static class UISection
                 ToasterReskinLoaderAPI.NotifyMinimapSettingsChanged();
             });
 
+        // Minimap refresh rate (game default 30, range 1-120)
+        CreateSliderRow(contentScrollViewContent, "Minimap Refresh Rate", 1f, 120f,
+            () => ReskinProfileManager.currentProfile.minimapRefreshRate,
+            val =>
+            {
+                ReskinProfileManager.currentProfile.minimapRefreshRate = Mathf.RoundToInt(val);
+                ReskinProfileManager.SaveProfile();
+                MinimapSwapper.ApplyRefreshRate();
+            });
+
         // Minimap reset button
         Button minimapResetButton = new Button
         {

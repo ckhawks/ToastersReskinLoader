@@ -21,6 +21,30 @@ public static class MinimapSwapper
     private static readonly FieldInfo PuckMapField = typeof(UIMinimap)
         .GetField("puckVisualElementMap", BindingFlags.Instance | BindingFlags.NonPublic);
 
+    private static readonly FieldInfo UpdateRateField = typeof(UIMinimap)
+        .GetField("updateRate", BindingFlags.Instance | BindingFlags.NonPublic);
+
+    /// <summary>
+    /// Applies the configured refresh rate to the minimap's update loop.
+    /// </summary>
+    public static void ApplyRefreshRate()
+    {
+        try
+        {
+            var uiManager = MonoBehaviourSingleton<UIManager>.Instance;
+            if (uiManager == null) return;
+            var minimap = uiManager.Minimap;
+            if (minimap == null) return;
+
+            int rate = ReskinProfileManager.currentProfile.minimapRefreshRate;
+            UpdateRateField?.SetValue(minimap, rate);
+        }
+        catch (Exception e)
+        {
+            Plugin.LogDebug($"MinimapSwapper.ApplyRefreshRate error: {e.Message}");
+        }
+    }
+
     /// <summary>
     /// Re-applies all minimap customizations to currently visible elements.
     /// </summary>
