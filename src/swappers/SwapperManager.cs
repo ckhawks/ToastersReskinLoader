@@ -195,11 +195,15 @@ public static class SwapperManager
         }
         else
         {
+
             // Entering a game scene — fetch appearances for all players on the server
             AppearanceAPI.FetchAllPlayersOnServer();
             ui.sections.UISection.ApplyChatBackground(ReskinProfileManager.currentProfile.chatBackground);
             MinimapSwapper.ApplyRefreshRate();
         }
+
+        // Rebuild or destroy party lineup based on scene
+        PartyLineup.OnSceneChanged(scene.name, MonoBehaviourSingleton<UIManager>.Instance);
 
         SetAll();
     }

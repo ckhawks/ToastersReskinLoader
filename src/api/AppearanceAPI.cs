@@ -19,7 +19,7 @@ namespace ToasterReskinLoader.api;
 /// </summary>
 public static class AppearanceAPI
 {
-    private const string BASE_URL = "http://localhost:3010";
+    private const string BASE_URL = "https://puckstats.io";
     private const float DEBOUNCE_DELAY = 2f;
 
     private static MonoBehaviour coroutineRunner;

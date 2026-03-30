@@ -454,7 +454,14 @@ public static class ChangingRoomHelper
         if (lockerRoomStick == null)
         {
             var sticks = Object.FindObjectsByType<LockerRoomStick>(FindObjectsSortMode.None);
-            if (sticks.Length > 0) lockerRoomStick = sticks[0];
+            foreach (var s in sticks)
+            {
+                if (!PartyLineup.IsPartyStickClone(s))
+                {
+                    lockerRoomStick = s;
+                    break;
+                }
+            }
         }
 
         if (lockerRoomCamera == null)
@@ -466,7 +473,14 @@ public static class ChangingRoomHelper
         if (lockerRoomPlayer == null)
         {
             var players = Object.FindObjectsByType<LockerRoomPlayer>(FindObjectsSortMode.None);
-            if (players.Length > 0) lockerRoomPlayer = players[0];
+            foreach (var p in players)
+            {
+                if (!PartyLineup.IsPartyPlayerClone(p))
+                {
+                    lockerRoomPlayer = p;
+                    break;
+                }
+            }
         }
     }
 
@@ -479,6 +493,7 @@ public static class ChangingRoomHelper
         [HarmonyPostfix]
         public static void Postfix(LockerRoomStick __instance, int skinID, PlayerTeam team, PlayerRole role)
         {
+            if (PartyLineup.IsPartyStickClone(__instance)) return;
             try
             {
                 lockerRoomStick = __instance;

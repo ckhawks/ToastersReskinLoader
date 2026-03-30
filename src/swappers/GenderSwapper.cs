@@ -103,6 +103,15 @@ public static class GenderSwapper
     /// </summary>
     public static void ApplyToPlayerMesh(PlayerMesh playerMesh, bool female)
     {
+        ApplyToPlayerMesh(playerMesh, female, 0);
+    }
+
+    /// <summary>
+    /// Apply body model to a PlayerMesh with a specific tracking key.
+    /// Key 0 is used for the local player's locker room model.
+    /// </summary>
+    public static void ApplyToPlayerMesh(PlayerMesh playerMesh, bool female, ulong key)
+    {
         if (femaleTorsoPrefab == null)
         {
             Initialize();
@@ -113,13 +122,29 @@ public static class GenderSwapper
 
         try
         {
-            const ulong LOCKER_ROOM_KEY = 0;
-            ApplyForMesh(playerMesh, female, LOCKER_ROOM_KEY);
-            Plugin.LogDebug($"[Gender] Applied {(female ? "female" : "male")} model to locker room");
+            ApplyForMesh(playerMesh, female, key);
+            Plugin.LogDebug($"[Gender] Applied {(female ? "female" : "male")} model (key={key})");
         }
         catch (Exception ex)
         {
-            Plugin.LogError($"[Gender] Error applying to locker room: {ex.Message}\n{ex.StackTrace}");
+            Plugin.LogError($"[Gender] Error applying to PlayerMesh (key={key}): {ex.Message}\n{ex.StackTrace}");
+        }
+    }
+
+    /// <summary>
+    /// Remove tracked gender swap objects for a specific key.
+    /// </summary>
+    public static void RemoveForKey(ulong key)
+    {
+        if (spawnedTorsos.TryGetValue(key, out var torso))
+        {
+            if (torso != null) UnityEngine.Object.Destroy(torso);
+            spawnedTorsos.Remove(key);
+        }
+        if (spawnedGroins.TryGetValue(key, out var groin))
+        {
+            if (groin != null) UnityEngine.Object.Destroy(groin);
+            spawnedGroins.Remove(key);
         }
     }
 

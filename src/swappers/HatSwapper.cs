@@ -209,6 +209,42 @@ namespace ToasterReskinLoader.swappers
             }
         }
 
+        /// <summary>
+        /// Attach a hat to a PlayerMesh with a specific tracking key.
+        /// Key 0 is used for the local player's locker room model.
+        /// </summary>
+        public static void AttachToPlayerMesh(PlayerMesh playerMesh, int hatId, ulong key)
+        {
+            RemoveFromPlayer(key);
+
+            if (hatId <= 0) return;
+            if (playerMesh?.PlayerHead == null) return;
+            if (!EnsureInitialized()) return;
+            if (!loadedPrefabs.TryGetValue(hatId, out var prefab)) return;
+            hatDefinitions.TryGetValue(hatId, out var def);
+
+            try
+            {
+                // For non-locker-room keys, skip stick-attached hats (they need a real stick reference)
+                if (def.AttachToStick) return;
+
+                Transform attachPoint;
+                if (def.AttachToTorso)
+                    attachPoint = playerMesh.PlayerTorso?.transform;
+                else
+                    attachPoint = FindHelmetTransform(playerMesh.PlayerHead);
+
+                if (attachPoint == null) return;
+
+                var hat = SpawnHatFromDef(prefab, attachPoint, def, PlayerRole.Attacker);
+                spawnedHats[key] = hat;
+            }
+            catch (Exception ex)
+            {
+                Plugin.LogError($"[Hats] Error attaching hat (key={key}): {ex.Message}");
+            }
+        }
+
         public static void RemoveFromPlayerMesh()
         {
             RemoveFromPlayer(LOCKER_ROOM_KEY);

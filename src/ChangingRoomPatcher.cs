@@ -30,6 +30,7 @@ namespace ToasterReskinLoader
             [HarmonyPostfix]
             public static void Postfix(LockerRoomPlayer __instance, int jerseyID, PlayerTeam team)
             {
+                if (PartyLineup.IsPartyPlayerClone(__instance)) return;
                 try
                 {
                     var playerMesh = GetPlayerMesh(__instance);
@@ -61,6 +62,7 @@ namespace ToasterReskinLoader
             [HarmonyPostfix]
             public static void Postfix(LockerRoomPlayer __instance, int headgearID, PlayerRole role)
             {
+                if (PartyLineup.IsPartyPlayerClone(__instance)) return;
                 try
                 {
                     var playerMesh = GetPlayerMesh(__instance);

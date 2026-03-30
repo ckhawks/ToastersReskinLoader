@@ -78,6 +78,7 @@ public class Plugin : IPuckMod
                 MinimapSwapper.ApplyRefreshRate();
                 ModMenuEnhancer.RegisterEvents();
                 SwapperManager.SetupMatchmakingListeners();
+                PartyLineup.Initialize();
                 ToothbrushFilter.ResetIfActive();
 
                 // The locker room scene is already loaded before the mod loads,
@@ -106,6 +107,7 @@ public class Plugin : IPuckMod
             Plugin.Log($"Disabling...");
             harmony.UnpatchSelf();
             AppearanceAPI.Cleanup();
+            PartyLineup.Cleanup();
             SwapperManager.Destroy();
             Plugin.Log($"Disabled! Goodbye!");
             MonoBehaviourSingleton<UIManager>.Instance.ToastManager.ShowToast("Warning", "Please restart your game to fully disable Toaster's Reskin Loader.", 5f);
