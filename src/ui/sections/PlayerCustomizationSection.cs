@@ -21,6 +21,12 @@ public static class PlayerCustomizationSection
     /// <summary>The local player's selected hat ID (-1 = none).</summary>
     public static int SelectedHatId => selectedHatId;
 
+    /// <summary>The local player's selected skin tone color.</summary>
+    public static Color SelectedSkinTone => selectedSkinTone;
+
+    /// <summary>The local player's selected hair color.</summary>
+    public static Color SelectedHairColor => selectedHairColor;
+
     private static readonly List<string> BODY_TYPE_CHOICES = new List<string> { "Body Type 1", "Body Type 2" };
 
     // Hat choices are driven by HatSwapper.AllHats
@@ -349,8 +355,15 @@ public static class PlayerCustomizationSection
         Label xpLabel = new Label(xpText);
         xpLabel.style.fontSize = 12;
         xpLabel.style.color = new Color(0.6f, 0.6f, 0.6f);
-        xpLabel.style.marginBottom = 8;
+        xpLabel.style.marginBottom = 4;
         parent.Add(xpLabel);
+
+        // Toasters Rink bonus notice
+        Label bonusLabel = new Label("Playing on Toaster's Rink servers earns 20% bonus XP!");
+        bonusLabel.style.fontSize = 12;
+        bonusLabel.style.color = new Color(1f, 0.65f, 0f); // orange
+        bonusLabel.style.marginBottom = 8;
+        parent.Add(bonusLabel);
     }
 
     /// <summary>

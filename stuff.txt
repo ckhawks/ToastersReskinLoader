@@ -1,0 +1,30 @@
+- DONE: automatically turn off toothbrush mustache when using TRL (if they have it active on their player, turn it off (even to backend))
+- toggle setting: dont show toothbrush mustache on other people either and israel flag
+
+- potentially add the flags back in
+- DONE: extras section with cheat code box
+- DONE: BIGHEADS code that enables big heads checkbox
+- TRL clientside should check the code and handle certain ones clientside, and then non-matching ones should send to the backend to verify
+- PARTYTIME code which unlocks party hat cosmetic
+- need a backend system for unlocks
+- TRL clientside mod needs to fetch the player's profile (xp progress + current unlocked cosmetics) on login
+
+- i think unlocks should work where when you finish a match, it reports it to the backend; at least 2 TRL players have to report the same match (based on server IP/port, players involved, playtime in match), and can't finish a match more than 14 minutes together (i.e. have to be >14 minutes between matches). you earn xp, 
+
+
+- multiple clients have to report match with same info (final score, end players), also record local client's input counts
+- increased (or additional) xp gain for matches completed on TR servers
+- diminishing returns after like 4+ matches in one day, bottoming out at a point(?)
+- cant report more than 1 match every 15 minutes
+
+problem: if player likes to leave before match finishes, or the lobby likes to /vs, then matches wouldnt count, people like to sit in warmup
+
+so maybe client should just report in-game playtime every 10 minutes { "in-game seconds", "in warmup seconds" , "in menu seconds" } -> also gives me concurrent player number using the mod -> response for this could be if they unlocked something new, and then it can have diminishing returns for long sessions (or to prevent spoofing/automating), also can track user keyboard inputs or mouse movement to prevent afk. also prevention, the number of seconds in the request cannot add up to more than 10 minutes (otherwise its thrown away silently!)
+
+-=-=-=-=-=-=-=-=-=-=-=-=-==-
+
+- redeem code needs enter key = submit
+- per-team customization of minimap number text color (the text that shows up on a player's minimap icon, that shows their number)
+- customization of puck color on minimap (the circle for the puck itself)
+- minimap player icon scale
+- minimap puck icon scale

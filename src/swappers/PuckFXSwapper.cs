@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using HarmonyLib;
 using Linework.SoftOutline;
 using UnityEngine;
@@ -384,8 +385,9 @@ public static class PuckFXSwapper
         public static void Postfix(Server oldServer, Server newServer)
         {
             string serverName = newServer.Name.ToString();
+            string plainName = Regex.Replace(serverName, "<.*?>", "");
             Plugin.LogDebug("Server configuration changed: " + serverName);
-            IsPHLServer = serverName.Contains("PHL Official") || serverName.Contains("PHL Pickup");
+            IsPHLServer = plainName.StartsWith("PHL Official") || plainName.StartsWith("PHL Pickup");
 
             // Re-apply trail state to any pucks that already spawned before this RPC
             try

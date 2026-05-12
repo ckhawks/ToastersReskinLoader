@@ -10,7 +10,7 @@ using UnityEngine.Rendering;
 
 namespace ToasterReskinLoader;
 
-public class Plugin : IPuckMod
+public class Plugin : IPuckPlugin
 {
     public static string MOD_NAME = "ToasterReskinLoader";
     public static string MOD_VERSION = "2.0.0";
@@ -76,7 +76,7 @@ public class Plugin : IPuckMod
                 UISection.ApplyChatHeight(ReskinProfileManager.currentProfile.chatHeight);
                 UISection.ApplyQuickChatPosition();
                 MinimapSwapper.ApplyRefreshRate();
-                ModMenuEnhancer.RegisterEvents();
+                // ModMenuEnhancer.RegisterEvents(); // disabled pending b323 UIMods rework
                 SwapperManager.SetupMatchmakingListeners();
                 PartyLineup.Initialize();
                 ToothbrushFilter.ResetIfActive();

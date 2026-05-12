@@ -12,8 +12,10 @@ namespace ToasterReskinLoader.swappers
     {
         private static readonly FieldInfo _modsListField = typeof(UIMods)
             .GetField("modsList", BindingFlags.Instance | BindingFlags.NonPublic);
-        private static readonly FieldInfo _modVisualElementMapField = typeof(UIMods)
-            .GetField("modVisualElementMap", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo _modTemplateMapField = typeof(UIMods)
+            .GetField("modTemplateContainerMap", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo _pluginTemplateMapField = typeof(UIMods)
+            .GetField("pluginTemplateContainerMap", BindingFlags.Instance | BindingFlags.NonPublic);
         private static readonly FieldInfo _modsField = typeof(UIMods)
             .GetField("mods", BindingFlags.Instance | BindingFlags.NonPublic);
 
@@ -26,15 +28,24 @@ namespace ToasterReskinLoader.swappers
 
             EventManager.AddEventListener("Event_OnModEnableFailed",
                 new Action<Dictionary<string, object>>(OnModEnableFailed));
+            EventManager.AddEventListener("Event_OnPluginEnableFailed",
+                new Action<Dictionary<string, object>>(OnPluginEnableFailed));
         }
 
         private static void OnModEnableFailed(Dictionary<string, object> message)
         {
             var mod = (Mod)message["mod"];
-            string name = mod.InstalledItem?.ItemDetails?.Title
-                ?? mod.InstalledItem?.Id.ToString() ?? "Unknown mod";
+            string name = mod.SteamWorkshopItem?.Details?.Title ?? mod.Id ?? "Unknown mod";
             MonoBehaviourSingleton<UIManager>.Instance?.ToastManager?.ShowToast(
                 "Mod Error", $"{name} failed to load!", 5f);
+        }
+
+        private static void OnPluginEnableFailed(Dictionary<string, object> message)
+        {
+            var plugin = (global::Plugin)message["plugin"];
+            string name = plugin.Id ?? "Unknown plugin";
+            MonoBehaviourSingleton<UIManager>.Instance?.ToastManager?.ShowToast(
+                "Plugin Error", $"{name} failed to load!", 5f);
         }
 
         private static TextField searchField;
@@ -46,10 +57,50 @@ namespace ToasterReskinLoader.swappers
         private static Button enabledTab, allTab, pluginsTab, resourceTab;
         private static Button sortButton;
 
-        // Snapshot of all mod→element pairs from the map.
-        // We physically remove/re-add elements from the modsList to filter and sort,
-        // since ChildClassifier/ScrollView ignore display:none on children.
-        private static readonly List<KeyValuePair<Mod, VisualElement>> allEntries = new();
+        // Snapshot of all entry→element pairs from both maps.
+        // Keys are either Mod or Plugin instances.
+        private static readonly List<KeyValuePair<object, VisualElement>> allEntries = new();
+
+        // ── Helpers to abstract over Mod vs Plugin ───────────────────
+
+        private static bool IsLocalPlugin(object entry) => entry is global::Plugin;
+
+        private static bool HasAssembly(object entry)
+        {
+            if (entry is Mod m) return m.HasAssembly;
+            if (entry is global::Plugin p) return p.HasAssembly;
+            return false;
+        }
+
+        private static bool IsEnabled(object entry)
+        {
+            if (entry is Mod m) return m.IsEnabled;
+            if (entry is global::Plugin p) return p.IsEnabled;
+            return false;
+        }
+
+        private static string GetTitle(object entry)
+        {
+            if (entry is Mod m)
+                return m.SteamWorkshopItem?.Details?.Title ?? m.Id ?? "";
+            if (entry is global::Plugin p)
+                return p.Id ?? "";
+            return "";
+        }
+
+        private static string GetPath(object entry)
+        {
+            if (entry is Mod m) return m.Path;
+            if (entry is global::Plugin p) return p.Path;
+            return null;
+        }
+
+        private static string GetId(object entry)
+        {
+            if (entry is Mod m) return m.Id;
+            if (entry is global::Plugin p) return p.Id;
+            return null;
+        }
 
         // ── Inject controls when the mods panel is shown ────────────
 
@@ -179,7 +230,7 @@ namespace ToasterReskinLoader.swappers
                 footer.Insert(0, footerLeft);
             }
 
-            Plugin.Log("[ModMenuEnhancer] Controls injected");
+            ToasterReskinLoader.Plugin.Log("[ModMenuEnhancer] Controls injected");
         }
 
         private static Button CreateFooterButton(string text, Action onClick)
@@ -202,9 +253,35 @@ namespace ToasterReskinLoader.swappers
             return btn;
         }
 
+        // Aggregate both Mod and Plugin maps into allEntries
+        private static void SnapshotEntries(UIMods instance)
+        {
+            allEntries.Clear();
+
+            var modMap = _modTemplateMapField?.GetValue(instance) as System.Collections.IDictionary;
+            if (modMap != null)
+            {
+                foreach (System.Collections.DictionaryEntry kvp in modMap)
+                {
+                    if (kvp.Value is VisualElement ve)
+                        allEntries.Add(new KeyValuePair<object, VisualElement>(kvp.Key, ve));
+                }
+            }
+
+            var pluginMap = _pluginTemplateMapField?.GetValue(instance) as System.Collections.IDictionary;
+            if (pluginMap != null)
+            {
+                foreach (System.Collections.DictionaryEntry kvp in pluginMap)
+                {
+                    if (kvp.Value is VisualElement ve)
+                        allEntries.Add(new KeyValuePair<object, VisualElement>(kvp.Key, ve));
+                }
+            }
+        }
+
         // ── Patch: Show — inject controls, snapshot entries, reset state ──
 
-        [HarmonyPatch(typeof(UIMods), nameof(UIMods.Show))]
+        // [HarmonyPatch(typeof(UIMods), nameof(UIMods.Show))] // disabled for b323
         public static class UIModsShowPatch
         {
             [HarmonyPostfix]
@@ -218,17 +295,9 @@ namespace ToasterReskinLoader.swappers
                 if (sortButton != null) sortButton.text = "A-Z";
                 UpdateTabVisuals();
 
-                // Snapshot all entries from the map
-                var map = _modVisualElementMapField?.GetValue(__instance) as Dictionary<Mod, VisualElement>;
-                if (map != null)
-                {
-                    allEntries.Clear();
-                    foreach (var kvp in map)
-                    {
-                        allEntries.Add(kvp);
-                        UIModsUpdateModPatch.ApplyEnhancements(__instance, kvp.Key);
-                    }
-                }
+                SnapshotEntries(__instance);
+                foreach (var kvp in allEntries)
+                    ApplyEnhancements(kvp.Key, kvp.Value);
 
                 UpdateCounts();
                 ApplyFilters();
@@ -285,10 +354,10 @@ namespace ToasterReskinLoader.swappers
             int enabledCount = 0, totalAssembly = 0, totalResource = 0;
             foreach (var kvp in allEntries)
             {
-                if (kvp.Key.IsAssemblyMod)
+                if (HasAssembly(kvp.Key))
                 {
                     totalAssembly++;
-                    if (kvp.Key.IsEnabled) enabledCount++;
+                    if (IsEnabled(kvp.Key)) enabledCount++;
                 }
                 else
                 {
@@ -315,19 +384,17 @@ namespace ToasterReskinLoader.swappers
 
             string search = searchField?.value?.ToLowerInvariant() ?? "";
 
-            // Determine which entries pass the filter
-            var visible = new List<KeyValuePair<Mod, VisualElement>>();
+            var visible = new List<KeyValuePair<object, VisualElement>>();
             foreach (var kvp in allEntries)
             {
-                var mod = kvp.Key;
+                var entry = kvp.Key;
 
                 bool matchesTab = activeFilter == "all"
-                    || (activeFilter == "enabled" && mod.IsAssemblyMod && mod.IsEnabled)
-                    || (activeFilter == "plugins" && mod.IsAssemblyMod)
-                    || (activeFilter == "resourcepacks" && !mod.IsAssemblyMod);
+                    || (activeFilter == "enabled" && HasAssembly(entry) && IsEnabled(entry))
+                    || (activeFilter == "plugins" && HasAssembly(entry))
+                    || (activeFilter == "resourcepacks" && !HasAssembly(entry));
 
-                string title = mod.InstalledItem?.ItemDetails?.Title
-                    ?? mod.InstalledItem?.Id.ToString() ?? "";
+                string title = GetTitle(entry);
                 bool matchesSearch = string.IsNullOrEmpty(search)
                     || title.ToLowerInvariant().Contains(search);
 
@@ -335,138 +402,142 @@ namespace ToasterReskinLoader.swappers
                     visible.Add(kvp);
             }
 
-            // Sort
             if (sortAlphabetical)
-            {
-                visible = visible.OrderBy(kvp =>
-                    kvp.Key.InstalledItem?.ItemDetails?.Title
-                    ?? kvp.Key.InstalledItem?.Id.ToString() ?? "").ToList();
-            }
+                visible = visible.OrderBy(kvp => GetTitle(kvp.Key)).ToList();
 
-            // Rebuild the list: clear and re-add only visible elements in order
-            // First, detach all
             foreach (var kvp in allEntries)
                 kvp.Value.RemoveFromHierarchy();
 
-            // Then add visible ones in the desired order
             foreach (var kvp in visible)
                 modsList.Add(kvp.Value);
         }
 
-        // ── Patch: UpdateMod — badges, graying, workshop button ─────
+        // ── Patches: UpdateMod / UpdatePlugin ────────────────────────
 
-        [HarmonyPatch(typeof(UIMods), "UpdateMod")]
+        // [HarmonyPatch(typeof(UIMods), "UpdateMod")] // disabled for b323
         public static class UIModsUpdateModPatch
         {
             [HarmonyPostfix]
             public static void Postfix(UIMods __instance, Mod mod)
             {
-                ApplyEnhancements(__instance, mod);
+                var map = _modTemplateMapField?.GetValue(__instance) as System.Collections.IDictionary;
+                if (map == null || !map.Contains(mod)) return;
+                if (map[mod] is VisualElement element)
+                    ApplyEnhancements(mod, element);
                 UpdateCounts();
             }
+        }
 
-            public static void ApplyEnhancements(UIMods instance, Mod mod)
+        // [HarmonyPatch(typeof(UIMods), "UpdatePlugin")] // disabled for b323
+        public static class UIModsUpdatePluginPatch
+        {
+            [HarmonyPostfix]
+            public static void Postfix(UIMods __instance, global::Plugin plugin)
             {
-                var map = _modVisualElementMapField?.GetValue(instance) as Dictionary<Mod, VisualElement>;
-                if (map == null || !map.ContainsKey(mod)) return;
+                var map = _pluginTemplateMapField?.GetValue(__instance) as System.Collections.IDictionary;
+                if (map == null || !map.Contains(plugin)) return;
+                if (map[plugin] is VisualElement element)
+                    ApplyEnhancements(plugin, element);
+                UpdateCounts();
+            }
+        }
 
-                var element = map[mod];
-                var title = element.Q<Label>("TitleLabel");
-                var desc = element.Q<Label>("DescriptionLabel");
-                var preview = element.Q<VisualElement>("Preview");
+        public static void ApplyEnhancements(object entry, VisualElement element)
+        {
+            var desc = element.Q<Label>("DescriptionLabel");
+            var preview = element.Q<VisualElement>("Preview");
 
-                float opacity = (!mod.IsAssemblyMod || mod.IsEnabled) ? 1f : 0.3f;
-                if (title != null) title.style.opacity = opacity;
-                if (desc != null) desc.style.opacity = opacity;
-                if (preview != null) preview.style.opacity = opacity;
+            float opacity = (!HasAssembly(entry) || IsEnabled(entry)) ? 1f : 0.3f;
+            if (desc != null) desc.style.opacity = opacity;
+            if (preview != null) preview.style.opacity = opacity;
 
-                // ── Bottom row: Workshop button + badges side by side ──
-                const string bottomRowName = "trl-bottom-row";
-                var bottomRow = element.Q<VisualElement>(bottomRowName);
-                if (bottomRow == null && desc?.parent != null)
+            // ── Bottom row: Workshop/Folder button + badges side by side ──
+            const string bottomRowName = "trl-bottom-row";
+            var bottomRow = element.Q<VisualElement>(bottomRowName);
+            if (bottomRow == null && desc?.parent != null)
+            {
+                bottomRow = new VisualElement();
+                bottomRow.name = bottomRowName;
+                bottomRow.style.flexDirection = FlexDirection.Row;
+                bottomRow.style.alignItems = Align.Center;
+                bottomRow.style.marginTop = 6;
+
+                int descIdx = desc.parent.IndexOf(desc);
+                desc.parent.Insert(descIdx + 1, bottomRow);
+            }
+            if (bottomRow == null) return;
+
+            // Action button: "Open on Workshop" for workshop mods, "Open Folder" for local plugins
+            const string actionBtnName = "trl-action-btn";
+            if (bottomRow.Q<Button>(actionBtnName) == null)
+            {
+                bool localPlugin = IsLocalPlugin(entry);
+                string btnText = localPlugin ? "Open Folder" : "Open on Workshop";
+                var actionBtn = new Button { text = btnText };
+                actionBtn.name = actionBtnName;
+                actionBtn.style.fontSize = 12;
+                actionBtn.style.width = 130;
+                actionBtn.style.height = 35;
+                actionBtn.style.backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f));
+                actionBtn.style.color = Color.white;
+                actionBtn.style.borderTopLeftRadius = 4;
+                actionBtn.style.borderTopRightRadius = 4;
+                actionBtn.style.borderBottomLeftRadius = 4;
+                actionBtn.style.borderBottomRightRadius = 4;
+                actionBtn.style.unityTextAlign = TextAnchor.MiddleCenter;
+
+                actionBtn.RegisterCallback<MouseEnterEvent>(evt =>
                 {
-                    bottomRow = new VisualElement();
-                    bottomRow.name = bottomRowName;
-                    bottomRow.style.flexDirection = FlexDirection.Row;
-                    bottomRow.style.alignItems = Align.Center;
-                    bottomRow.style.marginTop = 6;
-
-                    int descIdx = desc.parent.IndexOf(desc);
-                    desc.parent.Insert(descIdx + 1, bottomRow);
-                }
-                if (bottomRow == null) return;
-
-                // Action button: "Open on Workshop" for workshop mods, "Open Folder" for local mods
-                const string actionBtnName = "trl-action-btn";
-                if (bottomRow.Q<Button>(actionBtnName) == null)
+                    actionBtn.style.backgroundColor = new StyleColor(Color.white);
+                    actionBtn.style.color = Color.black;
+                });
+                actionBtn.RegisterCallback<MouseLeaveEvent>(evt =>
                 {
-                    string btnText = mod.IsPlugin ? "Open Folder" : "Open on Workshop";
-                    var actionBtn = new Button { text = btnText };
-                    actionBtn.name = actionBtnName;
-                    actionBtn.style.fontSize = 12;
-                    actionBtn.style.width = 130;
-                    actionBtn.style.height = 35;
                     actionBtn.style.backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f));
                     actionBtn.style.color = Color.white;
-                    actionBtn.style.borderTopLeftRadius = 4;
-                    actionBtn.style.borderTopRightRadius = 4;
-                    actionBtn.style.borderBottomLeftRadius = 4;
-                    actionBtn.style.borderBottomRightRadius = 4;
-                    actionBtn.style.unityTextAlign = TextAnchor.MiddleCenter;
+                });
 
-                    actionBtn.RegisterCallback<MouseEnterEvent>(evt =>
-                    {
-                        actionBtn.style.backgroundColor = new StyleColor(Color.white);
-                        actionBtn.style.color = Color.black;
-                    });
-                    actionBtn.RegisterCallback<MouseLeaveEvent>(evt =>
-                    {
-                        actionBtn.style.backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f));
-                        actionBtn.style.color = Color.white;
-                    });
-
-                    if (mod.IsPlugin)
-                    {
-                        string modPath = mod.InstalledItem.Path;
-                        actionBtn.clicked += () => Application.OpenURL($"file://{modPath}");
-                    }
-                    else
-                    {
-                        ulong workshopId = mod.InstalledItem.Id;
-                        actionBtn.clicked += () =>
-                            Application.OpenURL($"https://steamcommunity.com/sharedfiles/filedetails/?id={workshopId}");
-                    }
-
-                    bottomRow.Insert(0, actionBtn);
-                }
-
-                // ── Badges (to the right of the button, with 16px gap) ──
-                const string badgeContainerName = "trl-badge-container";
-                var badgeContainer = bottomRow.Q<VisualElement>(badgeContainerName);
-                if (badgeContainer == null)
+                if (localPlugin)
                 {
-                    badgeContainer = new VisualElement();
-                    badgeContainer.name = badgeContainerName;
-                    badgeContainer.style.flexDirection = FlexDirection.Row;
-                    badgeContainer.style.flexWrap = Wrap.Wrap;
-                    badgeContainer.style.alignItems = Align.Center;
-                    badgeContainer.style.marginLeft = 16;
-                    bottomRow.Add(badgeContainer);
+                    string modPath = GetPath(entry);
+                    actionBtn.clicked += () => Application.OpenURL($"file://{modPath}");
                 }
-
-                if (!mod.IsAssemblyMod && badgeContainer.Q<Label>("trl-rp-badge") == null)
-                    badgeContainer.Add(CreateBadge("trl-rp-badge", "Resource Pack",
-                        new Color(0.6f, 0.8f, 1f), new Color(0.2f, 0.3f, 0.4f, 0.6f)));
-
-                if (badgeContainer.Q<Label>("trl-source-badge") == null)
+                else
                 {
-                    if (mod.IsPlugin)
-                        badgeContainer.Add(CreateBadge("trl-source-badge", "Local",
-                            new Color(0.7f, 0.7f, 0.7f), new Color(0.3f, 0.3f, 0.3f, 0.6f)));
-                    else
-                        badgeContainer.Add(CreateBadge("trl-source-badge", "Workshop",
-                            new Color(0.6f, 1f, 0.6f), new Color(0.2f, 0.4f, 0.2f, 0.6f)));
+                    string workshopId = GetId(entry);
+                    actionBtn.clicked += () =>
+                        Application.OpenURL($"https://steamcommunity.com/sharedfiles/filedetails/?id={workshopId}");
                 }
+
+                bottomRow.Insert(0, actionBtn);
+            }
+
+            // ── Badges (to the right of the button, with 16px gap) ──
+            const string badgeContainerName = "trl-badge-container";
+            var badgeContainer = bottomRow.Q<VisualElement>(badgeContainerName);
+            if (badgeContainer == null)
+            {
+                badgeContainer = new VisualElement();
+                badgeContainer.name = badgeContainerName;
+                badgeContainer.style.flexDirection = FlexDirection.Row;
+                badgeContainer.style.flexWrap = Wrap.Wrap;
+                badgeContainer.style.alignItems = Align.Center;
+                badgeContainer.style.marginLeft = 16;
+                bottomRow.Add(badgeContainer);
+            }
+
+            if (!HasAssembly(entry) && badgeContainer.Q<Label>("trl-rp-badge") == null)
+                badgeContainer.Add(CreateBadge("trl-rp-badge", "Resource Pack",
+                    new Color(0.6f, 0.8f, 1f), new Color(0.2f, 0.3f, 0.4f, 0.6f)));
+
+            if (badgeContainer.Q<Label>("trl-source-badge") == null)
+            {
+                if (IsLocalPlugin(entry))
+                    badgeContainer.Add(CreateBadge("trl-source-badge", "Local",
+                        new Color(0.7f, 0.7f, 0.7f), new Color(0.3f, 0.3f, 0.3f, 0.6f)));
+                else
+                    badgeContainer.Add(CreateBadge("trl-source-badge", "Workshop",
+                        new Color(0.6f, 1f, 0.6f), new Color(0.2f, 0.4f, 0.2f, 0.6f)));
             }
         }
 

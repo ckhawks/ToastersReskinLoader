@@ -41,7 +41,15 @@ namespace ToasterReskinLoader.swappers
             if (textureEntry?.Path != null)
             {
                 var texture = TextureManager.GetTexture(textureEntry);
-                SwapperUtils.ApplyTextureToMaterial(renderer.material, texture);
+                if (texture != null)
+                {
+                    SwapperUtils.ApplyTextureToMaterial(renderer.material, texture);
+                }
+                else
+                {
+                    Plugin.LogError($"Failed to load leg pad texture for '{textureEntry.Name}', keeping original.");
+                    SwapperUtils.RestoreOriginalTexture(renderer.material, originalTextures[cacheKey], defaultColor);
+                }
             }
             else
             {

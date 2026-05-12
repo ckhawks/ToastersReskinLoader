@@ -332,6 +332,47 @@ public static class AppearanceAPI
     }
 
     /// <summary>
+    /// Checks if the given player is a replay clone of the local player.
+    /// Replay players have their OwnerClientId offset by 1337 from the original.
+    /// </summary>
+    private static bool IsReplayOfLocalPlayer(Player player)
+    {
+        if (!player.IsReplay.Value) return false;
+        var local = PlayerManager.Instance.GetLocalPlayer();
+        return local != null && local.OwnerClientId == player.OwnerClientId - 1337UL;
+    }
+
+    /// <summary>
+    /// Resolves the SteamId to use for appearance lookups.
+    /// For replay players, finds the original player via the clientId - 1337 offset.
+    /// </summary>
+    private static string ResolveSteamIdForPlayer(Player player)
+    {
+        if (!player.IsReplay.Value)
+            return player.SteamId.Value.ToString();
+
+        // Find the original player whose clientId matches (replay clientId - 1337)
+        ulong originalClientId = player.OwnerClientId - 1337UL;
+        try
+        {
+            foreach (var team in new[] { PlayerTeam.Blue, PlayerTeam.Red })
+            {
+                var players = PlayerManager.Instance.GetSpawnedPlayersByTeam(team);
+                foreach (var p in players)
+                {
+                    if (!p.IsReplay.Value && p.OwnerClientId == originalClientId)
+                        return p.SteamId.Value.ToString();
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Plugin.LogError($"[AppearanceAPI] Error resolving replay SteamId: {e.Message}");
+        }
+        return player.SteamId.Value.ToString();
+    }
+
+    /// <summary>
     /// Called when a new player spawns. If we don't have their appearance cached, fetch it.
     /// </summary>
     /// <summary>
@@ -342,8 +383,8 @@ public static class AppearanceAPI
     {
         if (player == null) return;
 
-        // For the local player, use their selected hat
-        if (player.IsLocalPlayer)
+        // For the local player (or their replay clone), use their selected hat
+        if (player.IsLocalPlayer || IsReplayOfLocalPlayer(player))
         {
             int localHatId = PlayerCustomizationSection.SelectedHatId;
             if (localHatId > 0)
@@ -355,7 +396,7 @@ public static class AppearanceAPI
             return;
         }
 
-        string steamId = player.SteamId.Value.ToString();
+        string steamId = ResolveSteamIdForPlayer(player);
         if (appearanceCache.TryGetValue(steamId, out var data) && data != null)
         {
             if (data.hatId > 0 && Plugin.modSettings.ShowPersonalization && Plugin.modSettings.ShowOtherPlayersHats)
@@ -371,7 +412,14 @@ public static class AppearanceAPI
     {
         if (player == null || player.IsLocalPlayer) return;
 
-        string steamId = player.SteamId.Value.ToString();
+        // Replay of the local player — apply local appearance directly
+        if (IsReplayOfLocalPlayer(player))
+        {
+            ApplyLocalAppearanceToPlayer(player);
+            return;
+        }
+
+        string steamId = ResolveSteamIdForPlayer(player);
         if (string.IsNullOrEmpty(steamId)) return;
 
         // If already cached, apply immediately
@@ -395,6 +443,33 @@ public static class AppearanceAPI
                 ApplyToPlayerBySteamId(steamId);
             }
         });
+    }
+
+    /// <summary>
+    /// Applies the local player's chosen appearance to a player (used for replay clones).
+    /// </summary>
+    private static void ApplyLocalAppearanceToPlayer(Player player)
+    {
+        if (player?.PlayerBody?.PlayerMesh == null) return;
+
+        try
+        {
+            if (!Plugin.modSettings.ShowPersonalization) return;
+
+            GenderSwapper.ApplyToPlayer(player, PlayerCustomizationSection.IsFemaleBodyType);
+            GenderSwapper.ApplyHeadColors(player.PlayerBody.PlayerMesh.PlayerHead,
+                PlayerCustomizationSection.SelectedSkinTone, PlayerCustomizationSection.SelectedHairColor);
+
+            int hatId = PlayerCustomizationSection.SelectedHatId;
+            if (hatId > 0)
+                HatSwapper.AttachToPlayer(player, hatId);
+
+            Plugin.LogDebug($"[AppearanceAPI] Applied local appearance to replay player");
+        }
+        catch (Exception e)
+        {
+            Plugin.LogError($"[AppearanceAPI] Error applying local appearance to replay: {e.Message}");
+        }
     }
 
     /// <summary>
@@ -454,7 +529,14 @@ public static class AppearanceAPI
                 foreach (var player in players)
                 {
                     if (player.IsLocalPlayer) continue;
-                    string steamId = player.SteamId.Value.ToString();
+
+                    if (IsReplayOfLocalPlayer(player))
+                    {
+                        ApplyLocalAppearanceToPlayer(player);
+                        continue;
+                    }
+
+                    string steamId = ResolveSteamIdForPlayer(player);
                     if (appearanceCache.TryGetValue(steamId, out var data))
                         ApplyAppearanceToPlayer(player, data);
                 }
@@ -502,17 +584,23 @@ public static class AppearanceAPI
                 return;
             }
 
+            string username = player.Username.Value.ToString();
+            bool isTotBot = username == "TotBotRed" || username == "TotBotBlue";
+
             GenderSwapper.ApplyToPlayer(player, data.bodyType == 1);
 
-            Color skinTone = data.skinTone;
-            if (!Plugin.modSettings.ShowNonNaturalSkinTones && !IsNaturalSkinTone(skinTone))
-                skinTone = GetRandomNaturalTone(player.SteamId.Value.ToString());
-            GenderSwapper.ApplyHeadColors(player.PlayerBody.PlayerMesh.PlayerHead, skinTone, data.hairColor);
+            if (!isTotBot)
+            {
+                Color skinTone = data.skinTone;
+                if (!Plugin.modSettings.ShowNonNaturalSkinTones && !IsNaturalSkinTone(skinTone))
+                    skinTone = GetRandomNaturalTone(player.SteamId.Value.ToString());
+                GenderSwapper.ApplyHeadColors(player.PlayerBody.PlayerMesh.PlayerHead, skinTone, data.hairColor);
+            }
 
             if (Plugin.modSettings.ShowOtherPlayersHats)
                 HatSwapper.AttachToPlayer(player, data.hatId);
 
-            Plugin.LogDebug($"[AppearanceAPI] Applied appearance to {player.Username.Value}: body={data.bodyType}, hat={data.hatId}");
+            Plugin.LogDebug($"[AppearanceAPI] Applied appearance to {username}: body={data.bodyType}, hat={data.hatId}");
         }
         catch (Exception e)
         {
