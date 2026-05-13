@@ -310,13 +310,8 @@ public static class PlayerCustomizationSection
     private static void AddXpBar(VisualElement parent)
     {
         int level = AppearanceAPI.PlayerLevel;
-        int xpToNext = AppearanceAPI.XpToNextLevel;
         int levelTotal = AppearanceAPI.LevelXpTotal;
-
-        // Progress within the current level:
-        // levelTotal is the full XP span for this level (snapshotted when the level changed).
-        // xpToNext is how much XP remains. So xpEarned = levelTotal - xpToNext.
-        int xpEarned = levelTotal > 0 ? levelTotal - xpToNext : 0;
+        int xpEarned = Mathf.Clamp(AppearanceAPI.XpIntoLevel, 0, Mathf.Max(levelTotal, 0));
         float progress = levelTotal > 0 ? Mathf.Clamp01((float)xpEarned / levelTotal) : 0f;
 
         // Level label

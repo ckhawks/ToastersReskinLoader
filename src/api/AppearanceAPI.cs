@@ -758,9 +758,11 @@ public static class AppearanceAPI
             int xp = (int)resp["xp"];
             int level = (int)resp["level"];
             int xpToNext = (int)(resp["xp_to_next_level"] ?? 0);
+            int? xpIntoLevel = (int?)resp["xp_into_level"];
+            int? levelSpan = (int?)resp["level_span"];
             bool leveledUp = (bool)(resp["leveled_up"] ?? false);
 
-            UpdateXpState(xp, level, xpToNext);
+            UpdateXpState(xp, level, xpToNext, xpIntoLevel, levelSpan);
             Plugin.LogDebug($"[AppearanceAPI] Heartbeat OK: xp={xp}, level={level}, leveled_up={leveledUp}");
 
             var newHats = resp["new_hats"] as JArray;
@@ -797,14 +799,17 @@ public static class AppearanceAPI
     public static int XpToNextLevel { get; private set; }
     /// <summary>Total XP span of the current level. Used to compute progress bar fill.</summary>
     public static int LevelXpTotal { get; private set; }
+    /// <summary>XP earned within the current level (server-clamped to >= 0).</summary>
+    public static int XpIntoLevel { get; private set; }
 
-    private static void UpdateXpState(int xp, int level, int xpToNext)
+    private static void UpdateXpState(int xp, int level, int xpToNext, int? xpIntoLevel = null, int? levelSpan = null)
     {
         PlayerXP = xp;
         PlayerLevel = level;
         XpToNextLevel = xpToNext;
-        // Level N→N+1 costs 50 + N*50 XP (matches server formula in xp.ts)
-        LevelXpTotal = 50 + level * 50;
+        // Prefer authoritative values from server. Fallback used only if talking to an old server build.
+        LevelXpTotal = levelSpan ?? Math.Max(1, xp + xpToNext - (xpIntoLevel ?? 0));
+        XpIntoLevel = xpIntoLevel ?? Math.Max(0, LevelXpTotal - xpToNext);
     }
 
     /// <summary>Fired when the unlock set changes (initial fetch, heartbeat, or code redeem).</summary>
@@ -841,7 +846,12 @@ public static class AppearanceAPI
         try
         {
             var resp = JObject.Parse(request.downloadHandler.text);
-            UpdateXpState((int)resp["xp"], (int)resp["level"], (int)(resp["xp_to_next_level"] ?? 0));
+            UpdateXpState(
+                (int)resp["xp"],
+                (int)resp["level"],
+                (int)(resp["xp_to_next_level"] ?? 0),
+                (int?)resp["xp_into_level"],
+                (int?)resp["level_span"]);
 
             var hats = resp["unlocked_hats"] as JArray;
             if (hats != null)
