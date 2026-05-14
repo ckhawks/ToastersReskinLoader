@@ -35,6 +35,11 @@ public class QoLConfig
     public bool enableSpectatorMinimap = true;
     public bool enableBrowserFilterPersistence = true;
     public bool enableNumberedNames = false;
+    public bool enableSavedServerPasswords = false;
+
+    // ip:port -> last-known-good password. Populated when the user opts
+    // in via the "Remember password" checkbox on the password popup.
+    public Dictionary<string, string> savedServerPasswords = new Dictionary<string, string>();
 
     // Server browser filter state — defaults match the base game's
     // hard-coded values in UIServerBrowser.Awake so first-load behavior

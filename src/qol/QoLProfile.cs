@@ -4,6 +4,7 @@
 // Trimmed to match the surviving QoLConfig (arena disable extras,
 // goalie wide-view camera, dev console, debug logging).
 
+using System.Collections.Generic;
 using Newtonsoft.Json;
 
 namespace ToasterReskinLoader.qol;
@@ -43,6 +44,10 @@ public class QoLProfile
     public bool EnableBrowserFilterPersistence { get; set; } = true;
     [JsonProperty("enableNumberedNames")]
     public bool EnableNumberedNames { get; set; } = false;
+    [JsonProperty("enableSavedServerPasswords")]
+    public bool EnableSavedServerPasswords { get; set; } = false;
+    [JsonProperty("savedServerPasswords")]
+    public Dictionary<string, string> SavedServerPasswords { get; set; } = new Dictionary<string, string>();
 
     // Persisted server browser filter values
     [JsonProperty("browserSearch")]
@@ -93,6 +98,10 @@ public class QoLProfile
             enableSpectatorMinimap = EnableSpectatorMinimap,
             enableBrowserFilterPersistence = EnableBrowserFilterPersistence,
             enableNumberedNames = EnableNumberedNames,
+            enableSavedServerPasswords = EnableSavedServerPasswords,
+            savedServerPasswords = SavedServerPasswords != null
+                ? new Dictionary<string, string>(SavedServerPasswords)
+                : new Dictionary<string, string>(),
             browserSearch = BrowserSearch,
             browserMaxPing = BrowserMaxPing,
             browserShowFull = BrowserShowFull,
@@ -128,6 +137,10 @@ public class QoLProfile
         EnableSpectatorMinimap = c.enableSpectatorMinimap;
         EnableBrowserFilterPersistence = c.enableBrowserFilterPersistence;
         EnableNumberedNames = c.enableNumberedNames;
+        EnableSavedServerPasswords = c.enableSavedServerPasswords;
+        SavedServerPasswords = c.savedServerPasswords != null
+            ? new Dictionary<string, string>(c.savedServerPasswords)
+            : new Dictionary<string, string>();
         BrowserSearch = c.browserSearch;
         BrowserMaxPing = c.browserMaxPing;
         BrowserShowFull = c.browserShowFull;

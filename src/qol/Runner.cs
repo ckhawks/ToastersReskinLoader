@@ -43,10 +43,13 @@ public sealed class QoLRunner : MonoBehaviour
         _instance = this;
         try { ReloadFromProfile(); }
         catch (Exception e) { Debug.LogError("[QoL] ReloadFromProfile failed: " + e); }
+        try { SavedServerPasswords.Initialize(); }
+        catch (Exception e) { Debug.LogError("[QoL] SavedServerPasswords.Initialize failed: " + e); }
     }
 
     private void OnDestroy()
     {
+        try { SavedServerPasswords.Teardown(); } catch { }
         if (_instance == this) _instance = null;
     }
 

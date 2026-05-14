@@ -74,6 +74,28 @@ public static class PlayerQoLSection
         ToggleRow(contentScrollViewContent, "Remember server browser filters", cfg.enableBrowserFilterPersistence,
             v => { cfg.enableBrowserFilterPersistence = v; runner.SaveAndRefresh(); });
 
+        // ── Saved server passwords ─────────────────────────────────────────
+        Separator(contentScrollViewContent);
+        Header(contentScrollViewContent, "Saved Server Passwords");
+        Note(contentScrollViewContent,
+            "When you join a passworded server, a \"Remember password\" checkbox appears on the prompt. "
+            + "If left checked, the password is saved (plaintext) in your TRL profile and auto-submitted next time. "
+            + "If the server changes its password, we'll let the prompt show normally and overwrite the saved entry once you re-enter it.");
+
+        var savedPasswordsList = new VisualElement();
+        savedPasswordsList.style.marginTop = 4;
+
+        ToggleRow(contentScrollViewContent, "Enable saved server passwords", cfg.enableSavedServerPasswords,
+            v =>
+            {
+                cfg.enableSavedServerPasswords = v;
+                runner.SaveAndRefresh();
+                RebuildSavedPasswordsList(savedPasswordsList);
+            });
+
+        contentScrollViewContent.Add(savedPasswordsList);
+        RebuildSavedPasswordsList(savedPasswordsList);
+
         /*
 
         // ── Arena visuals (further down — niche / personal preference) ─────
@@ -169,6 +191,61 @@ public static class PlayerQoLSection
         sep.style.marginTop = 16;
         sep.style.marginBottom = 16;
         parent.Add(sep);
+    }
+
+    private static void RebuildSavedPasswordsList(VisualElement container)
+    {
+        if (container == null) return;
+        container.Clear();
+
+        var runner = QoLRunner.Instance;
+        var cfg = runner?.Config;
+        if (cfg == null) return;
+        if (!cfg.enableSavedServerPasswords) return;
+
+        var keys = SavedServerPasswords.SnapshotKeys();
+        if (keys.Count == 0)
+        {
+            var empty = UITools.CreateConfigurationLabel("No saved passwords yet.");
+            empty.style.color = new Color(0.65f, 0.65f, 0.65f);
+            empty.style.marginTop = 4;
+            empty.style.marginBottom = 4;
+            container.Add(empty);
+            return;
+        }
+
+        foreach (var key in keys)
+        {
+            var row = UITools.CreateConfigurationRow();
+            row.style.alignItems = Align.Center;
+
+            var label = UITools.CreateConfigurationLabel(key);
+            label.style.flexGrow = 1;
+            row.Add(label);
+
+            var forgetBtn = new Button(() =>
+            {
+                SavedServerPasswords.Remove(key);
+                RebuildSavedPasswordsList(container);
+            })
+            { text = "Forget" };
+            forgetBtn.style.marginLeft = 8;
+            row.Add(forgetBtn);
+
+            container.Add(row);
+        }
+
+        var clearAllRow = UITools.CreateConfigurationRow();
+        clearAllRow.style.justifyContent = Justify.FlexEnd;
+        clearAllRow.style.marginTop = 8;
+        var clearAllBtn = new Button(() =>
+        {
+            SavedServerPasswords.RemoveAll();
+            RebuildSavedPasswordsList(container);
+        })
+        { text = "Forget all saved passwords" };
+        clearAllRow.Add(clearAllBtn);
+        container.Add(clearAllRow);
     }
 
     private static VisualElement ToggleRow(VisualElement parent, string label, bool initial, Action<bool> onChange)
