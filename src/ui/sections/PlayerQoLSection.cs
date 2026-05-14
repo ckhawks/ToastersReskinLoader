@@ -1,21 +1,13 @@
-// Quality of Life tab — small fixes + a handful of opt-in features kept
-// from PoncePlayerInput. Single scrollable page with headers/separators
-// (no sub-tabs); the section is small enough that tabs add nothing.
-//
-// What this surface configures:
-//   - Arena visual disable (props/lights/skybox/particles + ambient audio)
-//   - Goalie wide-view camera (IFeelLeftOut)
-//   - In-game dev console (toggle + backtick to open)
-//   - Debug logging
-// What's always-on (documented at the bottom, no toggles):
-//   - ESC closes secondary menus, chat in any phase, drag-select chat,
-//     inline server-browser filters, custom :emoji: rendering.
+// Quality of Life tab — small base-game UX patches plus a few opt-in
+// extras (arena visual disable, in-game dev console). Single scrollable
+// page; ordered so the common everyday-player UX fixes are at the top
+// and the developer/arena-tweak controls are further down.
 
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using ToasterReskinLoader.QoL;
+using ToasterReskinLoader.qol;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -26,7 +18,7 @@ public static class PlayerQoLSection
     public static void CreateSection(VisualElement contentScrollViewContent)
     {
         var description = UITools.CreateConfigurationLabel(
-            "Small fixes from the PoncePlayerInput mod, plus optional arena disable and an in-game dev console.");
+            "Small base-game UX patches plus optional arena visual disable and an in-game dev console.");
         description.style.marginBottom = 12;
         description.style.whiteSpace = WhiteSpace.Normal;
         contentScrollViewContent.Add(description);
@@ -44,23 +36,64 @@ public static class PlayerQoLSection
 
         var cfg = runner.Config;
 
-        // ── Arena visuals ──────────────────────────────────────────────────
+        // ── Common UX fixes (top of the page; what most players will care about) ──
+        Header(contentScrollViewContent, "Base-game UX patches");
+        Note(contentScrollViewContent,
+            "Small Harmony patches that polish the vanilla menu and chat behavior. Each can be turned off independently.");
+
+        ToggleRow(contentScrollViewContent, "ESC closes secondary menus", cfg.enableEscCloseMenus,
+            v => { cfg.enableEscCloseMenus = v; runner.SaveAndRefresh(); });
+
+        ToggleRow(contentScrollViewContent, "Open chat in any in-game phase", cfg.enableChatAnyInGamePhase,
+            v => { cfg.enableChatAnyInGamePhase = v; runner.SaveAndRefresh(); });
+
+        ToggleRow(contentScrollViewContent, "View scoreboard in any in-game phase", cfg.enableScoreboardAnyInGamePhase,
+            v => { cfg.enableScoreboardAnyInGamePhase = v; runner.SaveAndRefresh(); });
+
+        ToggleRow(contentScrollViewContent, "Drag-select and right-click-copy chat lines", cfg.enableChatDragSelect,
+            v => { cfg.enableChatDragSelect = v; runner.SaveAndRefresh(); });
+
+        ToggleRow(contentScrollViewContent, "Hide chat when inactive", cfg.enableHideInactiveChat,
+            v => { cfg.enableHideInactiveChat = v; runner.SaveAndRefresh(); });
+
+        ToggleRow(contentScrollViewContent, "Show minimap for spectators", cfg.enableSpectatorMinimap,
+            v => { cfg.enableSpectatorMinimap = v; runner.SaveAndRefresh(); });
+
+        ToggleRow(contentScrollViewContent, "Show jersey number in player name", cfg.enableNumberedNames,
+            v => { cfg.enableNumberedNames = v; runner.SaveAndRefresh(); });
+
+        ToggleRow(contentScrollViewContent, "Inline server browser filters", cfg.enableInlineServerBrowserFilters,
+            v =>
+            {
+                cfg.enableInlineServerBrowserFilters = v;
+                runner.SaveAndRefresh();
+                if (v) InlineServerBrowserFilters.ReapplyInlineFiltersForCurrent();
+                else   InlineServerBrowserFilters.UndoInlineFiltersForCurrent();
+            });
+
+        ToggleRow(contentScrollViewContent, "Remember server browser filters", cfg.enableBrowserFilterPersistence,
+            v => { cfg.enableBrowserFilterPersistence = v; runner.SaveAndRefresh(); });
+
+        /*
+
+        // ── Arena visuals (further down — niche / personal preference) ─────
+        Separator(contentScrollViewContent);
         Header(contentScrollViewContent, "Arena Visuals");
         Note(contentScrollViewContent,
             "Disable parts of the arena scenery. The full blackout toggle destroys the arena GameObject on the next server join.");
 
         ToggleRow(contentScrollViewContent, "Disable all arena visuals",
             cfg.disableArenaVisuals,
-            v => { cfg.disableArenaVisuals = v; runner.SaveAndRefresh(); ToasterReskinLoader.QoL.ArenaVisuals.ApplyState(cfg); });
+            v => { cfg.disableArenaVisuals = v; runner.SaveAndRefresh(); ToasterReskinLoader.qol.ArenaVisuals.ApplyState(cfg); });
 
         ToggleRow(contentScrollViewContent, "Disable arena props", cfg.disableArenaProps,
-            v => { cfg.disableArenaProps = v; runner.SaveAndRefresh(); ToasterReskinLoader.QoL.ArenaVisuals.ApplyPartial(cfg); });
+            v => { cfg.disableArenaProps = v; runner.SaveAndRefresh(); ToasterReskinLoader.qol.ArenaVisuals.ApplyPartial(cfg); });
         ToggleRow(contentScrollViewContent, "Disable arena lights", cfg.disableArenaLights,
-            v => { cfg.disableArenaLights = v; runner.SaveAndRefresh(); ToasterReskinLoader.QoL.ArenaVisuals.ApplyPartial(cfg); });
+            v => { cfg.disableArenaLights = v; runner.SaveAndRefresh(); ToasterReskinLoader.qol.ArenaVisuals.ApplyPartial(cfg); });
         ToggleRow(contentScrollViewContent, "Disable custom skybox", cfg.disableArenaSkybox,
-            v => { cfg.disableArenaSkybox = v; runner.SaveAndRefresh(); ToasterReskinLoader.QoL.ArenaVisuals.ApplyPartial(cfg); });
+            v => { cfg.disableArenaSkybox = v; runner.SaveAndRefresh(); ToasterReskinLoader.qol.ArenaVisuals.ApplyPartial(cfg); });
         ToggleRow(contentScrollViewContent, "Disable arena particles", cfg.disableArenaParticles,
-            v => { cfg.disableArenaParticles = v; runner.SaveAndRefresh(); ToasterReskinLoader.QoL.ArenaVisuals.ApplyPartial(cfg); });
+            v => { cfg.disableArenaParticles = v; runner.SaveAndRefresh(); ToasterReskinLoader.qol.ArenaVisuals.ApplyPartial(cfg); });
 
         var audioRow = UITools.CreateConfigurationRow();
         audioRow.Add(UITools.CreateConfigurationLabel("Arena ambient audio volume"));
@@ -69,43 +102,41 @@ public static class PlayerQoLSection
         {
             cfg.arenaAudioVolume = evt.newValue;
             runner.SaveAndRefresh();
-            ToasterReskinLoader.QoL.ArenaVisuals.ApplyPartial(cfg);
+            ToasterReskinLoader.qol.ArenaVisuals.ApplyPartial(cfg);
         });
         audioRow.Add(audioSlider);
         contentScrollViewContent.Add(audioRow);
 
-        // ── Dev console ────────────────────────────────────────────────────
+        */
+
+        // ── Developer-oriented toggles (bottom — least relevant to most players) ──
         Separator(contentScrollViewContent);
-        Header(contentScrollViewContent, "Dev Console");
+        Header(contentScrollViewContent, "Developer");
         Note(contentScrollViewContent,
-            "Press backtick to toggle an in-game developer console with live log feed, filters, search, and a command input.");
+            "Tools intended for development and debugging. Safe to ignore as a regular player.");
 
         ToggleRow(contentScrollViewContent, "Enable dev console", cfg.enableDevConsole,
             v => { cfg.enableDevConsole = v; runner.SaveAndRefresh(); });
 
-        // ── Base-game UX patches ───────────────────────────────────────────
-        Separator(contentScrollViewContent);
-        Header(contentScrollViewContent, "Base-game UX patches");
-        Note(contentScrollViewContent,
-            "Small Harmony patches that polish the vanilla menu and chat behavior. Each can be turned off independently.");
-
-        ToggleRow(contentScrollViewContent, "ESC closes secondary menus", cfg.enableEscCloseMenus,
-            v => { cfg.enableEscCloseMenus = v; runner.SaveAndRefresh(); });
-
-        ToggleRow(contentScrollViewContent, "Open chat in any game phase", cfg.enableChatAnyPhase,
-            v => { cfg.enableChatAnyPhase = v; runner.SaveAndRefresh(); });
-
-        ToggleRow(contentScrollViewContent, "Drag-select and right-click-copy chat lines", cfg.enableChatDragSelect,
-            v => { cfg.enableChatDragSelect = v; runner.SaveAndRefresh(); });
-
-        ToggleRow(contentScrollViewContent, "Inline server browser filters", cfg.enableInlineServerBrowserFilters,
-            v =>
+        var devButtonsRow = UITools.CreateConfigurationRow();
+        devButtonsRow.style.justifyContent = Justify.FlexStart;
+        var openConsoleBtn = new Button(() =>
+        {
+            // Make sure the feature is enabled before trying to open — Open()
+            // would silently no-op via the Update() guard otherwise.
+            if (!cfg.enableDevConsole)
             {
-                cfg.enableInlineServerBrowserFilters = v;
+                cfg.enableDevConsole = true;
                 runner.SaveAndRefresh();
-                if (v) BaseMenuPatches.ReapplyInlineFiltersForCurrent();
-                else   BaseMenuPatches.UndoInlineFiltersForCurrent();
-            });
+            }
+            DevConsole.Instance?.Open();
+        }) { text = "Open dev console" };
+        openConsoleBtn.style.marginRight = 8;
+        devButtonsRow.Add(openConsoleBtn);
+
+        var openLogsBtn = new Button(DevConsole.OpenLogsFolder) { text = "Open logs folder" };
+        devButtonsRow.Add(openLogsBtn);
+        contentScrollViewContent.Add(devButtonsRow);
     }
 
     // ─────────────────────────────── helpers ────────────────────────────────

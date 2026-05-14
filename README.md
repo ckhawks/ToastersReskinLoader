@@ -18,4 +18,5 @@ Pull requests are welcome and will be reviewed - I would encourage you to discus
 
 ## Contributors
 - Toaster (Stellaric / ckhawks) - Initial functionality
+- Amikiir (Ami / TakoKylo) - Quality of Life aditions
 - Banix - Goalie leg pad and helmet swapping, full arena swapping with Dem's Scenery Loader

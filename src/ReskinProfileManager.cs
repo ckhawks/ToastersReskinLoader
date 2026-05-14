@@ -1,4 +1,4 @@
-﻿// ReskinProfileManager.cs
+// ReskinProfileManager.cs
 
 using System;
 using System.Collections.Generic;
@@ -572,7 +572,7 @@ public static class ReskinProfileManager
                     : defaultProfile.puckFXSilhouetteColor,
 
                 // Player QoL
-                playerQoL = serializableProfile.PlayerQoL ?? new QoL.QoLProfile(),
+                playerQoL = serializableProfile.PlayerQoL ?? new qol.QoLProfile(),
             };
 
             Plugin.Log("Reskin profile loaded successfully.");
@@ -788,7 +788,7 @@ public static class ReskinProfileManager
                 PuckFXSilhouetteColor = new SerializableColor(currentProfile.puckFXSilhouetteColor),
 
                 // Player QoL
-                PlayerQoL = currentProfile.playerQoL ?? new QoL.QoLProfile()
+                PlayerQoL = currentProfile.playerQoL ?? new qol.QoLProfile()
             };
 
             string json = JsonConvert.SerializeObject(serializableProfile, Formatting.Indented);
@@ -1236,7 +1236,7 @@ public static class ReskinProfileManager
         public Color puckFXSilhouetteColor = new Color(1f, 1f, 1f, 0.502f);
 
         // Player QoL section (ported from PoncePlayerInput)
-        public QoL.QoLProfile playerQoL = new QoL.QoLProfile();
+        public qol.QoLProfile playerQoL = new qol.QoLProfile();
     }
     
     /// <summary>
@@ -1563,7 +1563,7 @@ public static class ReskinProfileManager
 
         // PLAYER QoL
         [JsonProperty("playerQoL")]
-        public QoL.QoLProfile PlayerQoL { get; set; }
+        public qol.QoLProfile PlayerQoL { get; set; }
     }
 }
 
