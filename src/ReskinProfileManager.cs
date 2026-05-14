@@ -800,8 +800,8 @@ public static class ReskinProfileManager
                 PuckFXSilhouetteColor = new SerializableColor(currentProfile.puckFXSilhouetteColor),
 
                 // Player QoL
-                PlayerQoL = currentProfile.playerQoL ?? new qol.QoLProfile()
-                  
+                PlayerQoL = currentProfile.playerQoL ?? new qol.QoLProfile(),
+
                 // Glossiness
                 GlossRemoverEnabled = currentProfile.glossRemoverEnabled,
                 GlossSmoothness = currentProfile.glossSmoothness,
