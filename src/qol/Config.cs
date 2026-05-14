@@ -35,6 +35,14 @@ public class QoLConfig
     public bool enableSpectatorMinimap = true;
     public bool enableBrowserFilterPersistence = true;
     public bool enableNumberedNames = true;
+    public bool enableTeamButtonPlayerCount = true;
+    public bool enablePartyLineup = true;
+
+    // Additions — opt-in QoL enhancements layered on top of vanilla
+    public bool enableBetterFriendsList = true;
+    public bool enableBeaconPing = true;
+    public bool enableServerPreviewCache = true;
+    public bool enableVanillaUIRetheme = true;
 
     // Server browser filter state — defaults match the base game's
     // hard-coded values in UIServerBrowser.Awake so first-load behavior

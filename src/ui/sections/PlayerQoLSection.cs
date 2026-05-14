@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using ToasterReskinLoader.qol;
+using ToasterReskinLoader.qol.beacon;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -41,16 +42,16 @@ public static class PlayerQoLSection
         Note(contentScrollViewContent,
             "Small Harmony patches that polish the vanilla menu and chat behavior. Each can be turned off independently.");
 
-        ToggleRow(contentScrollViewContent, "ESC closes secondary menus", cfg.enableEscCloseMenus,
+        ToggleRow(contentScrollViewContent, "Close secondary menus with ESC", cfg.enableEscCloseMenus,
             v => { cfg.enableEscCloseMenus = v; runner.SaveAndRefresh(); });
 
         ToggleRow(contentScrollViewContent, "Open chat in any in-game phase", cfg.enableChatAnyInGamePhase,
             v => { cfg.enableChatAnyInGamePhase = v; runner.SaveAndRefresh(); });
 
-        ToggleRow(contentScrollViewContent, "View scoreboard in any in-game phase", cfg.enableScoreboardAnyInGamePhase,
+        ToggleRow(contentScrollViewContent, "Enable scoreboard in any in-game phase", cfg.enableScoreboardAnyInGamePhase,
             v => { cfg.enableScoreboardAnyInGamePhase = v; runner.SaveAndRefresh(); });
 
-        ToggleRow(contentScrollViewContent, "Drag-select and right-click-copy chat lines", cfg.enableChatDragSelect,
+        ToggleRow(contentScrollViewContent, "Enable drag-select and right-click-copy chat lines", cfg.enableChatDragSelect,
             v => { cfg.enableChatDragSelect = v; runner.SaveAndRefresh(); });
 
         ToggleRow(contentScrollViewContent, "Hide chat when inactive", cfg.enableHideInactiveChat,
@@ -62,7 +63,10 @@ public static class PlayerQoLSection
         ToggleRow(contentScrollViewContent, "Show jersey number in player name", cfg.enableNumberedNames,
             v => { cfg.enableNumberedNames = v; runner.SaveAndRefresh(); });
 
-        ToggleRow(contentScrollViewContent, "Inline server browser filters", cfg.enableInlineServerBrowserFilters,
+        ToggleRow(contentScrollViewContent, "Show player count on team select buttons", cfg.enableTeamButtonPlayerCount,
+            v => { cfg.enableTeamButtonPlayerCount = v; runner.SaveAndRefresh(); });
+
+        ToggleRow(contentScrollViewContent, "Show server browser filters inline", cfg.enableInlineServerBrowserFilters,
             v =>
             {
                 cfg.enableInlineServerBrowserFilters = v;
@@ -109,13 +113,57 @@ public static class PlayerQoLSection
 
         */
 
+        // ── Additions (opt-in enhancements layered on top of vanilla) ──
+        Separator(contentScrollViewContent);
+        Header(contentScrollViewContent, "Additions");
+        Note(contentScrollViewContent,
+            "Larger optional enhancements that go beyond small base-game patches.");
+
+        ToggleRow(contentScrollViewContent, "Use enhanced friends list", cfg.enableBetterFriendsList,
+            v =>
+            {
+                cfg.enableBetterFriendsList = v;
+                runner.SaveAndRefresh();
+                if (v) BetterFriendsList.Enable();
+                else   BetterFriendsList.Disable();
+            });
+
+        ToggleRow(contentScrollViewContent, "Show party members in locker room", cfg.enablePartyLineup,
+            v =>
+            {
+                cfg.enablePartyLineup = v;
+                runner.SaveAndRefresh();
+                PartyLineup.RefreshFromConfig();
+            });
+
+        ToggleRow(contentScrollViewContent, "Enable matchmaking beacon ping panel", cfg.enableBeaconPing,
+            v =>
+            {
+                cfg.enableBeaconPing = v;
+                runner.SaveAndRefresh();
+                if (v) BeaconPing.Enable();
+                else   BeaconPing.Disable();
+            });
+
+        ToggleRow(contentScrollViewContent, "Cache server browser (instant rows on open)", cfg.enableServerPreviewCache,
+            v => { cfg.enableServerPreviewCache = v; runner.SaveAndRefresh(); });
+
+        ToggleRow(contentScrollViewContent, "Darken vanilla checkbox/input backgrounds", cfg.enableVanillaUIRetheme,
+            v =>
+            {
+                cfg.enableVanillaUIRetheme = v;
+                runner.SaveAndRefresh();
+                if (v) VanillaUIRetheme.Enable();
+                else   VanillaUIRetheme.Disable();
+            });
+
         // ── Developer-oriented toggles (bottom — least relevant to most players) ──
         Separator(contentScrollViewContent);
         Header(contentScrollViewContent, "Developer");
         Note(contentScrollViewContent,
             "Tools intended for development and debugging. Safe to ignore as a regular player.");
 
-        ToggleRow(contentScrollViewContent, "Enable dev console", cfg.enableDevConsole,
+        ToggleRow(contentScrollViewContent, "Enable in-game dev console", cfg.enableDevConsole,
             v => { cfg.enableDevConsole = v; runner.SaveAndRefresh(); });
 
         var devButtonsRow = UITools.CreateConfigurationRow();
@@ -131,15 +179,28 @@ public static class PlayerQoLSection
             }
             DevConsole.Instance?.Open();
         }) { text = "Open dev console" };
+        StyleDevButton(openConsoleBtn);
         openConsoleBtn.style.marginRight = 8;
         devButtonsRow.Add(openConsoleBtn);
 
         var openLogsBtn = new Button(DevConsole.OpenLogsFolder) { text = "Open logs folder" };
+        StyleDevButton(openLogsBtn);
         devButtonsRow.Add(openLogsBtn);
         contentScrollViewContent.Add(devButtonsRow);
     }
 
     // ─────────────────────────────── helpers ────────────────────────────────
+
+    private static void StyleDevButton(Button button)
+    {
+        button.style.backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f));
+        button.style.color = Color.white;
+        button.style.paddingLeft = 10;
+        button.style.paddingRight = 10;
+        button.style.paddingTop = 6;
+        button.style.paddingBottom = 6;
+        UITools.AddHoverEffectsForButton(button);
+    }
 
     private static void Header(VisualElement parent, string text)
     {

@@ -8,7 +8,7 @@ public static class AboutSection
     public static void CreateSection(VisualElement contentScrollViewContent)
     {
         Label description = new Label();
-        description.text = $"Version: {Plugin.MOD_VERSION}<br><br>This mod was made by <b>Toaster (Stellaric)</b>, with contributions from Amikiir, Danimals & Banix.\n\nIf you need support or have questions about the mod, you can join the Toaster's Rink Discord.";
+        description.text = $"Version: {Plugin.MOD_VERSION}<br><br>This mod was made by <b>Toaster (Stellaric)</b>, with contributions from Amikiir, Danimals, and Banix.\n\nIf you need support or have questions about the mod, you can join the Toaster's Rink Discord.";
         description.style.fontSize = 14;
         description.style.whiteSpace = WhiteSpace.Normal;
         
@@ -87,7 +87,7 @@ public static class AboutSection
 
         var contributors = new (string name, string url)[]
         {
-            ("Stellaric", "https://steamcommunity.com/id/ckhawks/"),
+            ("Stellaric", "https://stellaric.pw/"),
             ("Amikiir",   "https://steamcommunity.com/id/Amikiir/"),
             ("Danimals",  "https://steamcommunity.com/profiles/76561198082602998"),
             ("Banix",     "https://steamcommunity.com/profiles/76561198043575959"),

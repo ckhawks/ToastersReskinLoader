@@ -287,6 +287,7 @@ namespace ToasterReskinLoader.swappers
             [HarmonyPostfix]
             public static void Postfix(UIMods __instance, bool __result)
             {
+                ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer] Show postfix fired (result={__result})");
                 if (!__result) return;
                 EnsureControlsInjected(__instance);
                 if (searchField != null) searchField.value = "";
@@ -296,6 +297,7 @@ namespace ToasterReskinLoader.swappers
                 UpdateTabVisuals();
 
                 SnapshotEntries(__instance);
+                ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer] Show: snapshot has {allEntries.Count} entries");
                 foreach (var kvp in allEntries)
                     ApplyEnhancements(kvp.Key, kvp.Value);
 
@@ -377,10 +379,18 @@ namespace ToasterReskinLoader.swappers
 
         private static void ApplyFilters()
         {
-            if (currentUIMods == null) return;
+            if (currentUIMods == null)
+            {
+                ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer] ApplyFilters: currentUIMods is null, aborting");
+                return;
+            }
 
             var modsList = _modsListField?.GetValue(currentUIMods) as VisualElement;
-            if (modsList == null) return;
+            if (modsList == null)
+            {
+                ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer] ApplyFilters: modsList reflection returned null");
+                return;
+            }
 
             string search = searchField?.value?.ToLowerInvariant() ?? "";
 
@@ -402,6 +412,8 @@ namespace ToasterReskinLoader.swappers
                     visible.Add(kvp);
             }
 
+            ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer] ApplyFilters: filter='{activeFilter}', search='{search}', total={allEntries.Count}, visible={visible.Count}");
+
             if (sortAlphabetical)
                 visible = visible.OrderBy(kvp => GetTitle(kvp.Key)).ToList();
 
@@ -410,6 +422,8 @@ namespace ToasterReskinLoader.swappers
 
             foreach (var kvp in visible)
                 modsList.Add(kvp.Value);
+
+            ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer] ApplyFilters: modsList now has {modsList.childCount} children, layout={modsList.layout}, display={modsList.resolvedStyle.display}");
         }
 
         // ── Patches: UpdateMod / UpdatePlugin ────────────────────────
@@ -420,8 +434,13 @@ namespace ToasterReskinLoader.swappers
             [HarmonyPostfix]
             public static void Postfix(UIMods __instance, Mod mod)
             {
+                ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer] UpdateMod postfix for mod id={mod?.Id}");
                 var map = _modTemplateMapField?.GetValue(__instance) as System.Collections.IDictionary;
-                if (map == null || !map.Contains(mod)) return;
+                if (map == null || !map.Contains(mod))
+                {
+                    ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer]   UpdateMod: map missing entry (mapNull={map == null})");
+                    return;
+                }
                 if (map[mod] is VisualElement element)
                     ApplyEnhancements(mod, element);
                 UpdateCounts();
@@ -434,8 +453,13 @@ namespace ToasterReskinLoader.swappers
             [HarmonyPostfix]
             public static void Postfix(UIMods __instance, global::Plugin plugin)
             {
+                ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer] UpdatePlugin postfix for plugin id={plugin?.Id}");
                 var map = _pluginTemplateMapField?.GetValue(__instance) as System.Collections.IDictionary;
-                if (map == null || !map.Contains(plugin)) return;
+                if (map == null || !map.Contains(plugin))
+                {
+                    ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer]   UpdatePlugin: map missing entry (mapNull={map == null})");
+                    return;
+                }
                 if (map[plugin] is VisualElement element)
                     ApplyEnhancements(plugin, element);
                 UpdateCounts();
@@ -444,26 +468,107 @@ namespace ToasterReskinLoader.swappers
 
         public static void ApplyEnhancements(object entry, VisualElement element)
         {
+            string entryName = GetTitle(entry);
+            string entryType = IsLocalPlugin(entry) ? "Plugin" : "Mod";
+            ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer] ApplyEnhancements start: {entryType} '{entryName}' (HasAssembly={HasAssembly(entry)}, IsEnabled={IsEnabled(entry)}, element={element?.GetType().Name}, attached={element?.panel != null})");
+
             var desc = element.Q<Label>("DescriptionLabel");
             var preview = element.Q<VisualElement>("Preview");
 
-            float opacity = (!HasAssembly(entry) || IsEnabled(entry)) ? 1f : 0.3f;
-            if (desc != null) desc.style.opacity = opacity;
-            if (preview != null) preview.style.opacity = opacity;
+            // In b323, inner UI.Mod children are populated in OnAttachToPanel.
+            // If we got here before attach (e.g. Show postfix racing AddMod's Ready callback),
+            // defer until the element is attached. UpdateMod/UpdatePlugin patches will
+            // also catch it once vanilla calls them inside Ready.
+            if (desc == null || preview == null)
+            {
+                ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer]   children not ready (desc={desc != null}, preview={preview != null}, panel={element.panel != null}). Deferring '{entryName}'");
+                if (element.panel == null)
+                {
+                    EventCallback<AttachToPanelEvent> handler = null;
+                    handler = _ =>
+                    {
+                        element.UnregisterCallback(handler);
+                        ApplyEnhancements(entry, element);
+                    };
+                    element.RegisterCallback(handler);
+                }
+                return;
+            }
+            ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer]   '{entryName}' element layout: rect={element.layout}, resolvedHeight={element.resolvedStyle.height}, resolvedMaxHeight={element.resolvedStyle.maxHeight}, display={element.resolvedStyle.display}");
 
-            // ── Bottom row: Workshop/Folder button + badges side by side ──
+            // ── Strip max-height clamps so the row can grow with our additions ──
+            // Only clear max-height; leave height alone so we don't collapse flex children
+            // that depend on percentage/stretch sizing from the original USS.
+            element.style.maxHeight = StyleKeyword.None;
+            if (element is TemplateContainer && element.childCount > 0)
+                element.ElementAt(0).style.maxHeight = StyleKeyword.None;
+            if (desc.parent != null)
+                desc.parent.style.maxHeight = StyleKeyword.None;
+
+            float opacity = (!HasAssembly(entry) || IsEnabled(entry)) ? 1f : 0.3f;
+            desc.style.opacity = opacity;
+            preview.style.opacity = opacity;
+
+            // ── ENABLED / DISABLED state label next to the vanilla Toggle ──
+            // The vanilla checkbox is small; pair it with a big, clearly-colored label that
+            // updates with the toggle's value so the state is unmistakable.
+            if (HasAssembly(entry))
+            {
+                var toggle = element.Q<Toggle>();
+                ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer]   '{entryName}' toggle lookup: found={toggle != null}, parent={toggle?.parent?.name ?? "(null)"}, parentType={toggle?.parent?.GetType().Name}");
+                if (toggle != null && toggle.parent != null)
+                {
+                    const string stateLabelName = "trl-state-label";
+                    var stateLabel = toggle.parent.Q<Label>(stateLabelName);
+                    if (stateLabel == null)
+                    {
+                        stateLabel = new Label();
+                        stateLabel.name = stateLabelName;
+                        stateLabel.style.fontSize = 16;
+                        stateLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
+                        stateLabel.style.marginRight = 8;
+                        stateLabel.style.unityTextAlign = TextAnchor.MiddleRight;
+                        stateLabel.style.paddingLeft = 8;
+                        stateLabel.style.paddingRight = 8;
+                        stateLabel.style.paddingTop = 4;
+                        stateLabel.style.paddingBottom = 4;
+                        stateLabel.style.borderTopLeftRadius = 4;
+                        stateLabel.style.borderTopRightRadius = 4;
+                        stateLabel.style.borderBottomLeftRadius = 4;
+                        stateLabel.style.borderBottomRightRadius = 4;
+
+                        int toggleIdx = toggle.parent.IndexOf(toggle);
+                        toggle.parent.Insert(toggleIdx, stateLabel);
+
+                        toggle.RegisterValueChangedCallback(evt => UpdateStateLabel(stateLabel, evt.newValue));
+                    }
+                    UpdateStateLabel(stateLabel, toggle.value);
+                }
+            }
+
+            // ── Shrink the vanilla Statistics block in place (don't reparent — moving it
+            // out of ModPreview collapses its old container and breaks row layout) ──
+            var statistics = element.Q<VisualElement>("Statistics");
+            ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer]   '{entryName}' Statistics lookup: found={statistics != null}");
+            if (statistics != null)
+                ShrinkStatistics(statistics);
+
+            // ── Bottom row: action button + badges ──
             const string bottomRowName = "trl-bottom-row";
             var bottomRow = element.Q<VisualElement>(bottomRowName);
-            if (bottomRow == null && desc?.parent != null)
+            ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer]   '{entryName}' bottomRow exists={bottomRow != null}, desc.parent={desc.parent?.name ?? "(null)"} (childCount={desc.parent?.childCount ?? -1})");
+            if (bottomRow == null && desc.parent != null)
             {
                 bottomRow = new VisualElement();
                 bottomRow.name = bottomRowName;
                 bottomRow.style.flexDirection = FlexDirection.Row;
                 bottomRow.style.alignItems = Align.Center;
+                bottomRow.style.flexWrap = Wrap.Wrap;
                 bottomRow.style.marginTop = 6;
 
                 int descIdx = desc.parent.IndexOf(desc);
                 desc.parent.Insert(descIdx + 1, bottomRow);
+                ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer]   '{entryName}' inserted bottomRow at index {descIdx + 1}");
             }
             if (bottomRow == null) return;
 
@@ -472,12 +577,12 @@ namespace ToasterReskinLoader.swappers
             if (bottomRow.Q<Button>(actionBtnName) == null)
             {
                 bool localPlugin = IsLocalPlugin(entry);
-                string btnText = localPlugin ? "Open Folder" : "Open on Workshop";
-                var actionBtn = new Button { text = btnText };
+                var actionBtn = new Button { text = localPlugin ? "Open Folder" : "Open on Workshop" };
                 actionBtn.name = actionBtnName;
                 actionBtn.style.fontSize = 12;
                 actionBtn.style.width = 130;
                 actionBtn.style.height = 35;
+                actionBtn.style.marginRight = 8;
                 actionBtn.style.backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f));
                 actionBtn.style.color = Color.white;
                 actionBtn.style.borderTopLeftRadius = 4;
@@ -509,10 +614,10 @@ namespace ToasterReskinLoader.swappers
                         Application.OpenURL($"https://steamcommunity.com/sharedfiles/filedetails/?id={workshopId}");
                 }
 
-                bottomRow.Insert(0, actionBtn);
+                bottomRow.Add(actionBtn);
             }
 
-            // ── Badges (to the right of the button, with 16px gap) ──
+            // ── Badges ──
             const string badgeContainerName = "trl-badge-container";
             var badgeContainer = bottomRow.Q<VisualElement>(badgeContainerName);
             if (badgeContainer == null)
@@ -522,7 +627,6 @@ namespace ToasterReskinLoader.swappers
                 badgeContainer.style.flexDirection = FlexDirection.Row;
                 badgeContainer.style.flexWrap = Wrap.Wrap;
                 badgeContainer.style.alignItems = Align.Center;
-                badgeContainer.style.marginLeft = 16;
                 bottomRow.Add(badgeContainer);
             }
 
@@ -538,6 +642,32 @@ namespace ToasterReskinLoader.swappers
                 else
                     badgeContainer.Add(CreateBadge("trl-source-badge", "Workshop",
                         new Color(0.6f, 1f, 0.6f), new Color(0.2f, 0.4f, 0.2f, 0.6f)));
+            }
+        }
+
+        private static void UpdateStateLabel(Label label, bool enabled)
+        {
+            if (enabled)
+            {
+                label.text = "ENABLED";
+                label.style.color = new Color(0.2f, 1f, 0.4f);
+                label.style.backgroundColor = new StyleColor(new Color(0.1f, 0.35f, 0.15f, 0.6f));
+            }
+            else
+            {
+                label.text = "DISABLED";
+                label.style.color = new Color(1f, 0.5f, 0.5f);
+                label.style.backgroundColor = new StyleColor(new Color(0.4f, 0.15f, 0.15f, 0.6f));
+            }
+        }
+
+        private static void ShrinkStatistics(VisualElement statistics)
+        {
+            statistics.style.fontSize = 10;
+            foreach (var label in statistics.Query<Label>().ToList())
+            {
+                label.style.fontSize = 10;
+                label.style.color = new Color(0.7f, 0.7f, 0.7f);
             }
         }
 

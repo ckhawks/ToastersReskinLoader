@@ -279,9 +279,11 @@ public static class TeamColorSwapper
                 var blueBtn = (Button)_blueButtonField?.GetValue(teamSelect);
                 var redBtn = (Button)_redButtonField?.GetValue(teamSelect);
 
-                int blueCount = PlayerManager.Instance != null
+                bool showCount = ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.enableTeamButtonPlayerCount ?? true;
+
+                int blueCount = showCount && PlayerManager.Instance != null
                     ? PlayerManager.Instance.GetPlayersByTeam(PlayerTeam.Blue).Count : 0;
-                int redCount = PlayerManager.Instance != null
+                int redCount = showCount && PlayerManager.Instance != null
                     ? PlayerManager.Instance.GetPlayersByTeam(PlayerTeam.Red).Count : 0;
 
                 string blueName = !string.IsNullOrEmpty(profile.blueTeamName)
@@ -296,7 +298,7 @@ public static class TeamColorSwapper
                         var bc = profile.blueTeamColor;
                         blueBtn.schedule.Execute(() => { blueBtn.style.backgroundColor = bc; });
                     }
-                    blueBtn.text = $"{blueName} - {blueCount}";
+                    blueBtn.text = showCount ? $"{blueName} - {blueCount}" : blueName;
                 }
                 if (redBtn != null)
                 {
@@ -305,7 +307,7 @@ public static class TeamColorSwapper
                         var rc = profile.redTeamColor;
                         redBtn.schedule.Execute(() => { redBtn.style.backgroundColor = rc; });
                     }
-                    redBtn.text = $"{redName} - {redCount}";
+                    redBtn.text = showCount ? $"{redName} - {redCount}" : redName;
                 }
             }
             catch (Exception e)
