@@ -11,7 +11,7 @@ public static class GlossSection
     public static void CreateSection(VisualElement contentScrollViewContent)
     {
         Label description = UITools.CreateConfigurationLabel(
-            "Removes or tones down the glossy shine on sticks, players, and pucks. " +
+            "Adjusts the glossy shine on sticks, players, and pucks. " +
             "Move the slider to 0 to make surfaces fully matte (no reflections), or to 1 to keep the original gloss.");
         description.style.marginBottom = 12;
         description.style.whiteSpace = WhiteSpace.Normal;
@@ -21,7 +21,7 @@ public static class GlossSection
 
         // Enable toggle
         VisualElement enableRow = UITools.CreateConfigurationRow();
-        enableRow.Add(UITools.CreateConfigurationLabel("Enable Gloss Remover"));
+        enableRow.Add(UITools.CreateConfigurationLabel("Enable Glossiness Control"));
 
         Toggle enableToggle = UITools.CreateConfigurationCheckbox(ReskinProfileManager.currentProfile.glossRemoverEnabled);
         enableToggle.value = ReskinProfileManager.currentProfile.glossRemoverEnabled;

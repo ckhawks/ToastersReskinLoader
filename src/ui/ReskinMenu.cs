@@ -24,7 +24,7 @@ public static class ReskinMenu
     
     // menu state
     public static string[] sections = new []{"Packs", "Appearance", "Sticks", "Tapes", "Skaters", "Goalies", "Pucks", "Puck FX", "Arena",
-        "Skybox", "Shadows", "Gloss Remover", "User Interface", "Extras", "About" };
+        "Skybox", "Shadows", "Glossiness", "User Interface", "Extras", "About" };
     public static int selectedSectionIndex = 0;
 
     public static void Show()
@@ -377,7 +377,7 @@ public static class ReskinMenu
             case "Shadows":
                 ShadowsSection.CreateSection(contentScrollViewContent);
                 break;
-            case "Gloss Remover":
+            case "Glossiness":
                 GlossSection.CreateSection(contentScrollViewContent);
                 break;
             case "Appearance":
