@@ -104,6 +104,11 @@ public static class StickSwapper
     /// for b310's Shader Graphs/Stick Simple and other potential shaders.
     /// Also clears holographic/iridescent/emission layers that some vanilla skins use,
     /// so the custom texture displays cleanly without visual artifacts.
+    ///
+    /// Configures the material in transparent + alpha-clipped mode with depth writes so
+    /// stick textures that contain alpha=0 regions render see-through (e.g. wireframe /
+    /// cutout stick skins). Fully-opaque textures are visually unaffected — every texel
+    /// has alpha=255 so blending and clipping behave the same as opaque rendering.
     /// </summary>
     private static void ApplyTextureToStickMaterial(Material material, Texture2D texture)
     {
@@ -127,5 +132,24 @@ public static class StickSwapper
         // Clean material state
         material.SetFloat("_Metallic", 0f);
         material.SetFloat("_Smoothness", 0.5f);
+
+        // Transparency + alpha clipping. URP's color pass alpha-blends so soft alpha
+        // values fade smoothly; alpha clip + ZWrite=1 makes the depth pre-pass discard
+        // alpha=0 pixels and write depth for opaque ones so silhouette/outline effects
+        // still detect the stick correctly through the texture's wireframe lines.
+        material.SetFloat("_Surface", 1f);          // Transparent
+        material.SetFloat("_Blend", 0f);            // Alpha blend
+        material.SetFloat("_AlphaClip", 1f);
+        material.SetFloat("_Cutoff", 0.5f);
+        material.SetInt("_SrcBlend", 5);            // SrcAlpha
+        material.SetInt("_DstBlend", 10);           // OneMinusSrcAlpha
+        material.SetInt("_SrcBlendAlpha", 1);
+        material.SetInt("_DstBlendAlpha", 10);
+        material.SetInt("_ZWrite", 1);
+
+        material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        material.EnableKeyword("_ALPHATEST_ON");
+        material.SetOverrideTag("RenderType", "Transparent");
+        material.renderQueue = 3000;
     }
 }
