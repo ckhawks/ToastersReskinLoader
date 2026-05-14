@@ -31,10 +31,10 @@ public class QoLConfig
     public bool enableScoreboardAnyInGamePhase = true;
     public bool enableChatDragSelect = true;
     public bool enableInlineServerBrowserFilters = true;
-    public bool enableHideInactiveChat = true;
+    public bool enableHideInactiveChat = false;
     public bool enableSpectatorMinimap = true;
     public bool enableBrowserFilterPersistence = true;
-    public bool enableNumberedNames = true;
+    public bool enableNumberedNames = false;
 
     // Server browser filter state — defaults match the base game's
     // hard-coded values in UIServerBrowser.Awake so first-load behavior

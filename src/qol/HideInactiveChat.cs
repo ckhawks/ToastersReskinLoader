@@ -1,25 +1,28 @@
-// Hide inactive chat (instead of fading).
+// Hide inactive chat (instead of fading individual rows).
 //
-// Vanilla `UIChatMessage.Blur()` adds a "blurred" USS class to expired messages —
-// they stay on screen at low opacity. When `enableHideInactiveChat` is on we
-// additionally collapse each expired message's VisualElement AND the parent
-// `chat` container so the whole panel (incl. the gray box / scroll backing)
-// disappears when no message is currently active and the user isn't typing.
+// Vanilla `UIChatMessage.Blur()` adds a "blurred" USS class to expired
+// messages — they stay on screen at low opacity. When
+// `enableHideInactiveChat` is on, we DO NOT collapse individual message
+// rows (that caused remaining rows to shift up one-by-one as each line
+// expired — the "buggy fade" effect). Instead we wait until every row
+// is in the blurred state and then hide the parent `chat` container in
+// one shot, so the whole panel disappears together with no reshuffling.
 //
 // Lifecycle hooks:
-//   UIChatMessage.Blur   → message expired and chat not focused: hide row;
-//                           if every row is hidden, also hide the chat container.
-//   UIChatMessage.Focus  → un-hide row (a new message arrives, or the user
-//                           opens chat) and force-show the chat container.
-//   UIChat.Show          → newly visible chat with no recent messages: collapse
-//                           the container so the empty box doesn't sit on screen.
+//   UIChatMessage.Blur   → if every row is now blurred and chat isn't
+//                           focused, hide the chat container.
+//   UIChatMessage.Focus  → a new live message arrived (or user opened
+//                           chat): force-show the container.
+//   UIChat.Show          → newly visible chat with no live messages:
+//                           collapse the empty box right away.
 //   UIChat.StartInput    → user opened chat to type: force-show container.
-//   UIChat.StopInput     → user closed chat: re-check; hide if no live messages.
+//   UIChat.StopInput     → user closed chat: re-check; hide if all rows
+//                           are already blurred.
 //
 // Toggling the flag is runtime-safe: when off, all postfixes short-circuit
-// before touching styles. The Focus postfix runs its un-hide branch
-// unconditionally so flipping the flag off mid-session never leaves a row
-// or the container stuck at `display:None`.
+// before touching styles. The Focus postfix's container un-hide runs
+// unconditionally so flipping the flag off mid-session never leaves the
+// container stuck at `display:None`.
 
 using System;
 using System.Collections.Generic;
@@ -69,10 +72,11 @@ internal static class HideInactiveChat
         catch { }
     }
 
-    // Hide the chat container if no message rows are currently visible AND
-    // the user isn't actively typing. Called after each Blur and after
-    // StopInput / Show.
-    private static void HideContainerIfIdle(UIChat chat = null)
+    // Hide the chat container only when every existing message row is
+    // already in the blurred (expired) state AND the user isn't typing.
+    // We never hide individual rows here — keeping them in layout means
+    // the panel collapses all at once instead of shifting line-by-line.
+    private static void HideContainerIfAllBlurred(UIChat chat = null)
     {
         try
         {
@@ -86,8 +90,11 @@ internal static class HideInactiveChat
                 for (int i = 0; i < messages.Count; i++)
                 {
                     var ve = messages[i]?.VisualElement;
-                    if (ve != null && ve.style.display.value != DisplayStyle.None)
-                        return; // at least one row is still visible
+                    if (ve == null) continue;
+                    var lbl = ve.Q<Label>();
+                    // Any live (non-blurred) message keeps the panel up.
+                    if (lbl != null && !lbl.ClassListContains("blurred"))
+                        return;
                 }
             }
 
@@ -109,15 +116,12 @@ internal static class HideInactiveChat
             {
                 var ve = __instance?.VisualElement;
                 if (ve == null) return;
-                // Only collapse messages vanilla actually faded. If Blur
-                // restarted the expiry tween (message not yet expired), the
-                // label won't have the blurred class — leave it visible.
+                // Only act on messages vanilla actually expired (the
+                // "blurred" class is now on the label). If Blur restarted
+                // the expiry tween, leave the panel alone.
                 var lbl = ve.Q<Label>();
                 if (lbl != null && lbl.ClassListContains("blurred"))
-                {
-                    ve.style.display = DisplayStyle.None;
-                    HideContainerIfIdle();
-                }
+                    HideContainerIfAllBlurred();
             }
             catch (Exception e) { Debug.LogWarning("[QoL] hide-inactive-chat blur failed: " + e.Message); }
         }
@@ -130,15 +134,11 @@ internal static class HideInactiveChat
         {
             try
             {
-                var ve = __instance?.VisualElement;
-                if (ve == null) return;
-                // Always un-hide on Focus — covers flag flips mid-session so
-                // no row ends up permanently collapsed.
-                if (ve.style.display.value == DisplayStyle.None)
-                    ve.style.display = StyleKeyword.Null;
-                // A message just became visible (new message, or user
-                // opened chat), so the container must be visible too.
-                if (Enabled) ShowChatContainer();
+                // A message just became live (new message, or user opened
+                // chat) — make sure the container is visible. Runs even
+                // when the flag is off so flipping it off mid-session
+                // never leaves the container stuck collapsed.
+                ShowChatContainer();
             }
             catch (Exception e) { Debug.LogWarning("[QoL] hide-inactive-chat focus failed: " + e.Message); }
         }
@@ -152,11 +152,11 @@ internal static class HideInactiveChat
         private static void Postfix(UIChat __instance)
         {
             if (!Enabled) return;
-            // Phase change just brought the chat view onscreen. If there
-            // are no live messages and the user isn't typing, collapse
-            // the empty box right away instead of waiting for the first
-            // Blur (which never fires when there are zero messages).
-            HideContainerIfIdle(__instance);
+            // Phase change just brought the chat view onscreen. If
+            // there's nothing live to display, collapse the empty box
+            // right away instead of waiting for a Blur that may never
+            // come (zero messages → zero Blur callbacks).
+            HideContainerIfAllBlurred(__instance);
         }
     }
 
@@ -177,10 +177,9 @@ internal static class HideInactiveChat
         private static void Postfix(UIChat __instance)
         {
             if (!Enabled) return;
-            // User closed chat. Vanilla now lets messages start expiring;
-            // re-check the container so it collapses immediately if all
-            // messages are already past their expiry window.
-            HideContainerIfIdle(__instance);
+            // User closed chat. Re-check — if every message is already
+            // past its blur point, collapse the container immediately.
+            HideContainerIfAllBlurred(__instance);
         }
     }
 }

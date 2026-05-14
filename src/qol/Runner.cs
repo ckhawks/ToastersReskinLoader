@@ -64,6 +64,10 @@ public sealed class QoLRunner : MonoBehaviour
         var kb = UnityEngine.InputSystem.Keyboard.current;
         if (kb != null && kb.escapeKey.wasPressedThisFrame)
         {
+            // Close the topmost secondary menu (Settings, Mods, etc.).
+            // Opening the pause menu in non-Playing phases is handled by
+            // the OnPauseActionPerformed Harmony postfix in EscClosesMenus
+            // so it runs in the input pipeline, not via polling.
             EscClosesMenus.TryCloseTopmostSecondaryMenu();
         }
     }

@@ -1,9 +1,10 @@
-// Drag-selectable chat text + left/right-click-copy.
+// Drag-selectable chat text + left-click-copy.
 //
 // UI Toolkit's TextElement (Label's base) supports selection via the
 // `selection` interface (Unity 2023+). Enabling `isSelectable` lets the user
-// drag-highlight chat text. We also keep a click handler that copies the
-// line's plain text to the system clipboard.
+// drag-highlight chat text. We also keep a left-click handler that copies the
+// line's plain text to the system clipboard. Right-click is intentionally
+// NOT handled so the game's built-in right-click behavior is preserved.
 //
 // The chat panel sits as a non-interactive HUD overlay: its parent chain has
 // pickingMode=Ignore so pointer events fall through to the game. To make
@@ -79,13 +80,14 @@ internal static class SelectableChat
                     }
                     catch { }
 
-                    // Left- OR right-click copies the whole message line.
+                    // Left-click copies the whole message line. Right-click
+                    // is left alone so the game's own context behavior runs.
                     var copyTarget = lbl;
                     lbl.RegisterCallback<PointerDownEvent>(evt =>
                     {
                         try
                         {
-                            if (evt.button != 0 && evt.button != 1) return;
+                            if (evt.button != 0) return;
                             GUIUtility.systemCopyBuffer = StripRichText(copyTarget.text ?? "");
                             evt.StopPropagation();
                         }

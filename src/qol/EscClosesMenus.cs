@@ -6,12 +6,20 @@
 // controller restores the previous view correctly (e.g. Settings → MainMenu in
 // lobby, Settings → PauseMenu in game).
 //
-// Called from QoLRunner.Update; the runner gates on enableEscCloseMenus, so
-// no Harmony patches live here — this is plain helper code.
+// During pos/team-select (which still reports Phase==Playing), the select
+// overlays are initialized AFTER the pause menu, so they sit later in the
+// UIDocument DOM and render above PauseMenuView. They also stay in
+// `InteractingViews` until hidden, so vanilla's `IsViewTopmostInteracting<UIPauseMenu>`
+// check fails and ESC can neither show a clickable pause menu nor close
+// the one it just showed. The PauseMenuVisibilityPatch below ties select
+// overlay state to pause-menu visibility so the menu is always the topmost
+// interactive view when open.
 
 using System;
+using System.Collections.Generic;
 using HarmonyLib;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace ToasterReskinLoader.qol;
 
@@ -34,25 +42,131 @@ internal static class EscClosesMenus
             if (ui.Settings != null && ui.Settings.IsVisible) { EventManager.TriggerEvent("Event_OnSettingsClickClose"); return true; }
             if (ui.Mods != null && ui.Mods.IsVisible) { EventManager.TriggerEvent("Event_OnModsClickClose"); return true; }
             if (ui.PlayerMenu != null && ui.PlayerMenu.IsVisible) { EventManager.TriggerEvent("Event_OnPlayerMenuClickBack"); return true; }
-            // Vanilla's OnPauseActionPerformed only closes the pause menu
-            // when `Phase==Playing && IsViewTopmostInteracting<UIPauseMenu>`,
-            // so during TeamSelect / PositionSelect (overlays sit on top of
-            // the pause menu, breaking the topmost check) ESC silently does
-            // nothing. Close ourselves whenever the menu is visible and
-            // vanilla wouldn't have touched it. We deliberately don't fire
-            // when vanilla just opened it on the same ESC press — at that
-            // point the menu is the topmost interacting view, so this
-            // branch correctly skips.
-            if (ui.PauseMenu != null && ui.PauseMenu.IsVisible
-                && (GlobalStateManager.UIState.Phase != UIPhase.Playing
-                    || !GlobalStateManager.UIState.IsViewTopmostInteracting<UIPauseMenu>()))
-            {
-                ui.PauseMenu.Hide();
-                return true;
-            }
             if (ui.Play != null && ui.Play.IsVisible) { EventManager.TriggerEvent("Event_OnPlayClickClose"); return true; }
         }
         catch (Exception e) { Debug.LogWarning("[QoL] ESC menu close failed: " + e.Message); }
         return false;
+    }
+
+    // Open the pause menu when ESC is pressed during a connected non-Playing
+    // phase (LockerRoom etc). Vanilla only opens it in Playing.
+    [HarmonyPatch(typeof(UIManager), "OnPauseActionPerformed")]
+    private static class OnPauseActionPerformed_OpenInLockerRoom
+    {
+        private static void Postfix(UIManager __instance)
+        {
+            try
+            {
+                var cfg = QoLRunner.Instance?.Config;
+                if (cfg == null || !cfg.enableEscCloseMenus) return;
+                if (__instance == null) return;
+
+                if (DevConsole.Instance != null && DevConsole.Instance.IsOpen) return;
+                var trlRoot = ToasterReskinLoader.ui.ReskinMenu.rootContainer;
+                if (trlRoot != null && trlRoot.style.display == DisplayStyle.Flex) return;
+
+                if (__instance.MainMenu != null && __instance.MainMenu.IsVisible) return;
+
+                if (__instance.Settings      != null && __instance.Settings.IsVisible)      return;
+                if (__instance.Mods          != null && __instance.Mods.IsVisible)          return;
+                if (__instance.ServerBrowser != null && __instance.ServerBrowser.IsVisible) return;
+                if (__instance.NewServer     != null && __instance.NewServer.IsVisible)     return;
+                if (__instance.Identity      != null && __instance.Identity.IsVisible)      return;
+                if (__instance.Appearance    != null && __instance.Appearance.IsVisible)    return;
+                if (__instance.Friends       != null && __instance.Friends.IsVisible)       return;
+                if (__instance.PlayerMenu    != null && __instance.PlayerMenu.IsVisible)    return;
+                if (__instance.Play          != null && __instance.Play.IsVisible)          return;
+
+                if (__instance.PauseMenu == null) return;
+                if (GlobalStateManager.UIState.Phase == UIPhase.Playing) return;
+
+                if (__instance.PauseMenu.IsVisible)
+                {
+                    __instance.PauseMenu.Hide();
+                    return;
+                }
+                __instance.PauseMenu.Show();
+                GlobalStateManager.SetUIState(new Dictionary<string, object> { { "isMouseRequired", true } });
+            }
+            catch (Exception e) { Plugin.LogError("[QoL][ESC] open-in-locker postfix failed: " + e); }
+        }
+    }
+
+    // Hide select overlays while pause menu is open, restore them when it
+    // closes. UIView.Show/Hide are virtual on the base class and inherited
+    // by UIPauseMenu, so we patch UIView and filter by type — that catches
+    // every open/close path (ESC, Settings round-trip, button clicks).
+    [HarmonyPatch(typeof(UIView), nameof(UIView.Show))]
+    private static class PauseMenu_Show_Postfix
+    {
+        private static bool _hidPositionSelect;
+        private static bool _hidTeamSelect;
+
+        internal static bool HidPositionSelect => _hidPositionSelect;
+        internal static bool HidTeamSelect => _hidTeamSelect;
+
+        internal static void ClearHiddenFlags()
+        {
+            _hidPositionSelect = false;
+            _hidTeamSelect = false;
+        }
+
+        private static void Postfix(UIView __instance, bool __result)
+        {
+            if (!__result) return;
+            if (!(__instance is UIPauseMenu)) return;
+            try
+            {
+                var cfg = QoLRunner.Instance?.Config;
+                if (cfg == null || !cfg.enableEscCloseMenus) return;
+                var ui = MonoBehaviourSingleton<UIManager>.Instance;
+                if (ui == null) return;
+
+                if (ui.PositionSelect != null && ui.PositionSelect.IsVisible)
+                {
+                    ui.PositionSelect.Hide();
+                    _hidPositionSelect = true;
+                }
+                if (ui.TeamSelect != null && ui.TeamSelect.IsVisible)
+                {
+                    ui.TeamSelect.Hide();
+                    _hidTeamSelect = true;
+                }
+            }
+            catch (Exception e) { Plugin.LogError("[QoL][ESC] PauseMenu show postfix failed: " + e); }
+        }
+    }
+
+    [HarmonyPatch(typeof(UIView), nameof(UIView.Hide))]
+    private static class PauseMenu_Hide_Postfix
+    {
+        private static void Postfix(UIView __instance, bool __result)
+        {
+            if (!__result) return;
+            if (!(__instance is UIPauseMenu)) return;
+            try
+            {
+                var ui = MonoBehaviourSingleton<UIManager>.Instance;
+                if (ui == null) { PauseMenu_Show_Postfix.ClearHiddenFlags(); return; }
+
+                // Only restore the select overlays if no other view took
+                // pause menu's place (Settings round-trip will re-show pause
+                // menu itself, but the user can also click SelectTeam /
+                // SelectPosition which open the matching overlay — that's
+                // fine because our flags only fire Show() on views we
+                // explicitly hid). Disconnect tears the server down, so the
+                // momentary re-show before teardown is harmless.
+                if (PauseMenu_Show_Postfix.HidPositionSelect && ui.PositionSelect != null)
+                {
+                    ui.PositionSelect.Show();
+                }
+                if (PauseMenu_Show_Postfix.HidTeamSelect && ui.TeamSelect != null)
+                {
+                    ui.TeamSelect.Show();
+                }
+                PauseMenu_Show_Postfix.ClearHiddenFlags();
+            }
+            catch (Exception e) { Plugin.LogError("[QoL][ESC] PauseMenu hide postfix failed: " + e); }
+        }
     }
 }

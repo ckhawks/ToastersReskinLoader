@@ -36,13 +36,13 @@ public class QoLProfile
     [JsonProperty("enableInlineServerBrowserFilters")]
     public bool EnableInlineServerBrowserFilters { get; set; } = true;
     [JsonProperty("enableHideInactiveChat")]
-    public bool EnableHideInactiveChat { get; set; } = true;
+    public bool EnableHideInactiveChat { get; set; } = false;
     [JsonProperty("enableSpectatorMinimap")]
     public bool EnableSpectatorMinimap { get; set; } = true;
     [JsonProperty("enableBrowserFilterPersistence")]
     public bool EnableBrowserFilterPersistence { get; set; } = true;
     [JsonProperty("enableNumberedNames")]
-    public bool EnableNumberedNames { get; set; } = true;
+    public bool EnableNumberedNames { get; set; } = false;
 
     // Persisted server browser filter values
     [JsonProperty("browserSearch")]
