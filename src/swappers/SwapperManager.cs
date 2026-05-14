@@ -107,6 +107,8 @@ public static class SwapperManager
             SkaterHelmetSwapper.SetHelmetForPlayer(__instance.Player);
             // Hat + body type + skin/hair color are handled by AppearanceAPI based on server data
             AppearanceAPI.OnPlayerSpawned(__instance.Player);
+            // Pick up any newly spawned renderers on this player for gloss removal
+            GlossSwapper.Scan();
         }
     }
 
@@ -157,6 +159,8 @@ public static class SwapperManager
 
             // Attach stick-based apparel (e.g. Deltapoint) now that the stick exists
             AppearanceAPI.OnStickReady(__instance.Player);
+            // Pick up the new stick renderer for gloss removal
+            GlossSwapper.Scan();
         }
     }
 
@@ -265,6 +269,7 @@ public static class SwapperManager
         TeamIndicatorSwapper.UpdateVisibility();
         PuckFXSwapper.ApplyAll();
         MinimapSwapper.RefreshAll();
+        GlossSwapper.Scan();
     }
 
     // ── Matchmaking queue info overlay ──────────────────────────────

@@ -573,6 +573,18 @@ public static class ReskinProfileManager
 
                 // Player QoL
                 playerQoL = serializableProfile.PlayerQoL ?? new qol.QoLProfile(),
+              
+                // glossiness
+                glossRemoverEnabled = serializableProfile.GlossRemoverEnabled
+                    ?? defaultProfile.glossRemoverEnabled,
+                glossSmoothness = serializableProfile.GlossSmoothness
+                    ?? defaultProfile.glossSmoothness,
+                glossAffectSticks = serializableProfile.GlossAffectSticks
+                    ?? defaultProfile.glossAffectSticks,
+                glossAffectPlayers = serializableProfile.GlossAffectPlayers
+                    ?? defaultProfile.glossAffectPlayers,
+                glossAffectPucks = serializableProfile.GlossAffectPucks
+                    ?? defaultProfile.glossAffectPucks,
             };
 
             Plugin.Log("Reskin profile loaded successfully.");
@@ -789,6 +801,13 @@ public static class ReskinProfileManager
 
                 // Player QoL
                 PlayerQoL = currentProfile.playerQoL ?? new qol.QoLProfile()
+                  
+                // Glossiness
+                GlossRemoverEnabled = currentProfile.glossRemoverEnabled,
+                GlossSmoothness = currentProfile.glossSmoothness,
+                GlossAffectSticks = currentProfile.glossAffectSticks,
+                GlossAffectPlayers = currentProfile.glossAffectPlayers,
+                GlossAffectPucks = currentProfile.glossAffectPucks,
             };
 
             string json = JsonConvert.SerializeObject(serializableProfile, Formatting.Indented);
@@ -1047,6 +1066,29 @@ public static class ReskinProfileManager
         swappers.CrispyShadowsSwapper.Apply();
     }
 
+    /// <summary>
+    /// Resets only the Gloss Remover properties of the current profile
+    /// to their default values and saves the profile.
+    /// </summary>
+    public static void ResetGlossRemoverToDefault()
+    {
+        Plugin.Log("Resetting Gloss Remover settings to their default values.");
+
+        var defaultValues = new Profile();
+
+        currentProfile.glossRemoverEnabled = defaultValues.glossRemoverEnabled;
+        currentProfile.glossSmoothness = defaultValues.glossSmoothness;
+        currentProfile.glossAffectSticks = defaultValues.glossAffectSticks;
+        currentProfile.glossAffectPlayers = defaultValues.glossAffectPlayers;
+        currentProfile.glossAffectPucks = defaultValues.glossAffectPucks;
+
+        SaveProfile();
+
+        swappers.GlossSwapper.RestoreAll();
+        if (currentProfile.glossRemoverEnabled)
+            swappers.GlossSwapper.Scan();
+    }
+
     public static void ResetMinimapToDefault()
     {
         Plugin.Log("Resetting minimap settings to their default values.");
@@ -1237,6 +1279,13 @@ public static class ReskinProfileManager
 
         // Player QoL section (ported from PoncePlayerInput)
         public qol.QoLProfile playerQoL = new qol.QoLProfile();
+      
+        // Gloss Remover section
+        public bool glossRemoverEnabled = false;
+        public float glossSmoothness = 0.5f;
+        public bool glossAffectSticks = true;
+        public bool glossAffectPlayers = true;
+        public bool glossAffectPucks = true;
     }
     
     /// <summary>
@@ -1564,6 +1613,18 @@ public static class ReskinProfileManager
         // PLAYER QoL
         [JsonProperty("playerQoL")]
         public qol.QoLProfile PlayerQoL { get; set; }
+      
+        // Glossiness
+        [JsonProperty("glossRemoverEnabled")]
+        public bool? GlossRemoverEnabled { get; set; }
+        [JsonProperty("glossSmoothness")]
+        public float? GlossSmoothness { get; set; }
+        [JsonProperty("glossAffectSticks")]
+        public bool? GlossAffectSticks { get; set; }
+        [JsonProperty("glossAffectPlayers")]
+        public bool? GlossAffectPlayers { get; set; }
+        [JsonProperty("glossAffectPucks")]
+        public bool? GlossAffectPucks { get; set; }
     }
 }
 
