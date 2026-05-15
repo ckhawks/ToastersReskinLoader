@@ -1,8 +1,8 @@
-// QoLProfile — the persisted slice of the QoL feature surface, stored
-// as a nested object inside Toaster's ReskinProfile.json.
-//
-// Trimmed to match the surviving QoLConfig (arena disable extras,
-// goalie wide-view camera, dev console, debug logging).
+// QoLProfile — persistence shape for QoL toggles + filters. Written to
+// reskinprofiles/QoL.json by QoLStorage. Does NOT include per-server
+// credentials (saved passwords, trusted mod sets); those live in
+// reskinprofiles/ServerPrefs.json so reskin profiles can be shared
+// without leaking them.
 
 using Newtonsoft.Json;
 
@@ -43,6 +43,10 @@ public class QoLProfile
     public bool EnableBrowserFilterPersistence { get; set; } = true;
     [JsonProperty("enableNumberedNames")]
     public bool EnableNumberedNames { get; set; } = false;
+    [JsonProperty("enableSavedServerPasswords")]
+    public bool EnableSavedServerPasswords { get; set; } = false;
+    [JsonProperty("enableServerBrowserSortTweaks")]
+    public bool EnableServerBrowserSortTweaks { get; set; } = false;
 
     // Persisted server browser filter values
     [JsonProperty("browserSearch")]
@@ -74,9 +78,9 @@ public class QoLProfile
     [JsonProperty("devConsoleH")]
     public float DevConsoleH { get; set; } = 460f;
 
-    public ToasterReskinLoader.qol.QoLConfig ToConfig()
+    public QoLConfig ToConfig()
     {
-        return new ToasterReskinLoader.qol.QoLConfig
+        return new QoLConfig
         {
             disableArenaVisuals = DisableArenaVisuals,
             disableArenaProps = DisableArenaProps,
@@ -93,6 +97,8 @@ public class QoLProfile
             enableSpectatorMinimap = EnableSpectatorMinimap,
             enableBrowserFilterPersistence = EnableBrowserFilterPersistence,
             enableNumberedNames = EnableNumberedNames,
+            enableSavedServerPasswords = EnableSavedServerPasswords,
+            enableServerBrowserSortTweaks = EnableServerBrowserSortTweaks,
             browserSearch = BrowserSearch,
             browserMaxPing = BrowserMaxPing,
             browserShowFull = BrowserShowFull,
@@ -109,14 +115,13 @@ public class QoLProfile
         };
     }
 
-    public void FromConfig(ToasterReskinLoader.qol.QoLConfig c)
+    public void FromConfig(QoLConfig c)
     {
         if (c == null) return;
         DisableArenaVisuals = c.disableArenaVisuals;
         DisableArenaProps = c.disableArenaProps;
         DisableArenaLights = c.disableArenaLights;
         DisableArenaSkybox = c.disableArenaSkybox;
-        DisableArenaParticles = c.disableArenaParticles;
         DisableArenaParticles = c.disableArenaParticles;
         ArenaAudioVolume = c.arenaAudioVolume;
         EnableEscCloseMenus = c.enableEscCloseMenus;
@@ -128,6 +133,8 @@ public class QoLProfile
         EnableSpectatorMinimap = c.enableSpectatorMinimap;
         EnableBrowserFilterPersistence = c.enableBrowserFilterPersistence;
         EnableNumberedNames = c.enableNumberedNames;
+        EnableSavedServerPasswords = c.enableSavedServerPasswords;
+        EnableServerBrowserSortTweaks = c.enableServerBrowserSortTweaks;
         BrowserSearch = c.browserSearch;
         BrowserMaxPing = c.browserMaxPing;
         BrowserShowFull = c.browserShowFull;
@@ -142,4 +149,17 @@ public class QoLProfile
         DevConsoleW = c.devConsoleW;
         DevConsoleH = c.devConsoleH;
     }
+}
+
+// Persistence shape for per-server credentials. Written to a separate
+// file so reskin profiles stay clean of any personal data.
+public class ServerPrefsProfile
+{
+    [JsonProperty("savedServerPasswords")]
+    public System.Collections.Generic.Dictionary<string, string> SavedServerPasswords { get; set; }
+        = new System.Collections.Generic.Dictionary<string, string>();
+
+    [JsonProperty("trustedServerMods")]
+    public System.Collections.Generic.Dictionary<string, string> TrustedServerMods { get; set; }
+        = new System.Collections.Generic.Dictionary<string, string>();
 }

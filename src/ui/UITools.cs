@@ -158,22 +158,28 @@ public static class UITools
     {
         Toggle toggle = new Toggle();
         toggle.value = defaultValue;
+        StyleConfigCheckboxBox(toggle);
+        return toggle;
+    }
 
+    // Restyles the outer checkmark frame to match the QoL settings palette:
+    // dark fill, medium-gray border. The default Unity USS renders a light
+    // box that stands out against the dark popup/menu backgrounds. Use this
+    // on any Toggle injected into a popup so it visually belongs with the
+    // toggles on the QoL settings page.
+    public static void StyleConfigCheckboxBox(Toggle toggle)
+    {
+        if (toggle == null) return;
         toggle.RegisterCallback<AttachToPanelEvent>(evt =>
         {
-            // Style the outer frame/border of the toggle, not the checkmark itself
             var input = toggle.Q(className: "unity-toggle__input");
-            if (input != null)
-            {
-                input.style.backgroundColor = new StyleColor(new Color(0.15f, 0.15f, 0.15f));
-                input.style.borderTopColor = new StyleColor(new Color(0.4f, 0.4f, 0.4f));
-                input.style.borderBottomColor = new StyleColor(new Color(0.4f, 0.4f, 0.4f));
-                input.style.borderLeftColor = new StyleColor(new Color(0.4f, 0.4f, 0.4f));
-                input.style.borderRightColor = new StyleColor(new Color(0.4f, 0.4f, 0.4f));
-            }
+            if (input == null) return;
+            input.style.backgroundColor = new StyleColor(new Color(0.15f, 0.15f, 0.15f));
+            input.style.borderTopColor    = new StyleColor(new Color(0.4f, 0.4f, 0.4f));
+            input.style.borderBottomColor = new StyleColor(new Color(0.4f, 0.4f, 0.4f));
+            input.style.borderLeftColor   = new StyleColor(new Color(0.4f, 0.4f, 0.4f));
+            input.style.borderRightColor  = new StyleColor(new Color(0.4f, 0.4f, 0.4f));
         });
-
-        return toggle;
     }
 
     public static Slider CreateConfigurationSlider(float lowValue, float highValue, float value, float width)
@@ -264,6 +270,27 @@ public static class UITools
             button.style.backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f));
             button.style.color = Color.white;
         }));
+    }
+
+    // Match the look of the section "Reset to default" buttons: dark-gray
+    // pill with white text, hover inverts to white-on-black. Use for any
+    // action button rendered inside the config panel (Forget, Open dev
+    // console, etc.) so they don't render as transparent native buttons.
+    public static void StyleConfigButton(Button button)
+    {
+        button.style.backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f));
+        button.style.color = Color.white;
+        button.style.unityTextAlign = TextAnchor.MiddleCenter;
+        button.style.fontSize = 16;
+        button.style.paddingTop = 6;
+        button.style.paddingBottom = 6;
+        button.style.paddingLeft = 14;
+        button.style.paddingRight = 14;
+        button.style.borderTopWidth = 0;
+        button.style.borderBottomWidth = 0;
+        button.style.borderLeftWidth = 0;
+        button.style.borderRightWidth = 0;
+        AddHoverEffectsForButton(button);
     }
     
     /// <summary>

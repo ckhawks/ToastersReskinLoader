@@ -50,7 +50,7 @@ public static class PlayerQoLSection
         ToggleRow(contentScrollViewContent, "View scoreboard in any in-game phase", cfg.enableScoreboardAnyInGamePhase,
             v => { cfg.enableScoreboardAnyInGamePhase = v; runner.SaveAndRefresh(); });
 
-        ToggleRow(contentScrollViewContent, "Drag-select and right-click-copy chat lines", cfg.enableChatDragSelect,
+        ToggleRow(contentScrollViewContent, "Drag-highlight and copy chat lines", cfg.enableChatDragSelect,
             v => { cfg.enableChatDragSelect = v; runner.SaveAndRefresh(); });
 
         ToggleRow(contentScrollViewContent, "Hide chat when inactive", cfg.enableHideInactiveChat,
@@ -73,6 +73,54 @@ public static class PlayerQoLSection
 
         ToggleRow(contentScrollViewContent, "Remember server browser filters", cfg.enableBrowserFilterPersistence,
             v => { cfg.enableBrowserFilterPersistence = v; runner.SaveAndRefresh(); });
+
+        ToggleRow(contentScrollViewContent,
+            "Server browser sort tweaks",
+            cfg.enableServerBrowserSortTweaks,
+            v =>
+            {
+                cfg.enableServerBrowserSortTweaks = v;
+                runner.SaveAndRefresh();
+                ServerBrowserSort.RefreshForCurrentBrowser();
+            });
+
+        // ── Saved server passwords ─────────────────────────────────────────
+        Separator(contentScrollViewContent);
+        Header(contentScrollViewContent, "Saved Server Passwords");
+        Note(contentScrollViewContent,
+            "When you join a passworded server, a \"Remember password\" checkbox appears on the prompt. "
+            + "If the server changes its password, the password will be forgotten.");
+
+        var savedPasswordsList = new VisualElement();
+        savedPasswordsList.style.marginTop = 4;
+
+        ToggleRow(contentScrollViewContent, "Enable saved server passwords", cfg.enableSavedServerPasswords,
+            v =>
+            {
+                cfg.enableSavedServerPasswords = v;
+                runner.SaveAndRefresh();
+                RebuildSavedPasswordsList(savedPasswordsList);
+            });
+
+        contentScrollViewContent.Add(savedPasswordsList);
+        RebuildSavedPasswordsList(savedPasswordsList);
+
+        // ── Trusted server mod lists (DISABLED) ───────────────────────────
+        // The MODS REQUIRED popup suppression is shelved for now — see
+        // MissingModsPopupSuppression.cs. When re-enabling, uncomment
+        // both this section and the Harmony patch classes over there.
+        /*
+        Separator(contentScrollViewContent);
+        Header(contentScrollViewContent, "Trusted Server Mod Lists");
+        Note(contentScrollViewContent,
+            "Servers you ticked \"Don't show this popup again for this server\" on the MODS REQUIRED prompt. "
+            + "If a listed server changes its required mods, the entry is invalidated automatically and the popup will return.");
+
+        var trustedServersList = new VisualElement();
+        trustedServersList.style.marginTop = 4;
+        contentScrollViewContent.Add(trustedServersList);
+        RebuildTrustedServersList(trustedServersList);
+        */
 
         /*
 
@@ -131,10 +179,12 @@ public static class PlayerQoLSection
             }
             DevConsole.Instance?.Open();
         }) { text = "Open dev console" };
+        UITools.StyleConfigButton(openConsoleBtn);
         openConsoleBtn.style.marginRight = 8;
         devButtonsRow.Add(openConsoleBtn);
 
         var openLogsBtn = new Button(DevConsole.OpenLogsFolder) { text = "Open logs folder" };
+        UITools.StyleConfigButton(openLogsBtn);
         devButtonsRow.Add(openLogsBtn);
         contentScrollViewContent.Add(devButtonsRow);
     }
@@ -170,6 +220,158 @@ public static class PlayerQoLSection
         sep.style.marginBottom = 16;
         parent.Add(sep);
     }
+
+    private static void RebuildSavedPasswordsList(VisualElement container)
+    {
+        if (container == null) return;
+        container.Clear();
+
+        var runner = QoLRunner.Instance;
+        var cfg = runner?.Config;
+        if (cfg == null) return;
+        if (!cfg.enableSavedServerPasswords) return;
+
+        var keys = SavedServerPasswords.SnapshotKeys();
+        if (keys.Count == 0)
+        {
+            var empty = UITools.CreateConfigurationLabel("No saved passwords yet.");
+            empty.style.color = new Color(0.65f, 0.65f, 0.65f);
+            empty.style.marginTop = 4;
+            empty.style.marginBottom = 4;
+            container.Add(empty);
+            return;
+        }
+
+        foreach (var key in keys)
+        {
+            var row = UITools.CreateConfigurationRow();
+            row.style.alignItems = Align.Center;
+
+            // Friendly name when the server browser has pinged this
+            // ip:port at least once this session — otherwise fall back
+            // to bare ip:port.
+            string serverName = SavedServerPasswords.GetCachedServerName(key);
+
+            var labelStack = new VisualElement();
+            labelStack.style.flexGrow = 1;
+            labelStack.style.flexDirection = FlexDirection.Column;
+
+            var primary = UITools.CreateConfigurationLabel(
+                string.IsNullOrEmpty(serverName) ? key : serverName);
+            labelStack.Add(primary);
+
+            if (!string.IsNullOrEmpty(serverName))
+            {
+                var subtitle = UITools.CreateConfigurationLabel(key);
+                subtitle.style.fontSize = 11;
+                subtitle.style.color = new Color(0.65f, 0.65f, 0.65f);
+                subtitle.style.marginTop = 0;
+                labelStack.Add(subtitle);
+            }
+
+            row.Add(labelStack);
+
+            var forgetBtn = new Button(() =>
+            {
+                SavedServerPasswords.Remove(key);
+                RebuildSavedPasswordsList(container);
+            })
+            { text = "Forget" };
+            UITools.StyleConfigButton(forgetBtn);
+            forgetBtn.style.marginLeft = 8;
+            row.Add(forgetBtn);
+
+            container.Add(row);
+        }
+
+        var clearAllRow = UITools.CreateConfigurationRow();
+        clearAllRow.style.justifyContent = Justify.FlexEnd;
+        clearAllRow.style.marginTop = 8;
+        var clearAllBtn = new Button(() =>
+        {
+            SavedServerPasswords.RemoveAll();
+            RebuildSavedPasswordsList(container);
+        })
+        { text = "Forget all saved passwords" };
+        UITools.StyleConfigButton(clearAllBtn);
+        clearAllRow.Add(clearAllBtn);
+        container.Add(clearAllRow);
+    }
+
+    // Mirrors RebuildSavedPasswordsList for the trusted-mods store. Kept
+    // around but commented out alongside the MODS REQUIRED popup
+    // suppression feature; uncomment together when re-enabling.
+    /*
+    private static void RebuildTrustedServersList(VisualElement container)
+    {
+        if (container == null) return;
+        container.Clear();
+
+        var keys = MissingModsPopupSuppression.SnapshotKeys();
+        if (keys.Count == 0)
+        {
+            var empty = UITools.CreateConfigurationLabel("No trusted servers yet.");
+            empty.style.color = new Color(0.65f, 0.65f, 0.65f);
+            empty.style.marginTop = 4;
+            empty.style.marginBottom = 4;
+            container.Add(empty);
+            return;
+        }
+
+        foreach (var key in keys)
+        {
+            var row = UITools.CreateConfigurationRow();
+            row.style.alignItems = Align.Center;
+
+            string serverName = SavedServerPasswords.GetCachedServerName(key);
+            int modCount = MissingModsPopupSuppression.CountModsFor(key);
+
+            var labelStack = new VisualElement();
+            labelStack.style.flexGrow = 1;
+            labelStack.style.flexDirection = FlexDirection.Column;
+
+            var primary = UITools.CreateConfigurationLabel(
+                string.IsNullOrEmpty(serverName) ? key : serverName);
+            labelStack.Add(primary);
+
+            string subtitleText = string.IsNullOrEmpty(serverName)
+                ? $"{modCount} mod{(modCount == 1 ? "" : "s")} trusted"
+                : $"{key} — {modCount} mod{(modCount == 1 ? "" : "s")} trusted";
+            var subtitle = UITools.CreateConfigurationLabel(subtitleText);
+            subtitle.style.fontSize = 11;
+            subtitle.style.color = new Color(0.65f, 0.65f, 0.65f);
+            subtitle.style.marginTop = 0;
+            labelStack.Add(subtitle);
+
+            row.Add(labelStack);
+
+            var forgetBtn = new Button(() =>
+            {
+                MissingModsPopupSuppression.Remove(key);
+                RebuildTrustedServersList(container);
+            })
+            { text = "Untrust" };
+            UITools.StyleConfigButton(forgetBtn);
+            forgetBtn.style.marginLeft = 8;
+            row.Add(forgetBtn);
+
+            container.Add(row);
+        }
+
+        var clearAllRow = UITools.CreateConfigurationRow();
+        clearAllRow.style.justifyContent = Justify.FlexEnd;
+        clearAllRow.style.marginTop = 8;
+        var clearAllBtn = new Button(() =>
+        {
+            MissingModsPopupSuppression.RemoveAll();
+            RebuildTrustedServersList(container);
+        })
+        { text = "Untrust all servers" };
+        UITools.StyleConfigButton(clearAllBtn);
+        clearAllRow.Add(clearAllBtn);
+        container.Add(clearAllRow);
+    }
+    */
 
     private static VisualElement ToggleRow(VisualElement parent, string label, bool initial, Action<bool> onChange)
     {

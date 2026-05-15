@@ -1,6 +1,8 @@
 // MonoBehaviour shell for the QoL feature surface. Responsibilities:
 //   - holds the in-memory QoLConfig
-//   - bridges read/write against ReskinProfileManager.currentProfile.playerQoL
+//   - bridges read/write against QoLStorage (two side-car files in
+//     reskinprofiles/: QoL.json + ServerPrefs.json), independent of the
+//     visual reskin profile so reskin profiles can be shared cleanly
 //   - bootstraps DevConsole
 //   - exposes the small surface that DevConsole calls back into
 //   - listens for ESC to close base-game secondary menus
@@ -43,10 +45,13 @@ public sealed class QoLRunner : MonoBehaviour
         _instance = this;
         try { ReloadFromProfile(); }
         catch (Exception e) { Debug.LogError("[QoL] ReloadFromProfile failed: " + e); }
+        try { SavedServerPasswords.Initialize(); }
+        catch (Exception e) { Debug.LogError("[QoL] SavedServerPasswords.Initialize failed: " + e); }
     }
 
     private void OnDestroy()
     {
+        try { SavedServerPasswords.Teardown(); } catch { }
         if (_instance == this) _instance = null;
     }
 
@@ -75,22 +80,14 @@ public sealed class QoLRunner : MonoBehaviour
 
     public void ReloadFromProfile()
     {
-        var p = ToasterReskinLoader.ReskinProfileManager.currentProfile?.playerQoL;
-        _cmd = p?.ToConfig() ?? new QoLConfig();
+        _cmd = QoLStorage.Load();
     }
 
     public void SaveAndRefresh()
     {
         try
         {
-            var prof = ToasterReskinLoader.ReskinProfileManager.currentProfile;
-            if (prof != null)
-            {
-                if (prof.playerQoL == null)
-                    prof.playerQoL = new ToasterReskinLoader.qol.QoLProfile();
-                prof.playerQoL.FromConfig(_cmd);
-                ToasterReskinLoader.ReskinProfileManager.SaveProfile();
-            }
+            QoLStorage.Save(_cmd);
         }
         catch (Exception e) { Debug.LogError("[QoL] SaveAndRefresh failed: " + e); }
     }

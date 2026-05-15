@@ -35,6 +35,22 @@ public class QoLConfig
     public bool enableSpectatorMinimap = true;
     public bool enableBrowserFilterPersistence = true;
     public bool enableNumberedNames = false;
+    public bool enableSavedServerPasswords = false;
+    public bool enableServerBrowserSortTweaks = false;
+
+    // Per-server "trust this mod list" memory. Keyed by "ip:port"; value
+    // is the sorted, comma-joined list of mod IDs the user previously
+    // accepted via the "Don't show this popup again" toggle. When a
+    // future MODS REQUIRED popup would fire for the same server AND
+    // the required mod list still matches exactly, we skip the popup
+    // and emulate the OK-click side effects so the reconnect flow
+    // proceeds unattended. Any change to the mod set invalidates the
+    // entry and the popup re-appears, forcing the user to re-consent.
+    public Dictionary<string, string> trustedServerMods = new Dictionary<string, string>();
+
+    // ip:port -> last-known-good password. Populated when the user opts
+    // in via the "Remember password" checkbox on the password popup.
+    public Dictionary<string, string> savedServerPasswords = new Dictionary<string, string>();
 
     // Server browser filter state — defaults match the base game's
     // hard-coded values in UIServerBrowser.Awake so first-load behavior
