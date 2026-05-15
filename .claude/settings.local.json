@@ -7,7 +7,8 @@
       "Bash(xargs grep:*)",
       "Bash(rtk git:*)",
       "Bash(rtk dotnet *)",
-      "Bash(powershell *)"
+      "Bash(powershell *)",
+      "Read(//c/Users/stlrc/Downloads/**)"
     ]
   }
 }

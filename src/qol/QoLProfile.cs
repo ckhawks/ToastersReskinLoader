@@ -42,15 +42,15 @@ public class QoLProfile
     [JsonProperty("enableBrowserFilterPersistence")]
     public bool EnableBrowserFilterPersistence { get; set; } = true;
     [JsonProperty("enableNumberedNames")]
-    public bool EnableNumberedNames { get; set; } = true;
+    public bool EnableNumberedNames { get; set; } = false;
     [JsonProperty("enableTeamButtonPlayerCount")]
     public bool EnableTeamButtonPlayerCount { get; set; } = true;
     [JsonProperty("enablePartyLineup")]
     public bool EnablePartyLineup { get; set; } = true;
     [JsonProperty("enableSavedServerPasswords")]
-    public bool EnableSavedServerPasswords { get; set; } = false;
+    public bool EnableSavedServerPasswords { get; set; } = true;
     [JsonProperty("enableServerBrowserSortTweaks")]
-    public bool EnableServerBrowserSortTweaks { get; set; } = false;
+    public bool EnableServerBrowserSortTweaks { get; set; } = true;
 
     // Additions
     [JsonProperty("enableBetterFriendsList")]

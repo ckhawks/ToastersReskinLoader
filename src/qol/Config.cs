@@ -34,11 +34,11 @@ public class QoLConfig
     public bool enableHideInactiveChat = false;
     public bool enableSpectatorMinimap = true;
     public bool enableBrowserFilterPersistence = true;
-    public bool enableNumberedNames = true;
+    public bool enableNumberedNames = false;
     public bool enableTeamButtonPlayerCount = true;
     public bool enablePartyLineup = true;
-    public bool enableSavedServerPasswords = false;
-    public bool enableServerBrowserSortTweaks = false;
+    public bool enableSavedServerPasswords = true;
+    public bool enableServerBrowserSortTweaks = true;
 
     // Additions — opt-in QoL enhancements layered on top of vanilla
     public bool enableBetterFriendsList = true;

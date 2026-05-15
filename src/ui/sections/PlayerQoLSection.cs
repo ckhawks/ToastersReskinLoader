@@ -88,27 +88,6 @@ public static class PlayerQoLSection
                 ServerBrowserSort.RefreshForCurrentBrowser();
             });
 
-        // ── Saved server passwords ─────────────────────────────────────────
-        Separator(contentScrollViewContent);
-        Header(contentScrollViewContent, "Saved Server Passwords");
-        Note(contentScrollViewContent,
-            "When you join a passworded server, a \"Remember password\" checkbox appears on the prompt. "
-            + "If the server changes its password, the password will be forgotten.");
-
-        var savedPasswordsList = new VisualElement();
-        savedPasswordsList.style.marginTop = 4;
-
-        ToggleRow(contentScrollViewContent, "Enable saved server passwords", cfg.enableSavedServerPasswords,
-            v =>
-            {
-                cfg.enableSavedServerPasswords = v;
-                runner.SaveAndRefresh();
-                RebuildSavedPasswordsList(savedPasswordsList);
-            });
-
-        contentScrollViewContent.Add(savedPasswordsList);
-        RebuildSavedPasswordsList(savedPasswordsList);
-
         // ── Trusted server mod lists (DISABLED) ───────────────────────────
         // The MODS REQUIRED popup suppression is shelved for now — see
         // MissingModsPopupSuppression.cs. When re-enabling, uncomment
@@ -204,6 +183,27 @@ public static class PlayerQoLSection
                 if (v) VanillaUIRetheme.Enable();
                 else   VanillaUIRetheme.Disable();
             });
+
+        // ── Saved server passwords ─────────────────────────────────────────
+        Separator(contentScrollViewContent);
+        Header(contentScrollViewContent, "Saved Server Passwords");
+        Note(contentScrollViewContent,
+            "When you join a passworded server, a \"Remember password\" checkbox appears on the prompt. "
+            + "If the server changes its password, the password will be forgotten.");
+
+        var savedPasswordsList = new VisualElement();
+        savedPasswordsList.style.marginTop = 4;
+
+        ToggleRow(contentScrollViewContent, "Enable saved server passwords", cfg.enableSavedServerPasswords,
+            v =>
+            {
+                cfg.enableSavedServerPasswords = v;
+                runner.SaveAndRefresh();
+                RebuildSavedPasswordsList(savedPasswordsList);
+            });
+
+        contentScrollViewContent.Add(savedPasswordsList);
+        RebuildSavedPasswordsList(savedPasswordsList);
 
         // ── Developer-oriented toggles (bottom — least relevant to most players) ──
         Separator(contentScrollViewContent);
