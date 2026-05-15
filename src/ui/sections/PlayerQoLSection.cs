@@ -88,6 +88,17 @@ public static class PlayerQoLSection
                 ServerBrowserSort.RefreshForCurrentBrowser();
             });
 
+        ToggleRow(contentScrollViewContent,
+            "Restore Unicode glyphs (sort arrows, accents, etc.)",
+            cfg.enableUnicodeFontFallback,
+            v =>
+            {
+                cfg.enableUnicodeFontFallback = v;
+                runner.SaveAndRefresh();
+                if (v) UnicodeFontFallback.Apply();
+                else   UnicodeFontFallback.Disable();
+            });
+
         // ── Trusted server mod lists (DISABLED) ───────────────────────────
         // The MODS REQUIRED popup suppression is shelved for now — see
         // MissingModsPopupSuppression.cs. When re-enabling, uncomment

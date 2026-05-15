@@ -39,6 +39,7 @@ public class QoLConfig
     public bool enablePartyLineup = true;
     public bool enableSavedServerPasswords = true;
     public bool enableServerBrowserSortTweaks = true;
+    public bool enableUnicodeFontFallback = true;
 
     // Additions — opt-in QoL enhancements layered on top of vanilla
     public bool enableBetterFriendsList = true;

@@ -86,6 +86,12 @@ public class Plugin : IPuckPlugin
                 // Player QoL runtime (ported from PoncePlayerInput)
                 ToasterReskinLoader.qol.QoLRunner.Bootstrap();
 
+                // Restore Unicode glyph coverage lost in b323 (sort arrows, etc.).
+                // Gated on the QoL toggle; defaults on. Must run after QoLRunner.Bootstrap
+                // so Instance/Config are populated.
+                if (ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.enableUnicodeFontFallback ?? true)
+                    ToasterReskinLoader.qol.UnicodeFontFallback.Apply();
+
                 if (ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.enableBetterFriendsList ?? true)
                     BetterFriendsList.Enable();
 
