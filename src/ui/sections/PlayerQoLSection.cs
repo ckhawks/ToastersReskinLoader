@@ -105,7 +105,11 @@ public static class PlayerQoLSection
         contentScrollViewContent.Add(savedPasswordsList);
         RebuildSavedPasswordsList(savedPasswordsList);
 
-        // ── Trusted server mod lists ───────────────────────────────────────
+        // ── Trusted server mod lists (DISABLED) ───────────────────────────
+        // The MODS REQUIRED popup suppression is shelved for now — see
+        // MissingModsPopupSuppression.cs. When re-enabling, uncomment
+        // both this section and the Harmony patch classes over there.
+        /*
         Separator(contentScrollViewContent);
         Header(contentScrollViewContent, "Trusted Server Mod Lists");
         Note(contentScrollViewContent,
@@ -116,6 +120,7 @@ public static class PlayerQoLSection
         trustedServersList.style.marginTop = 4;
         contentScrollViewContent.Add(trustedServersList);
         RebuildTrustedServersList(trustedServersList);
+        */
 
         /*
 
@@ -293,10 +298,10 @@ public static class PlayerQoLSection
         container.Add(clearAllRow);
     }
 
-    // Mirrors RebuildSavedPasswordsList for the trusted-mods store. Each
-    // row shows the friendly server name (when the browser has pinged
-    // it this session) above the ip:port, the mod-count from the saved
-    // fingerprint as a subtitle, and an "Untrust" button.
+    // Mirrors RebuildSavedPasswordsList for the trusted-mods store. Kept
+    // around but commented out alongside the MODS REQUIRED popup
+    // suppression feature; uncomment together when re-enabling.
+    /*
     private static void RebuildTrustedServersList(VisualElement container)
     {
         if (container == null) return;
@@ -329,8 +334,6 @@ public static class PlayerQoLSection
                 string.IsNullOrEmpty(serverName) ? key : serverName);
             labelStack.Add(primary);
 
-            // Subtitle line is either "ip:port — N mods trusted" or just
-            // the mod count when the primary line already shows ip:port.
             string subtitleText = string.IsNullOrEmpty(serverName)
                 ? $"{modCount} mod{(modCount == 1 ? "" : "s")} trusted"
                 : $"{key} — {modCount} mod{(modCount == 1 ? "" : "s")} trusted";
@@ -368,6 +371,7 @@ public static class PlayerQoLSection
         clearAllRow.Add(clearAllBtn);
         container.Add(clearAllRow);
     }
+    */
 
     private static VisualElement ToggleRow(VisualElement parent, string label, bool initial, Action<bool> onChange)
     {

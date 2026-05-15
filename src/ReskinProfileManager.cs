@@ -1610,16 +1610,11 @@ public static class ReskinProfileManager
         [JsonProperty("puckFXSilhouetteColor")]
         public SerializableColor PuckFXSilhouetteColor { get; set; }
 
-        // Legacy: pre-split, the QoL surface was nested inside this
-        // profile. QoLStorage migrates the block out on first run; the
-        // property is kept here only so deserialization of an older
-        // ReskinProfile.json doesn't error and QoLStorage can still
-        // detect "needs migration". NullValueHandling.Ignore ensures the
-        // field is omitted from any new save (since we never repopulate
-        // it). Do NOT add anything to this — write to QoL.json /
-        // ServerPrefs.json via QoLStorage instead.
-        [JsonProperty("playerQoL", NullValueHandling = NullValueHandling.Ignore)]
-        public qol.QoLProfile PlayerQoL { get; set; }
+        // QoL is persisted by QoLStorage (config/ToastersReskinLoaderQoL.json
+        // + config/ToastersReskinLoaderServerPrefs.json). Do not add a
+        // playerQoL property here — it would re-couple the visual reskin
+        // profile to QoL state and re-introduce the share-leak risk the
+        // split was meant to avoid.
       
         // Glossiness
         [JsonProperty("glossRemoverEnabled")]

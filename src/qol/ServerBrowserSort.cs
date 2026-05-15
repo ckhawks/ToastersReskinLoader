@@ -197,12 +197,18 @@ internal static class ServerBrowserSort
         }
     }
 
+    // The "full enough for gameplay" cap. A 6v6 server with 12 active
+    // players is just as joinable as a 30-slot server holding 12, so the
+    // ratio caps both numerator and denominator at this value before
+    // dividing. 12/12, 12/14, 12/62 → all 100%. 6/anything → 50%.
+    private const int RatioGameplayCap = 12;
+
     // ─────────────────────────── SortServers postfix ──────────────────────
     //
     // Vanilla's SortServers ran first. When sort column is PLAYERS, we
-    // override its absolute-count ordering with the players/maxPlayers
-    // ratio in the same direction. Other columns (NAME, PING) inherit
-    // vanilla's order untouched.
+    // override its absolute-count ordering with a capped players-ratio
+    // (see RatioGameplayCap) in the same direction. Other columns (NAME,
+    // PING) inherit vanilla's order untouched.
     [HarmonyPatch(typeof(UIServerBrowser), "SortServers")]
     private static class SortServers_RatioMode_Postfix
     {
@@ -223,8 +229,8 @@ internal static class ServerBrowserSort
                     EndPoint epB = GetEndPointFromRow(__instance, b);
                     var pdA = GetPreview(__instance, epA);
                     var pdB = GetPreview(__instance, epB);
-                    float rA = (pdA != null && pdA.maxPlayers > 0) ? (float)pdA.players / pdA.maxPlayers : -1f;
-                    float rB = (pdB != null && pdB.maxPlayers > 0) ? (float)pdB.players / pdB.maxPlayers : -1f;
+                    float rA = ComputeRatio(pdA);
+                    float rB = ComputeRatio(pdB);
                     int dirMul = sortDir == SortDir_Ascending ? 1 : -1;
                     int cmp = rA.CompareTo(rB) * dirMul;
                     if (cmp != 0) return cmp;
@@ -236,6 +242,17 @@ internal static class ServerBrowserSort
             }
             catch (Exception e) { Debug.LogWarning("[QoL] sort-tweaks SortServers postfix failed: " + e.Message); }
         }
+    }
+
+    // min(players, cap) / min(maxPlayers, cap). Returns -1 for missing
+    // previewData so unpinged rows sort to the bottom in descending mode
+    // (same behavior as the previous uncapped implementation).
+    private static float ComputeRatio(ServerPreviewData pd)
+    {
+        if (pd == null || pd.maxPlayers <= 0) return -1f;
+        int p = Math.Min(pd.players, RatioGameplayCap);
+        int m = Math.Min(pd.maxPlayers, RatioGameplayCap);
+        return m <= 0 ? -1f : (float)p / m;
     }
 
     // ─────────────────────────── StyleSortButtons postfix ─────────────────
