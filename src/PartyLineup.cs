@@ -106,6 +106,7 @@ public static class PartyLineup
     {
         if (sceneName == "locker_room")
         {
+            if (!IsFeatureEnabled()) { DestroyAll(); return; }
             // Delay one frame so scene objects are ready
             runner.StartCoroutine(RebuildAfterDelay());
         }
@@ -123,10 +124,32 @@ public static class PartyLineup
             RebuildLineup(partyData.memberSteamIds);
     }
 
+    private static bool IsFeatureEnabled() =>
+        ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.enablePartyLineup ?? true;
+
+    /// <summary>
+    /// Called when the user toggles the feature in the QoL menu. Tears down or
+    /// rebuilds the lineup based on the current config + party state.
+    /// </summary>
+    public static void RefreshFromConfig()
+    {
+        if (!IsFeatureEnabled())
+        {
+            DestroyAll();
+            return;
+        }
+
+        if (!ChangingRoomHelper.IsInMainMenu()) return;
+        var partyData = BackendManager.PlayerState.PartyData;
+        if (partyData?.memberSteamIds != null)
+            RebuildLineup(partyData.memberSteamIds);
+    }
+
     // ── Event Handlers ──────────────────────────────────────────────
 
     private static void OnPartyDataChanged(Dictionary<string, object> message)
     {
+        if (!IsFeatureEnabled()) { DestroyAll(); return; }
         if (!ChangingRoomHelper.IsInMainMenu()) return;
 
         var newPartyData = message.ContainsKey("newPlayerPartyData")

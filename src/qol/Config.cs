@@ -34,9 +34,17 @@ public class QoLConfig
     public bool enableHideInactiveChat = false;
     public bool enableSpectatorMinimap = true;
     public bool enableBrowserFilterPersistence = true;
-    public bool enableNumberedNames = false;
+    public bool enableNumberedNames = true;
+    public bool enableTeamButtonPlayerCount = true;
+    public bool enablePartyLineup = true;
     public bool enableSavedServerPasswords = false;
     public bool enableServerBrowserSortTweaks = false;
+
+    // Additions — opt-in QoL enhancements layered on top of vanilla
+    public bool enableBetterFriendsList = true;
+    public bool enableBeaconPing = true;
+    public bool enableServerPreviewCache = true;
+    public bool enableVanillaUIRetheme = true;
 
     // Per-server "trust this mod list" memory. Keyed by "ip:port"; value
     // is the sorted, comma-joined list of mod IDs the user previously

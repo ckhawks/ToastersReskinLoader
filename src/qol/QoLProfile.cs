@@ -42,11 +42,25 @@ public class QoLProfile
     [JsonProperty("enableBrowserFilterPersistence")]
     public bool EnableBrowserFilterPersistence { get; set; } = true;
     [JsonProperty("enableNumberedNames")]
-    public bool EnableNumberedNames { get; set; } = false;
+    public bool EnableNumberedNames { get; set; } = true;
+    [JsonProperty("enableTeamButtonPlayerCount")]
+    public bool EnableTeamButtonPlayerCount { get; set; } = true;
+    [JsonProperty("enablePartyLineup")]
+    public bool EnablePartyLineup { get; set; } = true;
     [JsonProperty("enableSavedServerPasswords")]
     public bool EnableSavedServerPasswords { get; set; } = false;
     [JsonProperty("enableServerBrowserSortTweaks")]
     public bool EnableServerBrowserSortTweaks { get; set; } = false;
+
+    // Additions
+    [JsonProperty("enableBetterFriendsList")]
+    public bool EnableBetterFriendsList { get; set; } = true;
+    [JsonProperty("enableBeaconPing")]
+    public bool EnableBeaconPing { get; set; } = true;
+    [JsonProperty("enableServerPreviewCache")]
+    public bool EnableServerPreviewCache { get; set; } = true;
+    [JsonProperty("enableVanillaUIRetheme")]
+    public bool EnableVanillaUIRetheme { get; set; } = true;
 
     // Persisted server browser filter values
     [JsonProperty("browserSearch")]
@@ -97,8 +111,14 @@ public class QoLProfile
             enableSpectatorMinimap = EnableSpectatorMinimap,
             enableBrowserFilterPersistence = EnableBrowserFilterPersistence,
             enableNumberedNames = EnableNumberedNames,
+            enableTeamButtonPlayerCount = EnableTeamButtonPlayerCount,
+            enablePartyLineup = EnablePartyLineup,
             enableSavedServerPasswords = EnableSavedServerPasswords,
             enableServerBrowserSortTweaks = EnableServerBrowserSortTweaks,
+            enableBetterFriendsList = EnableBetterFriendsList,
+            enableBeaconPing = EnableBeaconPing,
+            enableServerPreviewCache = EnableServerPreviewCache,
+            enableVanillaUIRetheme = EnableVanillaUIRetheme,
             browserSearch = BrowserSearch,
             browserMaxPing = BrowserMaxPing,
             browserShowFull = BrowserShowFull,
@@ -133,8 +153,14 @@ public class QoLProfile
         EnableSpectatorMinimap = c.enableSpectatorMinimap;
         EnableBrowserFilterPersistence = c.enableBrowserFilterPersistence;
         EnableNumberedNames = c.enableNumberedNames;
+        EnableTeamButtonPlayerCount = c.enableTeamButtonPlayerCount;
+        EnablePartyLineup = c.enablePartyLineup;
         EnableSavedServerPasswords = c.enableSavedServerPasswords;
         EnableServerBrowserSortTweaks = c.enableServerBrowserSortTweaks;
+        EnableBetterFriendsList = c.enableBetterFriendsList;
+        EnableBeaconPing = c.enableBeaconPing;
+        EnableServerPreviewCache = c.enableServerPreviewCache;
+        EnableVanillaUIRetheme = c.enableVanillaUIRetheme;
         BrowserSearch = c.browserSearch;
         BrowserMaxPing = c.browserMaxPing;
         BrowserShowFull = c.browserShowFull;

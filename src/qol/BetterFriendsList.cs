@@ -82,6 +82,35 @@ public static class BetterFriendsList
         FriendsListHelper.FriendInfoCache.Clear();
         IsEnabled = false;
         Plugin.Log("BetterFriendsList disabled.");
+
+        // Rebuild the friends list using the vanilla flow so the BFL-added
+        // status/detail labels and Join buttons disappear immediately.
+        try
+        {
+            var controller = UnityEngine.Object.FindAnyObjectByType<UIFriendsController>();
+            if (controller == null)
+                return;
+
+            var uiFriends = AccessTools.Field(typeof(UIFriendsController), "uiFriends")
+                .GetValue(controller) as UIFriends;
+            if (uiFriends != null)
+            {
+                var friendsMap = AccessTools.Field(typeof(UIFriends), "friendsMap")
+                    .GetValue(uiFriends) as Dictionary<string, TemplateContainer>;
+                var friendsList = AccessTools.Field(typeof(UIFriends), "friendsList")
+                    .GetValue(uiFriends) as VisualElement;
+                if (friendsList != null) friendsList.Clear();
+                if (friendsMap != null) friendsMap.Clear();
+            }
+
+            // Now-unpatched method runs the vanilla rebuild.
+            AccessTools.Method(typeof(UIFriendsController), "Event_OnSteamConnected")
+                .Invoke(controller, new object[] { new Dictionary<string, object>() });
+        }
+        catch (Exception ex)
+        {
+            Plugin.LogError($"BFL vanilla rebuild on disable failed: {ex.Message}");
+        }
     }
 }
 
@@ -157,6 +186,11 @@ public static class BFL_SortFriendsPatch
             cmp = bAway.CompareTo(aAway);
             if (cmp != 0) return cmp;
 
+            bool aOffline = infoA.State == EPersonaState.k_EPersonaStateOffline;
+            bool bOffline = infoB.State == EPersonaState.k_EPersonaStateOffline;
+            cmp = aOffline.CompareTo(bOffline);
+            if (cmp != 0) return cmp;
+
             return string.Compare(infoA.Username, infoB.Username, StringComparison.OrdinalIgnoreCase);
         });
 
@@ -201,9 +235,6 @@ public static class FriendsListHelper
         {
             var steamId = SteamFriends.GetFriendByIndex(i, EFriendFlags.k_EFriendFlagImmediate);
             var state = SteamFriends.GetFriendPersonaState(steamId);
-
-            if (state == EPersonaState.k_EPersonaStateOffline)
-                continue;
 
             string username = SteamFriends.GetFriendPersonaName(steamId);
             string steamIdStr = steamId.ToString();
@@ -318,10 +349,9 @@ public static class FriendsListHelper
             return;
 
         bool isFriend = SteamIntegrationManager.IsFriend(steamId);
-        bool isOnline = isFriend && SteamIntegrationManager.IsFriendOnline(steamId);
         bool isListed = uiFriends.IsFriendListed(steamId);
 
-        if (!isFriend || !isOnline)
+        if (!isFriend)
         {
             if (isListed)
             {
@@ -458,6 +488,10 @@ public static class FriendsListHelper
 
         container.schedule.Execute(() =>
         {
+            var friendElForMargin = container.Q<Friend>("Friend");
+            if (friendElForMargin != null)
+                ApplyInviteMargin(friendElForMargin);
+
             var statusLabel = container.Q<Label>("StatusLabel");
             if (statusLabel != null)
             {
@@ -818,6 +852,7 @@ public static class FriendsListHelper
 
         switch (friend.State)
         {
+            case EPersonaState.k_EPersonaStateOffline: return "Offline";
             case EPersonaState.k_EPersonaStateOnline: return "Online";
             case EPersonaState.k_EPersonaStateBusy: return "Busy";
             case EPersonaState.k_EPersonaStateAway: return "Away";
@@ -873,6 +908,7 @@ public static class FriendsListHelper
         if (friend.IsInOtherGame) return new Color(0.6f, 0.8f, 0.6f);
         switch (friend.State)
         {
+            case EPersonaState.k_EPersonaStateOffline: return new Color(0.5f, 0.5f, 0.5f);
             case EPersonaState.k_EPersonaStateOnline: return new Color(0.35f, 0.7f, 1f);
             case EPersonaState.k_EPersonaStateBusy: return new Color(1f, 0.5f, 0.5f);
             case EPersonaState.k_EPersonaStateAway:

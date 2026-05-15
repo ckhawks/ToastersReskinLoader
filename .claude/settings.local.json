@@ -6,7 +6,8 @@
       "Bash(dotnet build:*)",
       "Bash(xargs grep:*)",
       "Bash(rtk git:*)",
-      "Bash(rtk dotnet *)"
+      "Bash(rtk dotnet *)",
+      "Bash(powershell *)"
     ]
   }
 }

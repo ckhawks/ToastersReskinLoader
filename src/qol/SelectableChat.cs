@@ -6,10 +6,9 @@
 // line's plain text to the system clipboard. Right-click is intentionally
 // NOT handled so the game's built-in right-click behavior is preserved.
 //
-// The chat panel sits as a non-interactive HUD overlay: its parent chain has
-// pickingMode=Ignore so pointer events fall through to the game. To make
-// text interactive we walk the WHOLE ancestor chain from the chat view up
-// to its panel root and flip every Ignore to Position.
+// PickingMode.Ignore on an ancestor does NOT block picking on descendants in
+// UIToolkit — only the label itself needs pickingMode=Position to receive
+// pointer events, so no ancestor walk is required.
 
 using System;
 using HarmonyLib;
@@ -23,33 +22,6 @@ internal static class SelectableChat
     private static bool Enabled =>
         QoLRunner.Instance?.Config?.enableChatDragSelect ?? true;
 
-    private static bool _chatPickingOpened;
-    private static void OpenChatPickingPath(UIChat chat)
-    {
-        if (_chatPickingOpened || chat == null) return;
-        try
-        {
-            var view = AccessTools.Field(typeof(UIView), "view")?.GetValue(chat) as VisualElement;
-            if (view == null) return;
-            // Walk all the way up to the panel root and unblock pointer events.
-            var cur = view;
-            while (cur != null)
-            {
-                if (cur.pickingMode == PickingMode.Ignore) cur.pickingMode = PickingMode.Position;
-                cur = cur.parent;
-            }
-            // Also flip any known internal containers explicitly.
-            foreach (var name in new[] { "chat", "scrollView", "messages", "padding" })
-            {
-                var ve = AccessTools.Field(typeof(UIChat), name)?.GetValue(chat) as VisualElement;
-                if (ve != null && ve.pickingMode == PickingMode.Ignore)
-                    ve.pickingMode = PickingMode.Position;
-            }
-            _chatPickingOpened = true;
-        }
-        catch (Exception e) { Debug.LogWarning("[QoL] OpenChatPickingPath failed: " + e.Message); }
-    }
-
     [HarmonyPatch(typeof(UIChat), "AddChatMessage")]
     private static class Chat_MakeSelectable_Postfix
     {
@@ -58,8 +30,6 @@ internal static class SelectableChat
             if (!Enabled) return;
             try
             {
-                OpenChatPickingPath(__instance);
-
                 var messages = AccessTools.Field(typeof(UIChat), "messages")?.GetValue(__instance) as VisualElement;
                 if (messages == null || messages.childCount == 0) return;
                 var child = messages[messages.childCount - 1];

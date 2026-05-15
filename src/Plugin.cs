@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using HarmonyLib;
 using ToasterReskinLoader.api;
@@ -14,7 +14,7 @@ namespace ToasterReskinLoader;
 public class Plugin : IPuckPlugin
 {
     public static string MOD_NAME = "ToasterReskinLoader";
-    public static string MOD_VERSION = "2.0.1";
+    public static string MOD_VERSION = "2.1.0";
     public static string MOD_GUID = "pw.stellaric.toaster.reskinloader";
 
     static readonly Harmony harmony = new Harmony(MOD_GUID);
@@ -86,8 +86,16 @@ public class Plugin : IPuckPlugin
                 // Player QoL runtime (ported from PoncePlayerInput)
                 ToasterReskinLoader.qol.QoLRunner.Bootstrap();
 
-                // QoL: BetterFriendsList. TODO: gate this on a config option once the QoL tab lands.
-                BetterFriendsList.Enable();
+                if (ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.enableBetterFriendsList ?? true)
+                    BetterFriendsList.Enable();
+
+                if (ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.enableBeaconPing ?? true)
+                    ToasterReskinLoader.qol.beacon.BeaconPing.Enable();
+
+                if (ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.enableVanillaUIRetheme ?? true)
+                    ToasterReskinLoader.qol.VanillaUIRetheme.Enable();
+
+                ToasterReskinLoader.qol.serverbrowser.ServerPreviewCache.Initialize();
 
                 // The locker room scene is already loaded before the mod loads,
                 // so OnSceneLoaded won't fire - apply everything here
@@ -114,6 +122,8 @@ public class Plugin : IPuckPlugin
         {
             Plugin.Log($"Disabling...");
             BetterFriendsList.Disable();
+            ToasterReskinLoader.qol.beacon.BeaconPing.Disable();
+            ToasterReskinLoader.qol.VanillaUIRetheme.Disable();
             harmony.UnpatchSelf();
             AppearanceAPI.Cleanup();
             PartyLineup.Cleanup();
