@@ -38,6 +38,8 @@ internal static class QoLStorage
             var cfg = qol.ToConfig();
             cfg.savedServerPasswords = prefs.SavedServerPasswords ?? new Dictionary<string, string>();
             cfg.trustedServerMods    = prefs.TrustedServerMods    ?? new Dictionary<string, string>();
+            cfg.favoriteServers      = prefs.FavoriteServers      ?? new Dictionary<string, string>();
+            cfg.blockedServers       = prefs.BlockedServers       ?? new Dictionary<string, string>();
             return cfg;
         }
         catch (Exception e)
@@ -65,6 +67,12 @@ internal static class QoLStorage
                     : new Dictionary<string, string>(),
                 TrustedServerMods = cfg.trustedServerMods != null
                     ? new Dictionary<string, string>(cfg.trustedServerMods)
+                    : new Dictionary<string, string>(),
+                FavoriteServers = cfg.favoriteServers != null
+                    ? new Dictionary<string, string>(cfg.favoriteServers)
+                    : new Dictionary<string, string>(),
+                BlockedServers = cfg.blockedServers != null
+                    ? new Dictionary<string, string>(cfg.blockedServers)
                     : new Dictionary<string, string>(),
             };
             File.WriteAllText(ServerPrefsPath, JsonConvert.SerializeObject(prefs, Formatting.Indented));

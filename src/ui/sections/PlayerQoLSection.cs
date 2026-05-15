@@ -88,6 +88,46 @@ public static class PlayerQoLSection
                 ServerBrowserSort.RefreshForCurrentBrowser();
             });
 
+        ToggleRow(contentScrollViewContent,
+            "Auto-queue when joining a full server",
+            cfg.enableServerSlotQueue,
+            v => { cfg.enableServerSlotQueue = v; runner.SaveAndRefresh(); });
+
+        ToggleRow(contentScrollViewContent,
+            "Title-screen Quick Join button",
+            cfg.enableMainMenuQuickJoin,
+            v =>
+            {
+                cfg.enableMainMenuQuickJoin = v;
+                runner.SaveAndRefresh();
+                MainMenuButtons.RefreshForCurrentMenu();
+            });
+
+        ToggleRow(contentScrollViewContent,
+            "Title-screen Server Browser button",
+            cfg.enableMainMenuServerBrowser,
+            v =>
+            {
+                cfg.enableMainMenuServerBrowser = v;
+                runner.SaveAndRefresh();
+                MainMenuButtons.RefreshForCurrentMenu();
+            });
+
+        ToggleRow(contentScrollViewContent,
+            "Scoreboard: drop-shadow on score / period / clock",
+            cfg.enableScoreboardTextShadow,
+            v => { cfg.enableScoreboardTextShadow = v; runner.SaveAndRefresh(); });
+
+        ToggleRow(contentScrollViewContent,
+            "Scoreboard: clock shows milliseconds (MM:SS.mmm)",
+            cfg.enableScoreboardMilliseconds,
+            v => { cfg.enableScoreboardMilliseconds = v; runner.SaveAndRefresh(); });
+
+        ToggleRow(contentScrollViewContent,
+            "Scoreboard: clock fades to red in last 30s and flashes in last 5s",
+            cfg.enableScoreboardClockColor,
+            v => { cfg.enableScoreboardClockColor = v; runner.SaveAndRefresh(); });
+
         // ── Saved server passwords ─────────────────────────────────────────
         Separator(contentScrollViewContent);
         Header(contentScrollViewContent, "Saved Server Passwords");
@@ -108,6 +148,31 @@ public static class PlayerQoLSection
 
         contentScrollViewContent.Add(savedPasswordsList);
         RebuildSavedPasswordsList(savedPasswordsList);
+
+        // ── Favorite servers ──────────────────────────────────────────────
+        Separator(contentScrollViewContent);
+        Header(contentScrollViewContent, "Favorite Servers");
+        Note(contentScrollViewContent,
+            "Servers you starred from the server browser. They always sort to the top of the list "
+            + "regardless of the active column. Toggling \"Server browser sort tweaks\" off above hides "
+            + "the ★ button (entries are kept).");
+
+        var favoritesList = new VisualElement();
+        favoritesList.style.marginTop = 4;
+        contentScrollViewContent.Add(favoritesList);
+        RebuildFavoritesList(favoritesList);
+
+        // ── Blocked servers ───────────────────────────────────────────────
+        Separator(contentScrollViewContent);
+        Header(contentScrollViewContent, "Blocked Servers");
+        Note(contentScrollViewContent,
+            "Servers you blocked via the right-click menu in the server browser. Blocked rows are hidden "
+            + "from the list as long as \"Server browser sort tweaks\" is on.");
+
+        var blockedList = new VisualElement();
+        blockedList.style.marginTop = 4;
+        contentScrollViewContent.Add(blockedList);
+        RebuildBlockedList(blockedList);
 
         // ── Trusted server mod lists (DISABLED) ───────────────────────────
         // The MODS REQUIRED popup suppression is shelved for now — see
@@ -341,6 +406,152 @@ public static class PlayerQoLSection
             RebuildSavedPasswordsList(container);
         })
         { text = "Forget all saved passwords" };
+        UITools.StyleConfigButton(clearAllBtn);
+        clearAllRow.Add(clearAllBtn);
+        container.Add(clearAllRow);
+    }
+
+    // Mirrors RebuildSavedPasswordsList for the favorites store. The
+    // friendly name comes from the cached value the star button wrote
+    // when the user clicked it; we don't ping live for it here.
+    private static void RebuildFavoritesList(VisualElement container)
+    {
+        if (container == null) return;
+        container.Clear();
+
+        var keys = ServerBrowserSort.SnapshotFavoriteKeys();
+        if (keys.Count == 0)
+        {
+            var empty = UITools.CreateConfigurationLabel("No favorites yet — click the ★ on a server row to favorite it.");
+            empty.style.color = new Color(0.65f, 0.65f, 0.65f);
+            empty.style.marginTop = 4;
+            empty.style.marginBottom = 4;
+            container.Add(empty);
+            return;
+        }
+
+        foreach (var key in keys)
+        {
+            var row = UITools.CreateConfigurationRow();
+            row.style.alignItems = Align.Center;
+
+            string cached = ServerBrowserSort.GetFavoriteCachedName(key);
+
+            var labelStack = new VisualElement();
+            labelStack.style.flexGrow = 1;
+            labelStack.style.flexDirection = FlexDirection.Column;
+
+            var primary = UITools.CreateConfigurationLabel(
+                string.IsNullOrEmpty(cached) ? key : cached);
+            labelStack.Add(primary);
+
+            if (!string.IsNullOrEmpty(cached))
+            {
+                var subtitle = UITools.CreateConfigurationLabel(key);
+                subtitle.style.fontSize = 11;
+                subtitle.style.color = new Color(0.65f, 0.65f, 0.65f);
+                subtitle.style.marginTop = 0;
+                labelStack.Add(subtitle);
+            }
+
+            row.Add(labelStack);
+
+            var removeBtn = new Button(() =>
+            {
+                ServerBrowserSort.RemoveFavorite(key);
+                RebuildFavoritesList(container);
+                ServerBrowserSort.RefreshForCurrentBrowser();
+            })
+            { text = "Remove" };
+            UITools.StyleConfigButton(removeBtn);
+            removeBtn.style.marginLeft = 8;
+            row.Add(removeBtn);
+
+            container.Add(row);
+        }
+
+        var clearAllRow = UITools.CreateConfigurationRow();
+        clearAllRow.style.justifyContent = Justify.FlexEnd;
+        clearAllRow.style.marginTop = 8;
+        var clearAllBtn = new Button(() =>
+        {
+            ServerBrowserSort.RemoveAllFavorites();
+            RebuildFavoritesList(container);
+            ServerBrowserSort.RefreshForCurrentBrowser();
+        })
+        { text = "Remove all favorites" };
+        UITools.StyleConfigButton(clearAllBtn);
+        clearAllRow.Add(clearAllBtn);
+        container.Add(clearAllRow);
+    }
+
+    // Mirrors RebuildFavoritesList for the blocked-servers store.
+    private static void RebuildBlockedList(VisualElement container)
+    {
+        if (container == null) return;
+        container.Clear();
+
+        var keys = ServerBrowserSort.SnapshotBlockedKeys();
+        if (keys.Count == 0)
+        {
+            var empty = UITools.CreateConfigurationLabel("No blocked servers — right-click a row in the server browser to block.");
+            empty.style.color = new Color(0.65f, 0.65f, 0.65f);
+            empty.style.marginTop = 4;
+            empty.style.marginBottom = 4;
+            container.Add(empty);
+            return;
+        }
+
+        foreach (var key in keys)
+        {
+            var row = UITools.CreateConfigurationRow();
+            row.style.alignItems = Align.Center;
+
+            string cached = ServerBrowserSort.GetBlockedCachedName(key);
+
+            var labelStack = new VisualElement();
+            labelStack.style.flexGrow = 1;
+            labelStack.style.flexDirection = FlexDirection.Column;
+
+            var primary = UITools.CreateConfigurationLabel(
+                string.IsNullOrEmpty(cached) ? key : cached);
+            labelStack.Add(primary);
+
+            if (!string.IsNullOrEmpty(cached))
+            {
+                var subtitle = UITools.CreateConfigurationLabel(key);
+                subtitle.style.fontSize = 11;
+                subtitle.style.color = new Color(0.65f, 0.65f, 0.65f);
+                subtitle.style.marginTop = 0;
+                labelStack.Add(subtitle);
+            }
+
+            row.Add(labelStack);
+
+            var unblockBtn = new Button(() =>
+            {
+                ServerBrowserSort.RemoveBlock(key);
+                RebuildBlockedList(container);
+                ServerBrowserSort.RefreshForCurrentBrowser();
+            })
+            { text = "Unblock" };
+            UITools.StyleConfigButton(unblockBtn);
+            unblockBtn.style.marginLeft = 8;
+            row.Add(unblockBtn);
+
+            container.Add(row);
+        }
+
+        var clearAllRow = UITools.CreateConfigurationRow();
+        clearAllRow.style.justifyContent = Justify.FlexEnd;
+        clearAllRow.style.marginTop = 8;
+        var clearAllBtn = new Button(() =>
+        {
+            ServerBrowserSort.RemoveAllBlocks();
+            RebuildBlockedList(container);
+            ServerBrowserSort.RefreshForCurrentBrowser();
+        })
+        { text = "Unblock all servers" };
         UITools.StyleConfigButton(clearAllBtn);
         clearAllRow.Add(clearAllBtn);
         container.Add(clearAllRow);

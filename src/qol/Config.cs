@@ -45,6 +45,29 @@ public class QoLConfig
     public bool enableBeaconPing = true;
     public bool enableServerPreviewCache = true;
     public bool enableVanillaUIRetheme = true;
+    // Auto-retry into a full server: on ServerFull rejection, poll the
+    // target every 5s and rejoin the moment a slot opens. Reuses the
+    // vanilla UIMatchmaking panel for status display.
+    public bool enableServerSlotQueue = true;
+    // Title-screen Quick Join button: refresh the server list and join
+    // the best populated server matching the user's saved browser
+    // filters. Lightly biased toward TR-tagged servers.
+    public bool enableMainMenuQuickJoin = true;
+    // Title-screen Server Browser button (off by default — vanilla
+    // already exposes one inside the Play sub-menu, this is a shortcut
+    // for users who'd rather skip it).
+    public bool enableMainMenuServerBrowser = false;
+    // In-game score/period/clock polish — three independent toggles
+    // so the user can enable just the parts they want.
+    //   * enableScoreboardTextShadow → CSS-like text-shadow on score
+    //     numbers, period label, and the clock.
+    //   * enableScoreboardMilliseconds → swap MM:SS for MM:SS.mmm on
+    //     the clock, interpolated locally between server ticks.
+    //   * enableScoreboardClockColor → white→red color lerp over the
+    //     last 30s + alpha pulse over the last 5s of a period.
+    public bool enableScoreboardTextShadow  = true;
+    public bool enableScoreboardMilliseconds = true;
+    public bool enableScoreboardClockColor   = true;
 
     // Per-server "trust this mod list" memory. Keyed by "ip:port"; value
     // is the sorted, comma-joined list of mod IDs the user previously
@@ -55,6 +78,18 @@ public class QoLConfig
     // proceeds unattended. Any change to the mod set invalidates the
     // entry and the popup re-appears, forcing the user to re-consent.
     public Dictionary<string, string> trustedServerMods = new Dictionary<string, string>();
+
+    // Favorite servers, keyed by "ip:port". Value is the last-seen
+    // friendly name (cached at favorite time so the QoL management UI
+    // can show "ponseguck.net #1" instead of a bare ip:port even when
+    // the server isn't currently in the browser list). Favorites always
+    // sort to the top of the server browser regardless of column.
+    public Dictionary<string, string> favoriteServers = new Dictionary<string, string>();
+
+    // Blocked servers, same shape as favoriteServers. Rows that match
+    // an entry get style.display = None in the server browser. Blocking
+    // a server also removes it from favorites (mutually exclusive).
+    public Dictionary<string, string> blockedServers = new Dictionary<string, string>();
 
     // ip:port -> last-known-good password. Populated when the user opts
     // in via the "Remember password" checkbox on the password popup.
