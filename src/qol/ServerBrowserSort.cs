@@ -6,10 +6,9 @@
 //     PLAYERS% and override its sort comparator to use the
 //     players / maxPlayers ratio instead of absolute player count.
 //   * Saved-password indicator: rows that match an entry in
-//     SavedServerPasswords have the vanilla "passwordProtected" USS class
-//     stripped (suppressing the 🔒 lock icon) and get a 🔓 label inserted
-//     immediately after NameLabel so it sits right next to the wrench
-//     (modded) icon, mirroring how the vanilla lock + wrench cluster.
+//     SavedServerPasswords get the vanilla 🔒 lock tinted green so the
+//     user can see at a glance which password-protected servers will
+//     auto-fill on join.
 //
 // All gated behind cfg.enableServerBrowserSortTweaks. The vanilla
 // `ServerSortType` and `ServerSortDirection` enums are internal — we set
@@ -32,7 +31,32 @@ internal static class ServerBrowserSort
     private const int SortDir_Ascending  = 0;
     private const int SortDir_Descending = 1;
 
-    private const string UnlockBadgeName = "ToasterSavedPwUnlock";
+    // Marker class we add to lock elements we've tinted, so we know which
+    // ones to reset when the feature toggles off / password is removed.
+    private static readonly Color SavedLockTint = new Color(0.45f, 1f, 0.55f);
+
+    // 4-step cycle for the PLAYERS column:
+    //   PLAYERS ▼ (abs desc)  → PLAYERS ▲ (abs asc)
+    //   PLAYERS% ▼ (ratio desc) → PLAYERS% ▲ (ratio asc) → wrap
+    // Sticky across button clicks while sortType stays Players; resets to
+    // absolute when Show() runs (fresh browser open) or when the user
+    // clicks NAME/PING and then comes back to PLAYERS.
+    private static bool _playersRatioMode;
+
+    // The vanilla 🔒 is a VisualElement named "PasswordProtectedIcon"
+    // styled via USS background-image. Tint its background tint color
+    // green when the row has a saved password; clear back to default
+    // otherwise.
+    private static void ApplyLockTint(VisualElement row, bool savedPw)
+    {
+        if (row == null) return;
+        var lockIcon = row.Q<VisualElement>("PasswordProtectedIcon");
+        if (lockIcon == null) return;
+        if (savedPw)
+            lockIcon.style.unityBackgroundImageTintColor = SavedLockTint;
+        else
+            lockIcon.style.unityBackgroundImageTintColor = StyleKeyword.Null;
+    }
 
     private static bool Enabled =>
         QoLRunner.Instance?.Config?.enableServerBrowserSortTweaks ?? false;
@@ -103,9 +127,9 @@ internal static class ServerBrowserSort
             if (browser == null) return;
             if (!browser.IsVisible) return;
 
-            // Strip 🔓 badges and restore the vanilla lock when disabled —
-            // vanilla StyleServer doesn't know about our badge, so it
-            // would otherwise persist on every row.
+            // Clear any green tint we previously applied to lock icons —
+            // vanilla StyleServer doesn't know about it, so it would
+            // otherwise persist after the feature is toggled off.
             if (!Enabled)
             {
                 var map = GetMap(browser);
@@ -114,8 +138,7 @@ internal static class ServerBrowserSort
                     foreach (var kv in map)
                     {
                         var row = kv.Value?.Q<VisualElement>("Server");
-                        var unlock = row?.Q<Label>(UnlockBadgeName);
-                        unlock?.RemoveFromHierarchy();
+                        ApplyLockTint(row, false);
                     }
                 }
             }
@@ -147,6 +170,70 @@ internal static class ServerBrowserSort
         catch (Exception e) { Debug.LogWarning("[QoL] sort-tweaks refresh failed: " + e.Message); }
     }
 
+    // ─────────────────────────── OnClickPlayersSort prefix ───────────────
+    //
+    // Replace vanilla's 2-step PLAYERS toggle (desc ↔ asc) with our 4-step
+    // cycle so users can switch between absolute-count and ratio sorting
+    // by clicking the same header:
+    //   PLAYERS ▼ (abs desc)
+    //   PLAYERS ▲ (abs asc)
+    //   PLAYERS% ▼ (ratio desc)
+    //   PLAYERS% ▲ (ratio asc)
+    //   → wraps back to PLAYERS ▼
+    // Clicking PLAYERS from a different column (NAME/PING) restarts the
+    // cycle at "PLAYERS ▼ (abs desc)".
+    [HarmonyPatch(typeof(UIServerBrowser), "OnClickPlayersSort")]
+    private static class OnClickPlayersSort_Prefix
+    {
+        private static bool Prefix(UIServerBrowser __instance)
+        {
+            if (!Enabled) return true; // fall through to vanilla
+            if (__instance == null) return true;
+
+            try
+            {
+                var tField = AccessTools.Field(typeof(UIServerBrowser), "sortType");
+                var dField = AccessTools.Field(typeof(UIServerBrowser), "sortDirection");
+                if (tField == null || dField == null) return true;
+
+                int sortType = GetSortType(__instance);
+                int sortDir  = GetSortDirection(__instance);
+
+                if (sortType != SortType_Players)
+                {
+                    // Coming from another column: reset to step 1.
+                    _playersRatioMode = false;
+                    tField.SetValue(__instance, Enum.ToObject(tField.FieldType, SortType_Players));
+                    dField.SetValue(__instance, Enum.ToObject(dField.FieldType, SortDir_Descending));
+                }
+                else
+                {
+                    // Already on PLAYERS — advance one step in the 4-step cycle.
+                    if (sortDir == SortDir_Descending)
+                    {
+                        // ▼ → ▲ within the current mode.
+                        dField.SetValue(__instance, Enum.ToObject(dField.FieldType, SortDir_Ascending));
+                    }
+                    else
+                    {
+                        // ▲ → flip mode and reset direction to ▼.
+                        _playersRatioMode = !_playersRatioMode;
+                        dField.SetValue(__instance, Enum.ToObject(dField.FieldType, SortDir_Descending));
+                    }
+                }
+
+                AccessTools.Method(typeof(UIServerBrowser), "StyleSortButtons")?.Invoke(__instance, null);
+                AccessTools.Method(typeof(UIServerBrowser), "SortServers")?.Invoke(__instance, null);
+                return false; // we handled it; skip vanilla
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[QoL] OnClickPlayersSort prefix failed: " + e.Message);
+                return true; // fall back to vanilla on any error
+            }
+        }
+    }
+
     // ─────────────────────────── Show: reset default sort ─────────────────
 
     [HarmonyPatch(typeof(UIServerBrowser), "Show")]
@@ -162,6 +249,8 @@ internal static class ServerBrowserSort
                 var dField = AccessTools.Field(typeof(UIServerBrowser), "sortDirection");
                 tField?.SetValue(__instance, Enum.ToObject(tField.FieldType, SortType_Players));
                 dField?.SetValue(__instance, Enum.ToObject(dField.FieldType, SortDir_Descending));
+                // Fresh browser open: start at the first cycle step.
+                _playersRatioMode = false;
 
                 AccessTools.Method(typeof(UIServerBrowser), "StyleSortButtons")?.Invoke(__instance, null);
 
@@ -222,6 +311,9 @@ internal static class ServerBrowserSort
                 int sortType = GetSortType(__instance);
                 int sortDir  = GetSortDirection(__instance);
                 if (sortType != SortType_Players) return;
+                // Only override vanilla's absolute-count ordering when the
+                // user has cycled the PLAYERS header into ratio mode.
+                if (!_playersRatioMode) return;
 
                 serverList.hierarchy.Sort(delegate(VisualElement a, VisualElement b)
                 {
@@ -270,7 +362,13 @@ internal static class ServerBrowserSort
             {
                 var playersBtn = AccessTools.Field(typeof(UIServerBrowser), "playersButton")?.GetValue(__instance) as Button;
                 if (playersBtn == null) return;
-                if (!string.IsNullOrEmpty(playersBtn.text) && playersBtn.text.Contains("PLAYERS") && !playersBtn.text.Contains("PLAYERS%"))
+                // Only relabel to PLAYERS% when ratio mode is active. In
+                // absolute mode we leave vanilla's "PLAYERS" text alone so
+                // the header accurately reflects the active sort.
+                if (_playersRatioMode
+                    && !string.IsNullOrEmpty(playersBtn.text)
+                    && playersBtn.text.Contains("PLAYERS")
+                    && !playersBtn.text.Contains("PLAYERS%"))
                 {
                     playersBtn.text = playersBtn.text.Replace("PLAYERS", "PLAYERS%");
                 }
@@ -279,16 +377,14 @@ internal static class ServerBrowserSort
         }
     }
 
-    // ─────────────────────────── StyleServer postfix: badges ──────────────
+    // ─────────────────────────── StyleServer postfix: lock tint ───────────
     //
-    // Inject the 🔓 saved-password indicator (when we have a saved entry
-    // for this ip:port). It's placed immediately after NameLabel so it
-    // sits directly left of the wrench (modded) icon — mirroring how the
-    // vanilla 🔒 + 🛠 cluster in the same flex slot. We also strip the
-    // "passwordProtected" USS class for those rows to suppress the
-    // vanilla lock so they don't double up.
+    // Saved-password indicator: leave the vanilla 🔒 lock in place (don't
+    // strip the "passwordProtected" class), but tint it green when we
+    // have a saved entry for this ip:port so the user can see at a glance
+    // which password-protected rows will auto-fill on join.
     [HarmonyPatch(typeof(UIServerBrowser), "StyleServer")]
-    private static class StyleServer_AddBadges_Postfix
+    private static class StyleServer_TintLock_Postfix
     {
         private static void Postfix(UIServerBrowser __instance, EndPoint endPoint)
         {
@@ -302,57 +398,9 @@ internal static class ServerBrowserSort
                 if (serverRow == null) return;
                 string key = MakeKey(endPoint);
 
-                var nameLabel = serverRow.Q<Label>("NameLabel");
-
-                // Saved-password indicator: replace the vanilla 🔒 lock with
-                // a 🔓 sitting immediately after NameLabel. The wrench
-                // (modded) icon is rendered into the same flex slot by
-                // vanilla USS, so anchoring our unlock to NameLabel's
-                // sibling-after-position puts 🔓 directly left of the
-                // wrench — matching how the vanilla 🔒 + 🛠 cluster.
                 bool willAutoFill = (QoLRunner.Instance?.Config?.enableSavedServerPasswords ?? false)
                                     && HasSavedPasswordFor(key);
-                var unlock = serverRow.Q<Label>(UnlockBadgeName);
-                if (willAutoFill)
-                {
-                    if (serverRow.ClassListContains("passwordProtected"))
-                        serverRow.RemoveFromClassList("passwordProtected");
-
-                    if (unlock == null)
-                    {
-                        unlock = new Label("🔓")
-                        {
-                            name = UnlockBadgeName,
-                        };
-                        unlock.style.marginRight = 4;
-                        unlock.style.color = new Color(0.6f, 1f, 0.6f);
-                        unlock.style.unityFontStyleAndWeight = FontStyle.Bold;
-                        unlock.tooltip = "Saved password — auto-fills on join.";
-                    }
-
-                    // Reposition each refresh so the unlock stays right
-                    // after NameLabel even if vanilla / another mod
-                    // shuffles children.
-                    if (nameLabel != null && nameLabel.parent != null)
-                    {
-                        int targetIdx = nameLabel.parent.IndexOf(nameLabel) + 1;
-                        if (unlock.parent != nameLabel.parent || nameLabel.parent.IndexOf(unlock) != targetIdx)
-                        {
-                            unlock.RemoveFromHierarchy();
-                            // Re-resolve index in case the remove shifted things.
-                            targetIdx = nameLabel.parent.IndexOf(nameLabel) + 1;
-                            nameLabel.parent.Insert(targetIdx, unlock);
-                        }
-                    }
-                    else if (unlock.parent == null)
-                    {
-                        serverRow.Add(unlock);
-                    }
-                }
-                else if (unlock != null)
-                {
-                    unlock.RemoveFromHierarchy();
-                }
+                ApplyLockTint(serverRow, willAutoFill);
             }
             catch (Exception e) { Debug.LogWarning("[QoL] sort-tweaks StyleServer postfix failed: " + e.Message); }
         }

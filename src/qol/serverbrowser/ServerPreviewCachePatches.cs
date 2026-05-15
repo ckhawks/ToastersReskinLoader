@@ -90,6 +90,24 @@ internal static class ServerPreviewCachePatches
                 Interlocked.Exchange(ref _refreshDone, 0);
                 UpdateRefreshButton(0, endPoints.Length);
                 EnsureCacheCountLabel(__instance);
+
+                // Garbage-collect cached entries the master server is no
+                // longer advertising. Without this the lifetime cache only
+                // grows, so "Cached: N" drifts arbitrarily far above the
+                // current refresh wave's denominator.
+                var keepKeys = new HashSet<string>();
+                foreach (var ep in endPoints)
+                {
+                    if (ep == null) continue;
+                    keepKeys.Add(ServerPreviewCache.Key(ep));
+                }
+                int evicted = ServerPreviewCache.RetainOnly(keepKeys);
+                if (evicted > 0)
+                {
+                    MaybeFlush();
+                    Plugin.LogDebug($"ServerPreviewCache: evicted {evicted} stale entries (no longer in master list)");
+                }
+
                 UpdateCacheCountLabel();
 
                 int hits = 0;
