@@ -49,8 +49,14 @@ public class QoLProfile
     public bool EnablePartyLineup { get; set; } = true;
     [JsonProperty("enableSavedServerPasswords")]
     public bool EnableSavedServerPasswords { get; set; } = false;
-    [JsonProperty("enableServerBrowserSortTweaks")]
-    public bool EnableServerBrowserSortTweaks { get; set; } = false;
+    [JsonProperty("enableServerFavorites")]
+    public bool EnableServerFavorites { get; set; } = false;
+    [JsonProperty("enableServerBlocks")]
+    public bool EnableServerBlocks { get; set; } = false;
+    [JsonProperty("enableTrustedModLists")]
+    public bool EnableTrustedModLists { get; set; } = true;
+    [JsonProperty("enableUnicodeFontFallback")]
+    public bool EnableUnicodeFontFallback { get; set; } = true;
 
     // Additions
     [JsonProperty("enableBetterFriendsList")]
@@ -61,6 +67,22 @@ public class QoLProfile
     public bool EnableServerPreviewCache { get; set; } = true;
     [JsonProperty("enableVanillaUIRetheme")]
     public bool EnableVanillaUIRetheme { get; set; } = true;
+    [JsonProperty("enableServerSlotQueue")]
+    public bool EnableServerSlotQueue { get; set; } = true;
+    [JsonProperty("enableMainMenuQuickJoin")]
+    public bool EnableMainMenuQuickJoin { get; set; } = true;
+    [JsonProperty("enableMainMenuServerBrowser")]
+    public bool EnableMainMenuServerBrowser { get; set; } = false;
+    [JsonProperty("enableUiTextShadow")]
+    public bool EnableUiTextShadow { get; set; } = true;
+    [JsonProperty("enableScoreboardMilliseconds")]
+    public bool EnableScoreboardMilliseconds { get; set; } = true;
+    [JsonProperty("enableScoreboardClockColor")]
+    public bool EnableScoreboardClockColor { get; set; } = true;
+    [JsonProperty("enableChatNoFade")]
+    public bool EnableChatNoFade { get; set; } = true;
+    [JsonProperty("enableChatTransparentContainer")]
+    public bool EnableChatTransparentContainer { get; set; } = true;
 
     // Persisted server browser filter values
     [JsonProperty("browserSearch")]
@@ -114,11 +136,22 @@ public class QoLProfile
             enableTeamButtonPlayerCount = EnableTeamButtonPlayerCount,
             enablePartyLineup = EnablePartyLineup,
             enableSavedServerPasswords = EnableSavedServerPasswords,
-            enableServerBrowserSortTweaks = EnableServerBrowserSortTweaks,
+            enableServerFavorites  = EnableServerFavorites,
+            enableServerBlocks     = EnableServerBlocks,
+            enableTrustedModLists  = EnableTrustedModLists,
+            enableUnicodeFontFallback = EnableUnicodeFontFallback,
             enableBetterFriendsList = EnableBetterFriendsList,
             enableBeaconPing = EnableBeaconPing,
             enableServerPreviewCache = EnableServerPreviewCache,
             enableVanillaUIRetheme = EnableVanillaUIRetheme,
+            enableServerSlotQueue = EnableServerSlotQueue,
+            enableMainMenuQuickJoin = EnableMainMenuQuickJoin,
+            enableMainMenuServerBrowser = EnableMainMenuServerBrowser,
+            enableUiTextShadow = EnableUiTextShadow,
+            enableScoreboardMilliseconds = EnableScoreboardMilliseconds,
+            enableScoreboardClockColor   = EnableScoreboardClockColor,
+            enableChatNoFade               = EnableChatNoFade,
+            enableChatTransparentContainer = EnableChatTransparentContainer,
             browserSearch = BrowserSearch,
             browserMaxPing = BrowserMaxPing,
             browserShowFull = BrowserShowFull,
@@ -156,11 +189,22 @@ public class QoLProfile
         EnableTeamButtonPlayerCount = c.enableTeamButtonPlayerCount;
         EnablePartyLineup = c.enablePartyLineup;
         EnableSavedServerPasswords = c.enableSavedServerPasswords;
-        EnableServerBrowserSortTweaks = c.enableServerBrowserSortTweaks;
+        EnableServerFavorites  = c.enableServerFavorites;
+        EnableServerBlocks     = c.enableServerBlocks;
+        EnableTrustedModLists  = c.enableTrustedModLists;
+        EnableUnicodeFontFallback = c.enableUnicodeFontFallback;
         EnableBetterFriendsList = c.enableBetterFriendsList;
         EnableBeaconPing = c.enableBeaconPing;
         EnableServerPreviewCache = c.enableServerPreviewCache;
         EnableVanillaUIRetheme = c.enableVanillaUIRetheme;
+        EnableServerSlotQueue = c.enableServerSlotQueue;
+        EnableMainMenuQuickJoin = c.enableMainMenuQuickJoin;
+        EnableMainMenuServerBrowser = c.enableMainMenuServerBrowser;
+        EnableUiTextShadow = c.enableUiTextShadow;
+        EnableScoreboardMilliseconds = c.enableScoreboardMilliseconds;
+        EnableScoreboardClockColor   = c.enableScoreboardClockColor;
+        EnableChatNoFade               = c.enableChatNoFade;
+        EnableChatTransparentContainer = c.enableChatTransparentContainer;
         BrowserSearch = c.browserSearch;
         BrowserMaxPing = c.browserMaxPing;
         BrowserShowFull = c.browserShowFull;
@@ -187,5 +231,19 @@ public class ServerPrefsProfile
 
     [JsonProperty("trustedServerMods")]
     public System.Collections.Generic.Dictionary<string, string> TrustedServerMods { get; set; }
+        = new System.Collections.Generic.Dictionary<string, string>();
+
+    // ip:port -> last-seen friendly server name. Existence in this dict
+    // = favorited; the cached name is just to keep the QoL management UI
+    // readable when the favorited server isn't currently in the browser
+    // listing.
+    [JsonProperty("favoriteServers")]
+    public System.Collections.Generic.Dictionary<string, string> FavoriteServers { get; set; }
+        = new System.Collections.Generic.Dictionary<string, string>();
+
+    // Same shape as FavoriteServers, but rows that match are hidden from
+    // the server browser entirely.
+    [JsonProperty("blockedServers")]
+    public System.Collections.Generic.Dictionary<string, string> BlockedServers { get; set; }
         = new System.Collections.Generic.Dictionary<string, string>();
 }

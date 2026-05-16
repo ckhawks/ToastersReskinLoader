@@ -1,14 +1,16 @@
-// Re-show the minimap for spectators.
+// Re-show the minimap for spectators AND during replay phase.
 //
 // Vanilla `UIManagerController.Event_Everyone_OnPlayerGameStateChanged` only
 // calls `Minimap.Show()` / `Hud.Show()` when the local player enters
 // `PlayerPhase.Play`. Spectators (Team == Spectator, often PlayerPhase.Spectate)
-// never get the minimap shown, which is bad for streamers and people setting
-// up a config from the spectator slot.
+// and players watching the goal replay (`PlayerPhase.Replay`) never get the
+// minimap shown — bad for streamers and anyone who wants spatial context
+// during the replay.
 //
-// Postfix re-shows the minimap whenever the LOCAL player ends up on the
-// Spectator team after a state change. `Show()` is idempotent so re-firing
-// on unchanged-phase transitions is cheap.
+// Postfix re-shows the minimap whenever the LOCAL player ends up in any of
+// those phases after a state change. `Show()` is idempotent so re-firing
+// on unchanged-phase transitions is cheap. Both cases share the same
+// `enableSpectatorMinimap` toggle.
 
 using System;
 using System.Collections.Generic;
@@ -30,9 +32,10 @@ internal static class SpectatorMinimap_Postfix
             if (!player.IsLocalPlayer) return;
             if (!(message.TryGetValue("newGameState", out var nObj) && nObj is PlayerGameState newState)) return;
 
-            bool isSpectator = newState.Team == PlayerTeam.Spectator
-                            || newState.Phase == PlayerPhase.Spectate;
-            if (!isSpectator) return;
+            bool show = newState.Team == PlayerTeam.Spectator
+                     || newState.Phase == PlayerPhase.Spectate
+                     || newState.Phase == PlayerPhase.Replay;
+            if (!show) return;
 
             var ui = MonoBehaviourSingleton<UIManager>.Instance;
             ui?.Minimap?.Show();

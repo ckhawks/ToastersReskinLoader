@@ -33,6 +33,11 @@ internal static class EscClosesMenus
             var ui = MonoBehaviourSingleton<UIManager>.Instance;
             if (ui == null) return false;
 
+            // Chat input wins ESC: vanilla NavigationCancelEvent already
+            // closes the chat textfield this frame; don't also try to
+            // close some other secondary menu underneath.
+            if (ui.Chat != null && ui.Chat.IsFocused) return true;
+
             // Order matters: nested popups before their parents.
             if (ui.Identity != null && ui.Identity.IsVisible) { EventManager.TriggerEvent("Event_OnIdentityClickClose"); return true; }
             if (ui.Appearance != null && ui.Appearance.IsVisible) { EventManager.TriggerEvent("Event_OnAppearanceClickClose"); return true; }
@@ -46,6 +51,29 @@ internal static class EscClosesMenus
         }
         catch (Exception e) { Debug.LogWarning("[QoL] ESC menu close failed: " + e.Message); }
         return false;
+    }
+
+    // When chat is open and the user hits ESC, vanilla fires both:
+    //   (a) the chat textfield's NavigationCancelEvent → StopInput,
+    //       which closes the chat input — what the user wants.
+    //   (b) the PauseAction binding → OnPauseActionPerformed, which
+    //       opens the pause menu — what the user does NOT want.
+    //
+    // This prefix kills (b) whenever the chat is currently focused so
+    // the first ESC just closes the chat. A second ESC (with chat now
+    // unfocused) takes the normal path and opens the pause menu.
+    [HarmonyPatch(typeof(UIManager), "OnPauseActionPerformed")]
+    private static class OnPauseActionPerformed_SkipIfChatFocused
+    {
+        private static bool Prefix(UIManager __instance)
+        {
+            try
+            {
+                if (__instance?.Chat != null && __instance.Chat.IsFocused) return false;
+            }
+            catch { }
+            return true;
+        }
     }
 
     // Open the pause menu when ESC is pressed during a connected non-Playing

@@ -1,18 +1,5 @@
 // Per-server suppression of the vanilla "MODS REQUIRED" popup.
 //
-// SHELVED. The Harmony patches and the popup-injected toggle are commented
-// out for now — the feature is not wired into the QoL settings UI either
-// (see PlayerQoLSection's "Trusted Server Mod Lists" block). The
-// management helpers (SnapshotKeys / CountModsFor / Remove / RemoveAll)
-// are also commented out because their only callers are inside the same
-// commented block in PlayerQoLSection.
-//
-// To re-enable: uncomment the management helpers + both nested
-// `[HarmonyPatch]` classes here, AND the matching UI block in
-// PlayerQoLSection.cs. The cfg.trustedServerMods dictionary in
-// QoLConfig + the ServerPrefs.json side-car already round-trip the data
-// even while the feature is disabled, so existing entries survive.
-//
 // Vanilla flow (decompiled from UIPopupManagerController and the OK-click
 // handler in ConnectionManagerController):
 //   * Event_OnReconnectionStateChanged sees Phase=AwaitingMods +
@@ -26,6 +13,17 @@
 //     This kicks off the mod download/enable state machine. Without OK,
 //     the connection is stuck — which is why a naive "skip ShowPopup"
 //     breaks joins.
+//
+// What we add:
+//   * Per-server (ip:port + fingerprint of ClientRequiredModIds) memory
+//     of "yes, the user accepted these mods last time".
+//   * When the popup would fire for a known (server, mods) pair, we
+//     short-circuit ShowPopup AND emulate the OK-click logic directly
+//     so the reconnect flow keeps moving with no UI prompt.
+//   * A "Don't show this popup again for this server" toggle injected
+//     into the popup body so the user can opt in per-server.
+//   * Any change to the server's required mod set invalidates the
+//     stored fingerprint and the popup returns for review.
 
 using System;
 using System.Collections.Generic;
@@ -38,7 +36,6 @@ namespace ToasterReskinLoader.qol;
 
 internal static class MissingModsPopupSuppression
 {
-    /*
     private const string PopupName = "missingMods";
     private const string ToggleName = "ToasterMissingModsDontShow";
 
@@ -94,6 +91,8 @@ internal static class MissingModsPopupSuppression
         catch { return null; }
     }
 
+    // Sorted + comma-joined so order-of-arrival doesn't matter and the
+    // value round-trips cleanly through the JSON config.
     private static string FingerprintModIds(string[] modIds)
     {
         if (modIds == null || modIds.Length == 0) return "";
@@ -102,8 +101,12 @@ internal static class MissingModsPopupSuppression
         return string.Join(",", copy);
     }
 
+    private static bool FeatureEnabled =>
+        QoLRunner.Instance?.Config?.enableTrustedModLists ?? true;
+
     private static bool IsTrustedForCurrentServer(string[] requiredModIds)
     {
+        if (!FeatureEnabled) return false;
         var store = Store;
         if (store == null) return false;
         string key = CurrentEndpointKey();
@@ -133,6 +136,10 @@ internal static class MissingModsPopupSuppression
         if (store.Remove(key)) runner.SaveAndRefresh();
     }
 
+    // Emulates the OK-click branch of UIPopupManagerController.Event_OnPopupClickOk
+    // for the "missingMods" popup. This is the call that actually starts
+    // the mod download/enable flow — skipping the popup without doing
+    // this leaves the reconnect state machine stuck in AwaitingMods.
     private static void EmulateOkClick(string[] requiredModIds)
     {
         try
@@ -181,6 +188,7 @@ internal static class MissingModsPopupSuppression
         {
             try
             {
+                if (!FeatureEnabled) return;
                 var root = __instance?.VisualElement;
                 if (root == null) return;
                 if (root.Q<Toggle>(ToggleName) != null) return;
@@ -224,5 +232,4 @@ internal static class MissingModsPopupSuppression
             catch (Exception e) { Debug.LogWarning("[QoL] MissingModsPopup inject failed: " + e.Message); }
         }
     }
-    */
 }
