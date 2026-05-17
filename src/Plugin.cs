@@ -102,6 +102,9 @@ public class Plugin : IPuckPlugin
                 if (ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.enableVanillaUIRetheme ?? true)
                     ToasterReskinLoader.qol.VanillaUIRetheme.Enable();
 
+                if (ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.enableAutoConnectMatchmaking ?? false)
+                    ToasterReskinLoader.qol.AutoConnectMatchmaking.Enable();
+
                 ToasterReskinLoader.qol.serverbrowser.ServerPreviewCache.Initialize();
 
                 // The locker room scene is already loaded before the mod loads,
@@ -131,6 +134,7 @@ public class Plugin : IPuckPlugin
             BetterFriendsList.Disable();
             ToasterReskinLoader.qol.beacon.BeaconPing.Disable();
             ToasterReskinLoader.qol.VanillaUIRetheme.Disable();
+            ToasterReskinLoader.qol.AutoConnectMatchmaking.Disable();
             harmony.UnpatchSelf();
             AppearanceAPI.Cleanup();
             PartyLineup.Cleanup();

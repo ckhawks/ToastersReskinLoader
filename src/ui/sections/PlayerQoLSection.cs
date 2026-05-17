@@ -186,6 +186,15 @@ public static class PlayerQoLSection
         ToggleRow(contentScrollViewContent, "Cache server browser (instant rows on open)", cfg.enableServerPreviewCache,
             v => { cfg.enableServerPreviewCache = v; runner.SaveAndRefresh(); });
 
+        ToggleRow(contentScrollViewContent, "Auto-connect to matchmaking matches", cfg.enableAutoConnectMatchmaking,
+            v =>
+            {
+                cfg.enableAutoConnectMatchmaking = v;
+                runner.SaveAndRefresh();
+                if (v) AutoConnectMatchmaking.Enable();
+                else   AutoConnectMatchmaking.Disable();
+            });
+
         ToggleRow(contentScrollViewContent, "Use enhanced mod menu (search, sort, badges, update checker)", cfg.enableEnhancedModMenu,
             v => { cfg.enableEnhancedModMenu = v; runner.SaveAndRefresh(); });
         Note(contentScrollViewContent,

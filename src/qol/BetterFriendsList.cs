@@ -47,6 +47,11 @@ public static class BetterFriendsList
         _harmony.Patch(
             AccessTools.Method(typeof(UIFriends), "SortFriends"),
             prefix: new HarmonyMethod(typeof(BFL_SortFriendsPatch), nameof(BFL_SortFriendsPatch.Prefix)));
+        // Mirror the FRIENDS panel's visibility onto a dim backdrop so it
+        // reads as the modal it effectively is.
+        _harmony.Patch(
+            AccessTools.PropertySetter(typeof(UIView), nameof(UIView.IsVisible)),
+            postfix: new HarmonyMethod(typeof(BFL_FriendsVisibilityPatch), nameof(BFL_FriendsVisibilityPatch.Postfix)));
 
         IsEnabled = true;
         Plugin.Log("BetterFriendsList enabled.");
@@ -90,6 +95,7 @@ public static class BetterFriendsList
         if (!IsEnabled) return;
         _harmony.UnpatchSelf();
         FriendsListHelper.FriendInfoCache.Clear();
+        FriendsListHelper.RemoveDimOverlay();
         IsEnabled = false;
         Plugin.Log("BetterFriendsList disabled.");
 
@@ -208,11 +214,60 @@ public static class BFL_SortFriendsPatch
     }
 }
 
+public static class BFL_FriendsVisibilityPatch
+{
+    public static void Postfix(UIView __instance)
+    {
+        if (__instance is UIFriends f)
+            FriendsListHelper.UpdateDimOverlay(f);
+    }
+}
+
 public static class FriendsListHelper
 {
     private static readonly Dictionary<string, ServerPreviewData> _serverCache = new Dictionary<string, ServerPreviewData>();
     private static readonly Dictionary<ushort, string> _portToEndpointKey = new Dictionary<ushort, string>();
     private static bool _refreshInProgress = false;
+    private static VisualElement _dimOverlay;
+
+    public static void UpdateDimOverlay(UIFriends uiFriends)
+    {
+        if (uiFriends == null) return;
+        var view = uiFriends.View;
+        if (view == null || view.parent == null) return;
+
+        var host = view.parent;
+        if (_dimOverlay == null || _dimOverlay.parent != host)
+        {
+            _dimOverlay = new VisualElement();
+            _dimOverlay.name = "trl-bfl-dim";
+            _dimOverlay.style.position = Position.Absolute;
+            _dimOverlay.style.top = 0;
+            _dimOverlay.style.left = 0;
+            _dimOverlay.style.right = 0;
+            _dimOverlay.style.bottom = 0;
+            _dimOverlay.style.backgroundColor = new StyleColor(new Color(0f, 0f, 0f, 0.55f));
+            // Insert before FriendsView so it sits underneath in z-order
+            // (UI Toolkit stacks later siblings on top). Default pickingMode
+            // (Position) absorbs background clicks — matches existing modal
+            // behavior of the panel.
+            int viewIdx = host.IndexOf(view);
+            host.Insert(Math.Max(0, viewIdx), _dimOverlay);
+        }
+
+        _dimOverlay.style.display = uiFriends.IsVisible
+            ? DisplayStyle.Flex
+            : DisplayStyle.None;
+    }
+
+    public static void RemoveDimOverlay()
+    {
+        if (_dimOverlay != null)
+        {
+            _dimOverlay.RemoveFromHierarchy();
+            _dimOverlay = null;
+        }
+    }
 
     public static readonly Dictionary<string, FriendInfo> FriendInfoCache = new Dictionary<string, FriendInfo>();
 

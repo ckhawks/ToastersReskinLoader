@@ -47,6 +47,7 @@ public class QoLConfig
     public bool enableServerPreviewCache = true;
     public bool enableVanillaUIRetheme = true;
     public bool enableEnhancedModMenu = true;
+    public bool enableAutoConnectMatchmaking = false;
 
     // Per-server "trust this mod list" memory. Keyed by "ip:port"; value
     // is the sorted, comma-joined list of mod IDs the user previously
