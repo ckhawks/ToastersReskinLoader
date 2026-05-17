@@ -53,6 +53,11 @@ public static class TextureManager
 
     public static void ClearTextureCache()
     {
+        foreach (var texture in _loadedTextures.Values)
+        {
+            if (texture != null)
+                Object.Destroy(texture);
+        }
         _loadedTextures.Clear();
     }
     

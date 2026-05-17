@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using HarmonyLib;
+using ToasterReskinLoader.qol;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -10,6 +11,13 @@ namespace ToasterReskinLoader.swappers
 {
     public static class ModMenuEnhancer
     {
+        // Cached update state from the most recent check, keyed by workshop item id.
+        // A missing key means "not yet checked"; a present entry tells us whether to
+        // render the per-row "Update available" button or the neutral "Check" button.
+        private static readonly Dictionary<string, WorkshopUpdateChecker.UpdateInfo> updateState = new();
+        private static Button batchCheckBtn;
+        private static Label batchStatusLabel;
+        private static bool batchCheckInProgress;
         private static readonly FieldInfo _modsListField = typeof(UIMods)
             .GetField("modsList", BindingFlags.Instance | BindingFlags.NonPublic);
         private static readonly FieldInfo _modTemplateMapField = typeof(UIMods)
@@ -227,6 +235,16 @@ namespace ToasterReskinLoader.swappers
                     Application.OpenURL($"file://{System.IO.Path.Combine(gameRoot, "config")}"));
                 footerLeft.Add(configBtn);
 
+                batchCheckBtn = CreateFooterButton("Check for Updates", RunBatchUpdateCheck);
+                footerLeft.Add(batchCheckBtn);
+
+                batchStatusLabel = new Label("");
+                batchStatusLabel.style.fontSize = 13;
+                batchStatusLabel.style.color = new Color(0.7f, 0.7f, 0.7f);
+                batchStatusLabel.style.marginLeft = 8;
+                batchStatusLabel.style.unityTextAlign = TextAnchor.MiddleLeft;
+                footerLeft.Add(batchStatusLabel);
+
                 footer.Insert(0, footerLeft);
             }
 
@@ -281,7 +299,7 @@ namespace ToasterReskinLoader.swappers
 
         // ── Patch: Show — inject controls, snapshot entries, reset state ──
 
-        // [HarmonyPatch(typeof(UIMods), nameof(UIMods.Show))] // disabled for b323
+        [HarmonyPatch(typeof(UIMods), nameof(UIMods.Show))]
         public static class UIModsShowPatch
         {
             [HarmonyPostfix]
@@ -428,7 +446,7 @@ namespace ToasterReskinLoader.swappers
 
         // ── Patches: UpdateMod / UpdatePlugin ────────────────────────
 
-        // [HarmonyPatch(typeof(UIMods), "UpdateMod")] // disabled for b323
+        [HarmonyPatch(typeof(UIMods), "UpdateMod")]
         public static class UIModsUpdateModPatch
         {
             [HarmonyPostfix]
@@ -447,7 +465,7 @@ namespace ToasterReskinLoader.swappers
             }
         }
 
-        // [HarmonyPatch(typeof(UIMods), "UpdatePlugin")] // disabled for b323
+        [HarmonyPatch(typeof(UIMods), "UpdatePlugin")]
         public static class UIModsUpdatePluginPatch
         {
             [HarmonyPostfix]
@@ -617,6 +635,13 @@ namespace ToasterReskinLoader.swappers
                 bottomRow.Add(actionBtn);
             }
 
+            // ── Per-mod update button (workshop mods only) ──
+            if (!IsLocalPlugin(entry))
+            {
+                string itemId = GetId(entry);
+                EnsureUpdateButton(bottomRow, itemId);
+            }
+
             // ── Badges ──
             const string badgeContainerName = "trl-badge-container";
             var badgeContainer = bottomRow.Q<VisualElement>(badgeContainerName);
@@ -669,6 +694,191 @@ namespace ToasterReskinLoader.swappers
                 label.style.fontSize = 10;
                 label.style.color = new Color(0.7f, 0.7f, 0.7f);
             }
+        }
+
+        // ── Workshop update check ────────────────────────────────────
+
+        private const string UpdateBtnName = "trl-update-btn";
+
+        private static void EnsureUpdateButton(VisualElement bottomRow, string itemId)
+        {
+            var existing = bottomRow.Q<Button>(UpdateBtnName);
+            if (existing == null)
+            {
+                existing = new Button();
+                existing.name = UpdateBtnName;
+                existing.style.fontSize = 12;
+                existing.style.height = 35;
+                existing.style.marginRight = 8;
+                existing.style.paddingLeft = 12;
+                existing.style.paddingRight = 12;
+                existing.style.borderTopLeftRadius = 4;
+                existing.style.borderTopRightRadius = 4;
+                existing.style.borderBottomLeftRadius = 4;
+                existing.style.borderBottomRightRadius = 4;
+                existing.style.unityTextAlign = TextAnchor.MiddleCenter;
+
+                int actionIdx = bottomRow.IndexOf(bottomRow.Q<Button>("trl-action-btn"));
+                bottomRow.Insert(actionIdx + 1, existing);
+            }
+
+            RefreshUpdateButton(existing, itemId);
+        }
+
+        private static void RefreshUpdateButton(Button btn, string itemId)
+        {
+            btn.SetEnabled(true);
+            updateState.TryGetValue(itemId, out var info);
+
+            if (info == null)
+            {
+                btn.text = "Check";
+                btn.style.backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f));
+                btn.style.color = Color.white;
+                btn.style.width = 90;
+                btn.clickable = new Clickable(() => CheckOneAndRefresh(itemId, btn));
+                return;
+            }
+
+            if (info.QueryFailed)
+            {
+                btn.text = "Retry Check";
+                btn.style.backgroundColor = new StyleColor(new Color(0.4f, 0.2f, 0.2f));
+                btn.style.color = Color.white;
+                btn.style.width = 110;
+                btn.tooltip = info.Error ?? "Query failed";
+                btn.clickable = new Clickable(() => CheckOneAndRefresh(itemId, btn));
+                return;
+            }
+
+            if (info.UpdateAvailable)
+            {
+                btn.text = "Update";
+                btn.style.backgroundColor = new StyleColor(new Color(0.2f, 0.5f, 0.2f));
+                btn.style.color = Color.white;
+                btn.style.width = 90;
+                btn.tooltip = $"Server: {FormatTimestamp(info.ServerTimestamp)}\nLocal:  {FormatTimestamp(info.LocalTimestamp)}";
+                btn.clickable = new Clickable(() => DownloadAndRefresh(itemId, btn));
+                return;
+            }
+
+            btn.text = "Up to date";
+            btn.style.backgroundColor = new StyleColor(new Color(0.15f, 0.3f, 0.15f));
+            btn.style.color = new Color(0.7f, 0.9f, 0.7f);
+            btn.style.width = 110;
+            btn.tooltip = $"Server: {FormatTimestamp(info.ServerTimestamp)}\nLocal:  {FormatTimestamp(info.LocalTimestamp)}";
+            btn.clickable = new Clickable(() => CheckOneAndRefresh(itemId, btn));
+        }
+
+        private static void CheckOneAndRefresh(string itemId, Button btn)
+        {
+            btn.text = "Checking...";
+            btn.SetEnabled(false);
+            WorkshopUpdateChecker.CheckOne(itemId, info =>
+            {
+                updateState[itemId] = info;
+                RefreshUpdateButton(btn, itemId);
+            });
+        }
+
+        private static void DownloadAndRefresh(string itemId, Button btn)
+        {
+            btn.text = "Downloading...";
+            btn.SetEnabled(false);
+            WorkshopUpdateChecker.TriggerDownload(itemId, (ok, err) =>
+            {
+                if (ok)
+                {
+                    string title = GetTitleForId(itemId) ?? $"mod {itemId}";
+                    // Re-query so the local timestamp updates and the button flips
+                    // to "Up to date".
+                    WorkshopUpdateChecker.CheckOne(itemId, info =>
+                    {
+                        updateState[itemId] = info;
+                        RefreshUpdateButton(btn, itemId);
+                    });
+                    MonoBehaviourSingleton<UIManager>.Instance?.ToastManager?.ShowToast(
+                        "Mod Updated", $"Downloaded latest for {title}. Restart the game to apply.", 5f);
+                }
+                else
+                {
+                    updateState[itemId] = new WorkshopUpdateChecker.UpdateInfo
+                    {
+                        ItemId = itemId, QueryFailed = true, Error = err
+                    };
+                    RefreshUpdateButton(btn, itemId);
+                    MonoBehaviourSingleton<UIManager>.Instance?.ToastManager?.ShowToast(
+                        "Update Failed", err ?? "Unknown error", 5f);
+                }
+            });
+        }
+
+        private static void RunBatchUpdateCheck()
+        {
+            if (batchCheckInProgress) return;
+            batchCheckInProgress = true;
+            batchCheckBtn.SetEnabled(false);
+            batchCheckBtn.text = "Checking...";
+            if (batchStatusLabel != null) batchStatusLabel.text = "Querying Steam...";
+
+            WorkshopUpdateChecker.CheckAll(results =>
+            {
+                batchCheckInProgress = false;
+                batchCheckBtn.SetEnabled(true);
+                batchCheckBtn.text = "Check for Updates";
+
+                int updates = 0, failed = 0;
+                foreach (var info in results)
+                {
+                    updateState[info.ItemId] = info;
+                    if (info.QueryFailed) failed++;
+                    else if (info.UpdateAvailable) updates++;
+                }
+
+                if (batchStatusLabel != null)
+                {
+                    if (failed > 0)
+                        batchStatusLabel.text = $"{updates} update(s), {failed} failed";
+                    else if (updates == 0)
+                        batchStatusLabel.text = "All mods up to date";
+                    else
+                        batchStatusLabel.text = $"{updates} update(s) available";
+                }
+
+                // Refresh every visible row's button to reflect the new state.
+                foreach (var kvp in allEntries)
+                {
+                    if (IsLocalPlugin(kvp.Key)) continue;
+                    string id = GetId(kvp.Key);
+                    var bottomRow = kvp.Value.Q<VisualElement>("trl-bottom-row");
+                    var btn = bottomRow?.Q<Button>(UpdateBtnName);
+                    if (btn != null) RefreshUpdateButton(btn, id);
+                }
+
+                MonoBehaviourSingleton<UIManager>.Instance?.ToastManager?.ShowToast(
+                    "Update Check",
+                    updates > 0
+                        ? $"{updates} mod(s) have updates available"
+                        : (failed > 0 ? $"{failed} check(s) failed" : "All mods up to date"),
+                    4f);
+            });
+        }
+
+        private static string GetTitleForId(string itemId)
+        {
+            var mod = ModManager.GetModById(itemId);
+            string title = mod?.SteamWorkshopItem?.Details?.Title;
+            if (!string.IsNullOrEmpty(title)) return title;
+            if (updateState.TryGetValue(itemId, out var info) && !string.IsNullOrEmpty(info.Title))
+                return info.Title;
+            return null;
+        }
+
+        private static string FormatTimestamp(uint unixSeconds)
+        {
+            if (unixSeconds == 0) return "(not installed)";
+            return DateTimeOffset.FromUnixTimeSeconds(unixSeconds)
+                .LocalDateTime.ToString("yyyy-MM-dd HH:mm");
         }
 
         private static Label CreateBadge(string name, string text, Color textColor, Color bgColor)
