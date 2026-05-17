@@ -50,6 +50,47 @@ public static class ReskinRegistry
         }
 
         Plugin.Log($"Loaded {reskinPacks.Count} packs");
+
+        WarnDuplicateUniqueIds();
+    }
+
+    // Returns groups of packs that share a (non-empty) unique-id.
+    // Each item: (id, list of packs colliding on that id).
+    public static List<(string Id, List<ReskinPack> Packs)> FindDuplicateUniqueIds()
+    {
+        return reskinPacks
+            .Where(p => !string.IsNullOrWhiteSpace(p.UniqueId))
+            .GroupBy(p => p.UniqueId.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .Select(g => (g.Key, g.ToList()))
+            .ToList();
+    }
+
+    private static void WarnDuplicateUniqueIds()
+    {
+        // Two packs sharing a unique-id will silently clobber each other when
+        // ReskinProfileManager keys profiles or lookups by UniqueId. Surface
+        // it loudly so the author can fix the manifest.
+        var dupes = FindDuplicateUniqueIds();
+        if (dupes.Count == 0) return;
+
+        foreach (var (id, packs) in dupes)
+        {
+            string names = string.Join(", ", packs.Select(p => $"\"{p.Name}\""));
+            Plugin.LogWarning($"[ReskinRegistry] Duplicate unique-id '{id}' shared by {packs.Count} packs: {names}");
+        }
+
+        try
+        {
+            int worstCount = dupes.Max(g => g.Packs.Count);
+            string firstId = dupes[0].Id;
+            string msg = dupes.Count == 1
+                ? $"{worstCount} packs share unique-id '{firstId}'. Check logs."
+                : $"{dupes.Count} unique-ids are duplicated across packs. Check logs.";
+            MonoBehaviourSingleton<UIManager>.Instance?.ToastManager?.ShowToast(
+                "Duplicate Pack IDs", msg, 8f);
+        }
+        catch { /* UIManager may not exist yet at startup; log already covers it */ }
     }
 
     public static void LoadPackDirectory(string dir)
