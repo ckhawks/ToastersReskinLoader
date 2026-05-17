@@ -12,11 +12,19 @@ namespace ToasterReskinLoader
         private static readonly FieldInfo _playerMeshField = typeof(LockerRoomPlayer)
             .GetField("playerMesh", BindingFlags.Instance | BindingFlags.NonPublic);
 
-        // Cache of original locker room leg pad textures: key is side ("left"/"right")
-        private static readonly System.Collections.Generic.Dictionary<string, Texture> originalLegPadTextures =
-            new System.Collections.Generic.Dictionary<string, Texture>();
+        // Cache of original locker room leg pad material snapshots: key is side ("left"/"right")
+        private static readonly System.Collections.Generic.Dictionary<string, SwapperUtils.MaterialSnapshot> originalLegPadTextures =
+            new System.Collections.Generic.Dictionary<string, SwapperUtils.MaterialSnapshot>();
 
-        public static void ClearLegPadCache() => originalLegPadTextures.Clear();
+        // Cache of original locker room head renderer snapshots: key is renderer name (lowercased)
+        private static readonly System.Collections.Generic.Dictionary<string, SwapperUtils.MaterialSnapshot> originalHeadTextures =
+            new System.Collections.Generic.Dictionary<string, SwapperUtils.MaterialSnapshot>();
+
+        public static void ClearLegPadCache()
+        {
+            originalLegPadTextures.Clear();
+            originalHeadTextures.Clear();
+        }
 
         private static PlayerMesh GetPlayerMesh(LockerRoomPlayer instance)
         {
@@ -124,7 +132,7 @@ namespace ToasterReskinLoader
             // Cache the original texture on first encounter
             if (!originalLegPadTextures.ContainsKey(side))
             {
-                originalLegPadTextures[side] = renderer.material.mainTexture;
+                originalLegPadTextures[side] = SwapperUtils.MaterialSnapshot.Capture(renderer.material);
             }
 
             ReskinRegistry.ReskinEntry entry = null;
@@ -180,11 +188,7 @@ namespace ToasterReskinLoader
                         var entry = team == PlayerTeam.Blue
                             ? ReskinProfileManager.currentProfile.blueGoalieHelmet
                             : ReskinProfileManager.currentProfile.redGoalieHelmet;
-                        if (entry?.Path != null)
-                        {
-                            var tex = TextureManager.GetTexture(entry);
-                            if (tex != null) ApplyTextureToRenderer(renderer, tex);
-                        }
+                        ApplyOrRestoreHead(renderer, name, entry);
                     }
                     // Standalone neck guard texture
                     else if (name == "neck guard")
@@ -192,11 +196,7 @@ namespace ToasterReskinLoader
                         var entry = team == PlayerTeam.Blue
                             ? ReskinProfileManager.currentProfile.blueGoalieMask
                             : ReskinProfileManager.currentProfile.redGoalieMask;
-                        if (entry?.Path != null)
-                        {
-                            var tex = TextureManager.GetTexture(entry);
-                            if (tex != null) ApplyTextureToRenderer(renderer, tex);
-                        }
+                        ApplyOrRestoreHead(renderer, name, entry);
                     }
                     // Standalone cage - no texture, colors handled by ChangingRoomHelper.ApplyHelmetColors
                 }
@@ -211,6 +211,27 @@ namespace ToasterReskinLoader
         {
             SwapperUtils.ApplyTextureToMaterial(renderer.material, texture);
             Plugin.LogDebug($"Applied texture to {renderer.gameObject.name}");
+        }
+
+        // Applies a custom texture if entry has a path; otherwise restores the snapshotted original.
+        // Caches the pre-swap material state on first encounter so "unchanged" can revert cleanly.
+        private static void ApplyOrRestoreHead(Renderer renderer, string cacheKey, ReskinRegistry.ReskinEntry entry)
+        {
+            if (!originalHeadTextures.ContainsKey(cacheKey))
+            {
+                originalHeadTextures[cacheKey] = SwapperUtils.MaterialSnapshot.Capture(renderer.material);
+            }
+
+            if (entry?.Path != null)
+            {
+                var tex = TextureManager.GetTexture(entry);
+                if (tex != null) ApplyTextureToRenderer(renderer, tex);
+            }
+            else
+            {
+                SwapperUtils.RestoreOriginalTexture(renderer.material, originalHeadTextures[cacheKey], renderer.material.color);
+                Plugin.LogDebug($"Restored original head texture for {renderer.gameObject.name}");
+            }
         }
 
         private static void ApplySkaterHelmetToPlayerMesh(PlayerMesh playerMesh, PlayerTeam team)
@@ -234,11 +255,7 @@ namespace ToasterReskinLoader
                             ? ReskinProfileManager.currentProfile.blueSkaterHelmet
                             : ReskinProfileManager.currentProfile.redSkaterHelmet;
 
-                        if (entry?.Path != null)
-                        {
-                            Texture2D texture = TextureManager.GetTexture(entry);
-                            if (texture != null) ApplyTextureToRenderer(renderer, texture);
-                        }
+                        ApplyOrRestoreHead(renderer, name, entry);
                     }
                 }
             }
