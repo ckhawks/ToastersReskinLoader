@@ -26,14 +26,17 @@ public static class AutoConnectMatchmaking
     private static bool _subscribed;
     private static bool _firedForCurrentMatch;
 
+    // Cached so AddEventListener and RemoveEventListener see the same delegate
+    // instance — EventManager's underlying storage keys by delegate identity.
+    private static readonly Action<Dictionary<string, object>> _onMatchDataChanged = OnMatchDataChanged;
+    private static readonly Action<Dictionary<string, object>> _onConnectionStateChanged = OnConnectionStateChanged;
+
     public static void Enable()
     {
         if (_subscribed) return;
         _subscribed = true;
-        EventManager.AddEventListener("Event_OnPlayerMatchDataChanged",
-            new Action<Dictionary<string, object>>(OnMatchDataChanged));
-        EventManager.AddEventListener("Event_OnConnectionStateChanged",
-            new Action<Dictionary<string, object>>(OnConnectionStateChanged));
+        EventManager.AddEventListener("Event_OnPlayerMatchDataChanged", _onMatchDataChanged);
+        EventManager.AddEventListener("Event_OnConnectionStateChanged", _onConnectionStateChanged);
         Plugin.Log("[AutoConnectMatchmaking] Enabled");
     }
 
@@ -41,10 +44,8 @@ public static class AutoConnectMatchmaking
     {
         if (!_subscribed) return;
         _subscribed = false;
-        EventManager.RemoveEventListener("Event_OnPlayerMatchDataChanged",
-            new Action<Dictionary<string, object>>(OnMatchDataChanged));
-        EventManager.RemoveEventListener("Event_OnConnectionStateChanged",
-            new Action<Dictionary<string, object>>(OnConnectionStateChanged));
+        EventManager.RemoveEventListener("Event_OnPlayerMatchDataChanged", _onMatchDataChanged);
+        EventManager.RemoveEventListener("Event_OnConnectionStateChanged", _onConnectionStateChanged);
         _firedForCurrentMatch = false;
         Plugin.Log("[AutoConnectMatchmaking] Disabled");
     }

@@ -51,6 +51,8 @@ public class QoLProfile
     public bool EnableSavedServerPasswords { get; set; } = true;
     [JsonProperty("enableServerBrowserSortTweaks")]
     public bool EnableServerBrowserSortTweaks { get; set; } = true;
+    [JsonProperty("enableUnicodeFontFallback")]
+    public bool EnableUnicodeFontFallback { get; set; } = true;
 
     // Additions
     [JsonProperty("enableBetterFriendsList")]
@@ -119,6 +121,7 @@ public class QoLProfile
             enablePartyLineup = EnablePartyLineup,
             enableSavedServerPasswords = EnableSavedServerPasswords,
             enableServerBrowserSortTweaks = EnableServerBrowserSortTweaks,
+            enableUnicodeFontFallback = EnableUnicodeFontFallback,
             enableBetterFriendsList = EnableBetterFriendsList,
             enableBeaconPing = EnableBeaconPing,
             enableServerPreviewCache = EnableServerPreviewCache,
@@ -163,6 +166,7 @@ public class QoLProfile
         EnablePartyLineup = c.enablePartyLineup;
         EnableSavedServerPasswords = c.enableSavedServerPasswords;
         EnableServerBrowserSortTweaks = c.enableServerBrowserSortTweaks;
+        EnableUnicodeFontFallback = c.enableUnicodeFontFallback;
         EnableBetterFriendsList = c.enableBetterFriendsList;
         EnableBeaconPing = c.enableBeaconPing;
         EnableServerPreviewCache = c.enableServerPreviewCache;
