@@ -55,6 +55,31 @@ internal static class ServerPreviewCachePatches
         AccessTools.Method(typeof(UIServerBrowser), "FilterServers");
     private static readonly MethodInfo SortServersMethod =
         AccessTools.Method(typeof(UIServerBrowser), "SortServers");
+
+    // Open-instance delegates so the per-row calls below avoid per-call
+    // object[] boxing/allocation from MethodInfo.Invoke. A refresh wave hits
+    // these hundreds of times — at that volume the allocations show up.
+    private delegate void SetPreviewDelegate(UIServerBrowser self, EndPoint endPoint, ServerPreviewData data);
+    private delegate void StyleServerDelegate(UIServerBrowser self, EndPoint endPoint);
+    private delegate void FilterServersDelegate(UIServerBrowser self);
+    private delegate void SortServersDelegate(UIServerBrowser self);
+
+    private static readonly SetPreviewDelegate _setPreview =
+        SetPreviewMethod != null
+            ? (SetPreviewDelegate)Delegate.CreateDelegate(typeof(SetPreviewDelegate), SetPreviewMethod)
+            : null;
+    private static readonly StyleServerDelegate _styleServer =
+        StyleServerMethod != null
+            ? (StyleServerDelegate)Delegate.CreateDelegate(typeof(StyleServerDelegate), StyleServerMethod)
+            : null;
+    private static readonly FilterServersDelegate _filterServers =
+        FilterServersMethod != null
+            ? (FilterServersDelegate)Delegate.CreateDelegate(typeof(FilterServersDelegate), FilterServersMethod)
+            : null;
+    private static readonly SortServersDelegate _sortServers =
+        SortServersMethod != null
+            ? (SortServersDelegate)Delegate.CreateDelegate(typeof(SortServersDelegate), SortServersMethod)
+            : null;
     private static readonly FieldInfo EndPointMapField =
         AccessTools.Field(typeof(UIServerBrowser), "endPointVisualElementMap");
     private static readonly FieldInfo RefreshButtonField =
@@ -131,16 +156,16 @@ internal static class ServerPreviewCachePatches
                     // Add to the stale set AFTER the seed call but BEFORE
                     // StyleServer, so StyleServer's postfix sees it as stale
                     // and applies the "?/maxPlayers" + "?" mask.
-                    SetPreviewMethod?.Invoke(__instance, new object[] { ep, synth });
+                    _setPreview?.Invoke(__instance, ep, synth);
                     lock (_staleLock) _staleEndpoints.Add(ep);
-                    StyleServerMethod?.Invoke(__instance, new object[] { ep });
+                    _styleServer?.Invoke(__instance, ep);
                     hits++;
                 }
 
                 if (hits > 0)
                 {
-                    FilterServersMethod?.Invoke(__instance, null);
-                    SortServersMethod?.Invoke(__instance, null);
+                    _filterServers?.Invoke(__instance);
+                    _sortServers?.Invoke(__instance);
                 }
 
                 Plugin.LogDebug($"ServerPreviewCache: seeded {hits}/{endPoints.Length} rows from cache");
@@ -267,8 +292,8 @@ internal static class ServerPreviewCachePatches
                         ServerPreviewCache.Evict(endPoint);
                         MaybeFlush();
                         UpdateCacheCountLabel();
-                        SetPreviewMethod?.Invoke(__instance, new object[] { endPoint, null });
-                        StyleServerMethod?.Invoke(__instance, new object[] { endPoint });
+                        _setPreview?.Invoke(__instance, endPoint, null);
+                        _styleServer?.Invoke(__instance, endPoint);
                     }
                 }
             }

@@ -22,6 +22,16 @@ public static class BetterFriendsList
 {
     private static readonly Harmony _harmony = new Harmony(Plugin.MOD_GUID + ".bfl");
 
+    // Cached reflection handles. Resolved once via AccessTools and reused so
+    // the hot paths (SortFriends prefix, friends-list rebuild) don't pay the
+    // GetField cost on every call.
+    internal static readonly System.Reflection.FieldInfo UIFriendsController_uiFriends =
+        AccessTools.Field(typeof(UIFriendsController), "uiFriends");
+    internal static readonly System.Reflection.FieldInfo UIFriends_friendsMap =
+        AccessTools.Field(typeof(UIFriends), "friendsMap");
+    internal static readonly System.Reflection.FieldInfo UIFriends_friendsList =
+        AccessTools.Field(typeof(UIFriends), "friendsList");
+
     public static bool IsEnabled { get; private set; }
 
     public static void Enable()
@@ -91,13 +101,13 @@ public static class BetterFriendsList
             if (controller == null)
                 return;
 
-            var uiFriends = AccessTools.Field(typeof(UIFriendsController), "uiFriends")
+            var uiFriends = BetterFriendsList.UIFriendsController_uiFriends
                 .GetValue(controller) as UIFriends;
             if (uiFriends != null)
             {
-                var friendsMap = AccessTools.Field(typeof(UIFriends), "friendsMap")
+                var friendsMap = BetterFriendsList.UIFriends_friendsMap
                     .GetValue(uiFriends) as Dictionary<string, TemplateContainer>;
-                var friendsList = AccessTools.Field(typeof(UIFriends), "friendsList")
+                var friendsList = BetterFriendsList.UIFriends_friendsList
                     .GetValue(uiFriends) as VisualElement;
                 if (friendsList != null) friendsList.Clear();
                 if (friendsMap != null) friendsMap.Clear();
@@ -143,9 +153,9 @@ public static class BFL_SortFriendsPatch
 {
     public static bool Prefix(UIFriends __instance)
     {
-        var friendsList = AccessTools.Field(typeof(UIFriends), "friendsList")
+        var friendsList = BetterFriendsList.UIFriends_friendsList
             .GetValue(__instance) as VisualElement;
-        var friendsMap = AccessTools.Field(typeof(UIFriends), "friendsMap")
+        var friendsMap = BetterFriendsList.UIFriends_friendsMap
             .GetValue(__instance) as Dictionary<string, TemplateContainer>;
 
         if (friendsList == null || friendsMap == null)
@@ -208,14 +218,14 @@ public static class FriendsListHelper
 
     public static void RebuildFriendsList(UIFriendsController controller)
     {
-        var uiFriends = AccessTools.Field(typeof(UIFriendsController), "uiFriends")
+        var uiFriends = BetterFriendsList.UIFriendsController_uiFriends
             .GetValue(controller) as UIFriends;
         if (uiFriends == null)
             return;
 
-        var friendsMap = AccessTools.Field(typeof(UIFriends), "friendsMap")
+        var friendsMap = BetterFriendsList.UIFriends_friendsMap
             .GetValue(uiFriends) as Dictionary<string, TemplateContainer>;
-        var friendsList = AccessTools.Field(typeof(UIFriends), "friendsList")
+        var friendsList = BetterFriendsList.UIFriends_friendsList
             .GetValue(uiFriends) as VisualElement;
 
         if (friendsMap != null && friendsList != null)
@@ -282,7 +292,7 @@ public static class FriendsListHelper
             uiFriends.AddFriend(friend.SteamId, friend.Username, avatar);
         }
 
-        friendsMap = AccessTools.Field(typeof(UIFriends), "friendsMap")
+        friendsMap = BetterFriendsList.UIFriends_friendsMap
             .GetValue(uiFriends) as Dictionary<string, TemplateContainer>;
 
         if (friendsMap != null)
@@ -343,7 +353,7 @@ public static class FriendsListHelper
 
     public static void UpdateSingleFriend(UIFriendsController controller, string steamId)
     {
-        var uiFriends = AccessTools.Field(typeof(UIFriendsController), "uiFriends")
+        var uiFriends = BetterFriendsList.UIFriendsController_uiFriends
             .GetValue(controller) as UIFriends;
         if (uiFriends == null)
             return;
@@ -411,7 +421,7 @@ public static class FriendsListHelper
             uiFriends.UpdateFriend(steamId, username, avatar);
         }
 
-        var friendsMap = AccessTools.Field(typeof(UIFriends), "friendsMap")
+        var friendsMap = BetterFriendsList.UIFriends_friendsMap
             .GetValue(uiFriends) as Dictionary<string, TemplateContainer>;
 
         if (friendsMap != null && friendsMap.ContainsKey(steamId))
@@ -453,7 +463,7 @@ public static class FriendsListHelper
                     }
                 }
 
-                var currentMap = AccessTools.Field(typeof(UIFriends), "friendsMap")
+                var currentMap = BetterFriendsList.UIFriends_friendsMap
                     .GetValue(uiFriendsRef) as Dictionary<string, TemplateContainer>;
                 if (currentMap == null) return;
 
@@ -811,7 +821,7 @@ public static class FriendsListHelper
 
     private static void UpdateServerLabels(UIFriends uiFriends, List<FriendInfo> friends)
     {
-        var friendsMap = AccessTools.Field(typeof(UIFriends), "friendsMap")
+        var friendsMap = BetterFriendsList.UIFriends_friendsMap
             .GetValue(uiFriends) as Dictionary<string, TemplateContainer>;
 
         if (friendsMap == null)
