@@ -72,6 +72,13 @@ namespace ToasterReskinLoader.swappers
         // compactMode = true → hide descriptions + shrink preview icons.
         private static bool compactMode = false;
 
+        // Master switch from the QoL config. When false, all Harmony postfixes
+        // and the EnsureControlsInjected pipeline are skipped — vanilla menu
+        // renders untouched. Toggling at runtime only affects future menu opens;
+        // controls already injected in this session stay until game restart.
+        private static bool IsEnabled() =>
+            ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.enableEnhancedModMenu ?? true;
+
         // Snapshot of all entry→element pairs from both maps.
         // Keys are either Mod or Plugin instances.
         private static readonly List<KeyValuePair<object, VisualElement>> allEntries = new();
@@ -646,6 +653,7 @@ namespace ToasterReskinLoader.swappers
             {
                 ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer] Show postfix fired (result={__result})");
                 if (!__result) return;
+                if (!IsEnabled()) return;
                 EnsureControlsInjected(__instance);
                 if (searchField != null) searchField.value = "";
                 activeFilter = "enabled";
@@ -897,6 +905,7 @@ namespace ToasterReskinLoader.swappers
             [HarmonyPostfix]
             public static void Postfix(UIMods __instance, Mod mod)
             {
+                if (!IsEnabled()) return;
                 ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer] UpdateMod postfix for mod id={mod?.Id}");
                 var map = _modTemplateMapField?.GetValue(__instance) as System.Collections.IDictionary;
                 if (map == null || !map.Contains(mod))
@@ -916,6 +925,7 @@ namespace ToasterReskinLoader.swappers
             [HarmonyPostfix]
             public static void Postfix(UIMods __instance, global::Plugin plugin)
             {
+                if (!IsEnabled()) return;
                 ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer] UpdatePlugin postfix for plugin id={plugin?.Id}");
                 var map = _pluginTemplateMapField?.GetValue(__instance) as System.Collections.IDictionary;
                 if (map == null || !map.Contains(plugin))

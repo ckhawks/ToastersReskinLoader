@@ -186,6 +186,11 @@ public static class PlayerQoLSection
         ToggleRow(contentScrollViewContent, "Cache server browser (instant rows on open)", cfg.enableServerPreviewCache,
             v => { cfg.enableServerPreviewCache = v; runner.SaveAndRefresh(); });
 
+        ToggleRow(contentScrollViewContent, "Use enhanced mod menu (search, sort, badges, update checker)", cfg.enableEnhancedModMenu,
+            v => { cfg.enableEnhancedModMenu = v; runner.SaveAndRefresh(); });
+        Note(contentScrollViewContent,
+            "Restart the game for an off→on toggle to take full effect; changes apply to the next mod menu open.");
+
         ToggleRow(contentScrollViewContent, "Darken vanilla checkbox/input backgrounds", cfg.enableVanillaUIRetheme,
             v =>
             {

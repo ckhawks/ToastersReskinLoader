@@ -61,6 +61,8 @@ public class QoLProfile
     public bool EnableServerPreviewCache { get; set; } = true;
     [JsonProperty("enableVanillaUIRetheme")]
     public bool EnableVanillaUIRetheme { get; set; } = true;
+    [JsonProperty("enableEnhancedModMenu")]
+    public bool EnableEnhancedModMenu { get; set; } = true;
 
     // Persisted server browser filter values
     [JsonProperty("browserSearch")]
@@ -119,6 +121,7 @@ public class QoLProfile
             enableBeaconPing = EnableBeaconPing,
             enableServerPreviewCache = EnableServerPreviewCache,
             enableVanillaUIRetheme = EnableVanillaUIRetheme,
+            enableEnhancedModMenu = EnableEnhancedModMenu,
             browserSearch = BrowserSearch,
             browserMaxPing = BrowserMaxPing,
             browserShowFull = BrowserShowFull,
@@ -161,6 +164,7 @@ public class QoLProfile
         EnableBeaconPing = c.enableBeaconPing;
         EnableServerPreviewCache = c.enableServerPreviewCache;
         EnableVanillaUIRetheme = c.enableVanillaUIRetheme;
+        EnableEnhancedModMenu = c.enableEnhancedModMenu;
         BrowserSearch = c.browserSearch;
         BrowserMaxPing = c.browserMaxPing;
         BrowserShowFull = c.browserShowFull;
