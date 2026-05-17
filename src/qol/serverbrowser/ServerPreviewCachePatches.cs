@@ -186,6 +186,15 @@ internal static class ServerPreviewCachePatches
         }
     }
 
+    // UQuery walks the visual tree on every call, so during a refresh wave
+    // this postfix would re-resolve the same three elements per row dozens
+    // of times. Stash them on the row's userData on first lookup and reuse.
+    private sealed class RowLabels
+    {
+        public Label playersLabel;
+        public Label pingLabel;
+    }
+
     [HarmonyPatch(typeof(UIServerBrowser), "StyleServer")]
     private static class Patch_StyleServer
     {
@@ -201,16 +210,23 @@ internal static class ServerPreviewCachePatches
                 if (EndPointMapField?.GetValue(__instance) is not Dictionary<EndPoint, VisualElement> map) return;
                 if (!map.TryGetValue(endPoint, out var rowRoot)) return;
 
-                var row = rowRoot.Query<VisualElement>("Server").First();
-                if (row == null) return;
-
-                var playersLabel = row.Query<Label>("PlayersLabel").First();
-                var pingLabel = row.Query<Label>("PingLabel").First();
+                var labels = rowRoot.userData as RowLabels;
+                if (labels == null)
+                {
+                    var row = rowRoot.Q<VisualElement>("Server");
+                    if (row == null) return;
+                    labels = new RowLabels
+                    {
+                        playersLabel = row.Q<Label>("PlayersLabel"),
+                        pingLabel = row.Q<Label>("PingLabel"),
+                    };
+                    rowRoot.userData = labels;
+                }
 
                 if (!ServerPreviewCache.TryGet(endPoint, out var cached)) return;
 
-                if (playersLabel != null) playersLabel.text = $"?/{cached.maxPlayers}";
-                if (pingLabel != null) pingLabel.text = "?";
+                if (labels.playersLabel != null) labels.playersLabel.text = $"?/{cached.maxPlayers}";
+                if (labels.pingLabel != null) labels.pingLabel.text = "?";
             }
             catch (Exception e)
             {

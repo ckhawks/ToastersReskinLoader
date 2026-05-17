@@ -108,7 +108,7 @@ public static class SwapperManager
             // Hat + body type + skin/hair color are handled by AppearanceAPI based on server data
             AppearanceAPI.OnPlayerSpawned(__instance.Player);
             // Pick up any newly spawned renderers on this player for gloss removal
-            GlossSwapper.Scan();
+            GlossSwapper.RequestScan();
         }
     }
 
@@ -160,7 +160,7 @@ public static class SwapperManager
             // Attach stick-based apparel (e.g. Deltapoint) now that the stick exists
             AppearanceAPI.OnStickReady(__instance.Player);
             // Pick up the new stick renderer for gloss removal
-            GlossSwapper.Scan();
+            GlossSwapper.RequestScan();
         }
     }
 

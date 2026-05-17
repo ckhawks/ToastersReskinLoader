@@ -52,6 +52,35 @@ public static class GlossSwapper
         foreach (var r in skinned) ProcessRenderer(r);
     }
 
+    private static bool _scanScheduled;
+    private const float ScanDebounceSeconds = 0.15f;
+
+    /// <summary>
+    /// Coalesces multiple scan requests fired in the same short window into a single
+    /// scene-wide scan. Per-player spawn postfixes (PlayerBody.Server_Spawn,
+    /// Stick.ApplyCustomizations) burst-fire at round start — calling Scan() directly
+    /// each time triggers ~2N FindObjectsOfType passes for N players. Use this from
+    /// hot paths; use Scan() directly when the caller is already user-paced.
+    /// </summary>
+    public static void RequestScan()
+    {
+        if (!ReskinProfileManager.currentProfile.glossRemoverEnabled) return;
+        if (_scanScheduled) return;
+
+        var runner = MonoBehaviourSingleton<UIManager>.Instance;
+        if (runner == null) { Scan(); return; }
+
+        _scanScheduled = true;
+        runner.StartCoroutine(ScanAfterDelay());
+    }
+
+    private static System.Collections.IEnumerator ScanAfterDelay()
+    {
+        yield return new WaitForSeconds(ScanDebounceSeconds);
+        _scanScheduled = false;
+        Scan();
+    }
+
     /// <summary>
     /// Re-applies current settings to all tracked materials. Use when the user changes
     /// the slider or a category toggle so the visual updates without a full rescan.
