@@ -27,6 +27,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using HarmonyLib;
 using UnityEngine.UIElements;
@@ -64,22 +65,30 @@ internal static class ServerPreviewCachePatches
     private delegate void FilterServersDelegate(UIServerBrowser self);
     private delegate void SortServersDelegate(UIServerBrowser self);
 
+    // CreateDelegate can throw if AccessTools.Method resolves a base-class
+    // declaration whose signature/declaring-type doesn't line up with our
+    // delegate type. Wrap so a bad bind doesn't kill the whole patch class
+    // at static-init; callers below null-check anyway, so a missing delegate
+    // just skips the optimized path.
+    private static T TryCreateDelegate<T>(MethodInfo m, string label) where T : Delegate
+    {
+        if (m == null) return null;
+        try { return (T)Delegate.CreateDelegate(typeof(T), m); }
+        catch (Exception e)
+        {
+            Plugin.LogError($"ServerPreviewCache: failed to bind {label} delegate: {e.Message}");
+            return null;
+        }
+    }
+
     private static readonly SetPreviewDelegate _setPreview =
-        SetPreviewMethod != null
-            ? (SetPreviewDelegate)Delegate.CreateDelegate(typeof(SetPreviewDelegate), SetPreviewMethod)
-            : null;
+        TryCreateDelegate<SetPreviewDelegate>(SetPreviewMethod, nameof(SetPreviewMethod));
     private static readonly StyleServerDelegate _styleServer =
-        StyleServerMethod != null
-            ? (StyleServerDelegate)Delegate.CreateDelegate(typeof(StyleServerDelegate), StyleServerMethod)
-            : null;
+        TryCreateDelegate<StyleServerDelegate>(StyleServerMethod, nameof(StyleServerMethod));
     private static readonly FilterServersDelegate _filterServers =
-        FilterServersMethod != null
-            ? (FilterServersDelegate)Delegate.CreateDelegate(typeof(FilterServersDelegate), FilterServersMethod)
-            : null;
+        TryCreateDelegate<FilterServersDelegate>(FilterServersMethod, nameof(FilterServersMethod));
     private static readonly SortServersDelegate _sortServers =
-        SortServersMethod != null
-            ? (SortServersDelegate)Delegate.CreateDelegate(typeof(SortServersDelegate), SortServersMethod)
-            : null;
+        TryCreateDelegate<SortServersDelegate>(SortServersMethod, nameof(SortServersMethod));
     private static readonly FieldInfo EndPointMapField =
         AccessTools.Field(typeof(UIServerBrowser), "endPointVisualElementMap");
     private static readonly FieldInfo RefreshButtonField =
@@ -228,6 +237,11 @@ internal static class ServerPreviewCachePatches
         public Label pingLabel;
     }
 
+    // Side-table keyed by row VisualElement so we don't stomp the row's
+    // userData (vanilla or another mod may want it). ConditionalWeakTable
+    // entries drop automatically when the row is GC'd.
+    private static readonly ConditionalWeakTable<VisualElement, RowLabels> _rowLabels = new();
+
     [HarmonyPatch(typeof(UIServerBrowser), "StyleServer")]
     private static class Patch_StyleServer
     {
@@ -243,8 +257,7 @@ internal static class ServerPreviewCachePatches
                 if (EndPointMapField?.GetValue(__instance) is not Dictionary<EndPoint, VisualElement> map) return;
                 if (!map.TryGetValue(endPoint, out var rowRoot)) return;
 
-                var labels = rowRoot.userData as RowLabels;
-                if (labels == null)
+                if (!_rowLabels.TryGetValue(rowRoot, out var labels))
                 {
                     var row = rowRoot.Q<VisualElement>("Server");
                     if (row == null) return;
@@ -253,7 +266,7 @@ internal static class ServerPreviewCachePatches
                         playersLabel = row.Q<Label>("PlayersLabel"),
                         pingLabel = row.Q<Label>("PingLabel"),
                     };
-                    rowRoot.userData = labels;
+                    _rowLabels.Add(rowRoot, labels);
                 }
 
                 if (!ServerPreviewCache.TryGet(endPoint, out var cached)) return;

@@ -56,6 +56,13 @@ public static class GlossSwapper
     private const float ScanDebounceSeconds = 0.15f;
 
     /// <summary>
+    /// Reset on scene change. If the coroutine host (UIManager) is destroyed
+    /// mid-wait, ScanAfterDelay never resumes and _scanScheduled would stay
+    /// latched, silently dropping all future scan requests.
+    /// </summary>
+    public static void ResetScanScheduled() => _scanScheduled = false;
+
+    /// <summary>
     /// Coalesces multiple scan requests fired in the same short window into a single
     /// scene-wide scan. Per-player spawn postfixes (PlayerBody.Server_Spawn,
     /// Stick.ApplyCustomizations) burst-fire at round start — calling Scan() directly

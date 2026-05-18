@@ -78,7 +78,6 @@ public class Plugin : IPuckPlugin
                 UISection.ApplyChatHeight(ReskinProfileManager.currentProfile.chatHeight);
                 UISection.ApplyQuickChatPosition();
                 MinimapSwapper.ApplyRefreshRate();
-                ModMenuEnhancer.RegisterEvents();
                 ToasterReskinLoader.qol.WorkshopUpdateChecker.Initialize();
                 SwapperManager.SetupMatchmakingListeners();
                 PartyLineup.Initialize();
@@ -86,6 +85,9 @@ public class Plugin : IPuckPlugin
 
                 // Player QoL runtime (ported from PoncePlayerInput)
                 ToasterReskinLoader.qol.QoLRunner.Bootstrap();
+
+                if (ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.enableEnhancedModMenu ?? true)
+                    ModMenuEnhancer.RegisterEvents();
 
                 // Restore Unicode glyph coverage lost in b323 (sort arrows, etc.).
                 // Gated on the QoL toggle; defaults on. Must run after QoLRunner.Bootstrap
@@ -104,6 +106,9 @@ public class Plugin : IPuckPlugin
 
                 if (ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.enableAutoConnectMatchmaking ?? false)
                     ToasterReskinLoader.qol.AutoConnectMatchmaking.Enable();
+
+                if (ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.enableFrameProfiler ?? false)
+                    ToasterReskinLoader.qol.FrameProfiler.Enable();
 
                 ToasterReskinLoader.qol.serverbrowser.ServerPreviewCache.Initialize();
 
@@ -135,6 +140,7 @@ public class Plugin : IPuckPlugin
             ToasterReskinLoader.qol.beacon.BeaconPing.Disable();
             ToasterReskinLoader.qol.VanillaUIRetheme.Disable();
             ToasterReskinLoader.qol.AutoConnectMatchmaking.Disable();
+            ToasterReskinLoader.qol.FrameProfiler.Disable();
             harmony.UnpatchSelf();
             AppearanceAPI.Cleanup();
             PartyLineup.Cleanup();

@@ -51,6 +51,8 @@ public class QoLProfile
     public bool EnableSavedServerPasswords { get; set; } = true;
     [JsonProperty("enableServerBrowserSortTweaks")]
     public bool EnableServerBrowserSortTweaks { get; set; } = true;
+    [JsonProperty("enableUnicodeFontFallback")]
+    public bool EnableUnicodeFontFallback { get; set; } = true;
 
     // Additions
     [JsonProperty("enableBetterFriendsList")]
@@ -87,6 +89,10 @@ public class QoLProfile
     public bool EnableDebugLogging { get; set; } = false;
     [JsonProperty("enableDevConsole")]
     public bool EnableDevConsole { get; set; } = false;
+    [JsonProperty("enableFrameProfiler")]
+    public bool EnableFrameProfiler { get; set; } = false;
+    [JsonProperty("enableFrameProfilerModInstrumentation")]
+    public bool EnableFrameProfilerModInstrumentation { get; set; } = false;
     [JsonProperty("devConsoleX")]
     public float DevConsoleX { get; set; } = 40f;
     [JsonProperty("devConsoleY")]
@@ -119,6 +125,7 @@ public class QoLProfile
             enablePartyLineup = EnablePartyLineup,
             enableSavedServerPasswords = EnableSavedServerPasswords,
             enableServerBrowserSortTweaks = EnableServerBrowserSortTweaks,
+            enableUnicodeFontFallback = EnableUnicodeFontFallback,
             enableBetterFriendsList = EnableBetterFriendsList,
             enableBeaconPing = EnableBeaconPing,
             enableServerPreviewCache = EnableServerPreviewCache,
@@ -134,6 +141,8 @@ public class QoLProfile
             browserShowUnreachable = BrowserShowUnreachable,
             enableDebugLogging = EnableDebugLogging,
             enableDevConsole = EnableDevConsole,
+            enableFrameProfiler = EnableFrameProfiler,
+            enableFrameProfilerModInstrumentation = EnableFrameProfilerModInstrumentation,
             devConsoleX = DevConsoleX,
             devConsoleY = DevConsoleY,
             devConsoleW = DevConsoleW,
@@ -163,6 +172,7 @@ public class QoLProfile
         EnablePartyLineup = c.enablePartyLineup;
         EnableSavedServerPasswords = c.enableSavedServerPasswords;
         EnableServerBrowserSortTweaks = c.enableServerBrowserSortTweaks;
+        EnableUnicodeFontFallback = c.enableUnicodeFontFallback;
         EnableBetterFriendsList = c.enableBetterFriendsList;
         EnableBeaconPing = c.enableBeaconPing;
         EnableServerPreviewCache = c.enableServerPreviewCache;
@@ -178,6 +188,8 @@ public class QoLProfile
         BrowserShowUnreachable = c.browserShowUnreachable;
         EnableDebugLogging = c.enableDebugLogging;
         EnableDevConsole = c.enableDevConsole;
+        EnableFrameProfiler = c.enableFrameProfiler;
+        EnableFrameProfilerModInstrumentation = c.enableFrameProfilerModInstrumentation;
         DevConsoleX = c.devConsoleX;
         DevConsoleY = c.devConsoleY;
         DevConsoleW = c.devConsoleW;

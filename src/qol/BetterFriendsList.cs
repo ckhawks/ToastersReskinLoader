@@ -48,9 +48,15 @@ public static class BetterFriendsList
             AccessTools.Method(typeof(UIFriends), "SortFriends"),
             prefix: new HarmonyMethod(typeof(BFL_SortFriendsPatch), nameof(BFL_SortFriendsPatch.Prefix)));
         // Mirror the FRIENDS panel's visibility onto a dim backdrop so it
-        // reads as the modal it effectively is.
+        // reads as the modal it effectively is. Patching UIView.Show/Hide
+        // (virtual, inherited) instead of the IsVisible setter so we only
+        // run on actual show/hide transitions, not every UIView property
+        // write across the UI.
         _harmony.Patch(
-            AccessTools.PropertySetter(typeof(UIView), nameof(UIView.IsVisible)),
+            AccessTools.Method(typeof(UIView), nameof(UIView.Show)),
+            postfix: new HarmonyMethod(typeof(BFL_FriendsVisibilityPatch), nameof(BFL_FriendsVisibilityPatch.Postfix)));
+        _harmony.Patch(
+            AccessTools.Method(typeof(UIView), nameof(UIView.Hide)),
             postfix: new HarmonyMethod(typeof(BFL_FriendsVisibilityPatch), nameof(BFL_FriendsVisibilityPatch.Postfix)));
 
         IsEnabled = true;
@@ -300,8 +306,11 @@ public static class FriendsListHelper
                 if (insideList) continue;
 
                 string t = lbl.text.Trim();
-                if (t.StartsWith("Friends", StringComparison.OrdinalIgnoreCase) ||
-                    t.StartsWith("FRIENDS", StringComparison.Ordinal))
+                // Exact-match only — vanilla title is the uppercase word
+                // "FRIENDS". Substring/StartsWith matches risk picking up
+                // sibling labels like "Friends online: 3".
+                if (t.Equals("FRIENDS", StringComparison.Ordinal) ||
+                    t.Equals("Friends", StringComparison.Ordinal))
                 {
                     titleLabel = lbl;
                     titleHost = lbl.parent;
@@ -382,8 +391,10 @@ public static class FriendsListHelper
         foreach (var child in friendsList.Children())
         {
             string username = null;
-            // The row template's first label child holds the friend's display name.
-            var lbl = child.Q<Label>();
+            // Match the username label by name. The status / detail labels we
+            // inject also live in the row, so Q<Label>() (first descendant)
+            // would drift if the row template ever reorders.
+            var lbl = child.Q<Label>("UsernameLabel");
             if (lbl != null) username = lbl.text;
             bool match = empty
                 || (!string.IsNullOrEmpty(username)
