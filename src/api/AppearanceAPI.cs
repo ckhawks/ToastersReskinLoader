@@ -664,16 +664,18 @@ public static class AppearanceAPI
     }
 
     /// <summary>
-    /// Runs every frame to accumulate time by game state.
-    /// Unlike the PlayerInput patch (which only exists when spawned in-game),
-    /// this coroutine runs in all scenes including the menu.
+    /// Samples game state at 4 Hz to accumulate time by phase. The heartbeat
+    /// payload truncates to int seconds over a 5-minute window, so 250 ms
+    /// resolution is well below the noise floor — no need to tick every frame.
+    /// Runs in all scenes including the menu.
     /// </summary>
     private static IEnumerator TimeTrackingLoop()
     {
+        const float TickInterval = 0.25f;
+        var wait = new WaitForSeconds(TickInterval);
         while (true)
         {
-            yield return null;
-            float dt = Time.deltaTime;
+            yield return wait;
 
             bool inGame = false;
             bool inWarmup = false;
@@ -696,9 +698,9 @@ public static class AppearanceAPI
             }
             catch { /* GameManager not available */ }
 
-            if (inGame) inGameSeconds += dt;
-            else if (inWarmup) inWarmupSeconds += dt;
-            else inMenuSeconds += dt;
+            if (inGame) inGameSeconds += TickInterval;
+            else if (inWarmup) inWarmupSeconds += TickInterval;
+            else inMenuSeconds += TickInterval;
         }
     }
 

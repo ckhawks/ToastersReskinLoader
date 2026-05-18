@@ -109,8 +109,7 @@ public static class UITools
             containerInner.style.borderRightColor = Color.white;
         }
 
-        var items = dropdown.Query(className: "unity-base-dropdown__item").ToList();
-        foreach (var item in items)
+        dropdown.Query(className: "unity-base-dropdown__item").ForEach(item =>
         {
             item.style.backgroundColor = new Color(0.2f, 0.2f, 0.2f, 0.8f);
             item.style.borderBottomWidth = 1;
@@ -141,7 +140,7 @@ public static class UITools
                 label.style.color = new Color(0.9f, 0.9f, 0.9f, 1f);
                 label.style.fontSize = 14;
             }
-        }
+        });
     }
 
     public static Label CreateConfigurationLabel(string text)

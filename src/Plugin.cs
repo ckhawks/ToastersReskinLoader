@@ -78,7 +78,8 @@ public class Plugin : IPuckPlugin
                 UISection.ApplyChatHeight(ReskinProfileManager.currentProfile.chatHeight);
                 UISection.ApplyQuickChatPosition();
                 MinimapSwapper.ApplyRefreshRate();
-                // ModMenuEnhancer.RegisterEvents(); // disabled pending b323 UIMods rework
+                ModMenuEnhancer.RegisterEvents();
+                ToasterReskinLoader.qol.WorkshopUpdateChecker.Initialize();
                 SwapperManager.SetupMatchmakingListeners();
                 PartyLineup.Initialize();
                 ToothbrushFilter.ResetIfActive();
@@ -100,6 +101,9 @@ public class Plugin : IPuckPlugin
 
                 if (ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.enableVanillaUIRetheme ?? true)
                     ToasterReskinLoader.qol.VanillaUIRetheme.Enable();
+
+                if (ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.enableAutoConnectMatchmaking ?? false)
+                    ToasterReskinLoader.qol.AutoConnectMatchmaking.Enable();
 
                 ToasterReskinLoader.qol.serverbrowser.ServerPreviewCache.Initialize();
 
@@ -130,6 +134,7 @@ public class Plugin : IPuckPlugin
             BetterFriendsList.Disable();
             ToasterReskinLoader.qol.beacon.BeaconPing.Disable();
             ToasterReskinLoader.qol.VanillaUIRetheme.Disable();
+            ToasterReskinLoader.qol.AutoConnectMatchmaking.Disable();
             harmony.UnpatchSelf();
             AppearanceAPI.Cleanup();
             PartyLineup.Cleanup();

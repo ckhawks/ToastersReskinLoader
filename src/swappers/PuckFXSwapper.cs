@@ -289,6 +289,15 @@ public static class PuckFXSwapper
         .GetField("universalRendererData",
             BindingFlags.Instance | BindingFlags.NonPublic);
 
+    // RenderObjects' "settings" / "overrideMaterial" fields are resolved
+    // reflectively because RenderObjects lives in com.unity.render-pipelines.universal
+    // and we don't take a hard dep on that assembly. Cache by Type so settings-slider
+    // drags don't pay the GetField cost on every color tick.
+    private static FieldInfo _settingsField;
+    private static System.Type _settingsFieldOwnerType;
+    private static FieldInfo _overrideMaterialField;
+    private static System.Type _overrideMaterialFieldOwnerType;
+
     /// <summary>
     /// Applies the puck silhouette (obstructed puck) color.
     /// The "Obstructed Puck" is a RenderObjects feature whose overrideMaterial
@@ -320,24 +329,34 @@ public static class PuckFXSwapper
             }
 
             // The feature is a RenderObjects; get its settings.overrideMaterial
-            var settingsField = feature.GetType().GetField("settings",
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            if (settingsField == null)
+            var featureType = feature.GetType();
+            if (_settingsField == null || _settingsFieldOwnerType != featureType)
+            {
+                _settingsField = featureType.GetField("settings",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                _settingsFieldOwnerType = featureType;
+            }
+            if (_settingsField == null)
             {
                 Plugin.LogWarning("Could not find 'settings' field on RenderObjects feature.");
                 return;
             }
 
-            var settings = settingsField.GetValue(feature);
-            var overrideMaterialField = settings.GetType().GetField("overrideMaterial",
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            if (overrideMaterialField == null)
+            var settings = _settingsField.GetValue(feature);
+            var settingsType = settings.GetType();
+            if (_overrideMaterialField == null || _overrideMaterialFieldOwnerType != settingsType)
+            {
+                _overrideMaterialField = settingsType.GetField("overrideMaterial",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                _overrideMaterialFieldOwnerType = settingsType;
+            }
+            if (_overrideMaterialField == null)
             {
                 Plugin.LogWarning("Could not find 'overrideMaterial' field on RenderObjects settings.");
                 return;
             }
 
-            Material mat = (Material)overrideMaterialField.GetValue(settings);
+            Material mat = (Material)_overrideMaterialField.GetValue(settings);
             if (mat == null)
             {
                 Plugin.LogWarning("Obstructed Puck override material is null.");

@@ -176,12 +176,12 @@ public sealed class DevConsole : MonoBehaviour
 
     private void Update()
     {
+        var cfg = QoLRunner.Instance?.Config;
+        if (cfg == null || !cfg.enableDevConsole) { if (_open) Close(); return; }
+
         // Pull any new lines that landed in Puck.log since last tick.
         bool added = TailLogFile();
         if (added && _open && _logRoot != null) RefreshLogList();
-
-        var cfg = QoLRunner.Instance?.Config;
-        if (cfg == null || !cfg.enableDevConsole) { if (_open) Close(); return; }
 
         var kb = Keyboard.current;
         if (kb == null) return;

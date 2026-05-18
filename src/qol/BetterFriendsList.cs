@@ -22,6 +22,16 @@ public static class BetterFriendsList
 {
     private static readonly Harmony _harmony = new Harmony(Plugin.MOD_GUID + ".bfl");
 
+    // Cached reflection handles. Resolved once via AccessTools and reused so
+    // the hot paths (SortFriends prefix, friends-list rebuild) don't pay the
+    // GetField cost on every call.
+    internal static readonly System.Reflection.FieldInfo UIFriendsController_uiFriends =
+        AccessTools.Field(typeof(UIFriendsController), "uiFriends");
+    internal static readonly System.Reflection.FieldInfo UIFriends_friendsMap =
+        AccessTools.Field(typeof(UIFriends), "friendsMap");
+    internal static readonly System.Reflection.FieldInfo UIFriends_friendsList =
+        AccessTools.Field(typeof(UIFriends), "friendsList");
+
     public static bool IsEnabled { get; private set; }
 
     public static void Enable()
@@ -37,6 +47,11 @@ public static class BetterFriendsList
         _harmony.Patch(
             AccessTools.Method(typeof(UIFriends), "SortFriends"),
             prefix: new HarmonyMethod(typeof(BFL_SortFriendsPatch), nameof(BFL_SortFriendsPatch.Prefix)));
+        // Mirror the FRIENDS panel's visibility onto a dim backdrop so it
+        // reads as the modal it effectively is.
+        _harmony.Patch(
+            AccessTools.PropertySetter(typeof(UIView), nameof(UIView.IsVisible)),
+            postfix: new HarmonyMethod(typeof(BFL_FriendsVisibilityPatch), nameof(BFL_FriendsVisibilityPatch.Postfix)));
 
         IsEnabled = true;
         Plugin.Log("BetterFriendsList enabled.");
@@ -80,6 +95,7 @@ public static class BetterFriendsList
         if (!IsEnabled) return;
         _harmony.UnpatchSelf();
         FriendsListHelper.FriendInfoCache.Clear();
+        FriendsListHelper.RemoveDimOverlay();
         IsEnabled = false;
         Plugin.Log("BetterFriendsList disabled.");
 
@@ -91,13 +107,13 @@ public static class BetterFriendsList
             if (controller == null)
                 return;
 
-            var uiFriends = AccessTools.Field(typeof(UIFriendsController), "uiFriends")
+            var uiFriends = BetterFriendsList.UIFriendsController_uiFriends
                 .GetValue(controller) as UIFriends;
             if (uiFriends != null)
             {
-                var friendsMap = AccessTools.Field(typeof(UIFriends), "friendsMap")
+                var friendsMap = BetterFriendsList.UIFriends_friendsMap
                     .GetValue(uiFriends) as Dictionary<string, TemplateContainer>;
-                var friendsList = AccessTools.Field(typeof(UIFriends), "friendsList")
+                var friendsList = BetterFriendsList.UIFriends_friendsList
                     .GetValue(uiFriends) as VisualElement;
                 if (friendsList != null) friendsList.Clear();
                 if (friendsMap != null) friendsMap.Clear();
@@ -143,9 +159,9 @@ public static class BFL_SortFriendsPatch
 {
     public static bool Prefix(UIFriends __instance)
     {
-        var friendsList = AccessTools.Field(typeof(UIFriends), "friendsList")
+        var friendsList = BetterFriendsList.UIFriends_friendsList
             .GetValue(__instance) as VisualElement;
-        var friendsMap = AccessTools.Field(typeof(UIFriends), "friendsMap")
+        var friendsMap = BetterFriendsList.UIFriends_friendsMap
             .GetValue(__instance) as Dictionary<string, TemplateContainer>;
 
         if (friendsList == null || friendsMap == null)
@@ -198,24 +214,194 @@ public static class BFL_SortFriendsPatch
     }
 }
 
+public static class BFL_FriendsVisibilityPatch
+{
+    public static void Postfix(UIView __instance)
+    {
+        if (__instance is UIFriends f)
+            FriendsListHelper.UpdateDimOverlay(f);
+    }
+}
+
 public static class FriendsListHelper
 {
     private static readonly Dictionary<string, ServerPreviewData> _serverCache = new Dictionary<string, ServerPreviewData>();
     private static readonly Dictionary<ushort, string> _portToEndpointKey = new Dictionary<ushort, string>();
     private static bool _refreshInProgress = false;
+    private static VisualElement _dimOverlay;
+
+    public static void UpdateDimOverlay(UIFriends uiFriends)
+    {
+        if (uiFriends == null) return;
+        var view = uiFriends.View;
+        if (view == null || view.parent == null) return;
+
+        var host = view.parent;
+        if (_dimOverlay == null || _dimOverlay.parent != host)
+        {
+            _dimOverlay = new VisualElement();
+            _dimOverlay.name = "trl-bfl-dim";
+            _dimOverlay.style.position = Position.Absolute;
+            _dimOverlay.style.top = 0;
+            _dimOverlay.style.left = 0;
+            _dimOverlay.style.right = 0;
+            _dimOverlay.style.bottom = 0;
+            _dimOverlay.style.backgroundColor = new StyleColor(new Color(0f, 0f, 0f, 0.55f));
+            // Insert before FriendsView so it sits underneath in z-order
+            // (UI Toolkit stacks later siblings on top). Default pickingMode
+            // (Position) absorbs background clicks — matches existing modal
+            // behavior of the panel.
+            int viewIdx = host.IndexOf(view);
+            host.Insert(Math.Max(0, viewIdx), _dimOverlay);
+        }
+
+        _dimOverlay.style.display = uiFriends.IsVisible
+            ? DisplayStyle.Flex
+            : DisplayStyle.None;
+    }
+
+    public static void RemoveDimOverlay()
+    {
+        if (_dimOverlay != null)
+        {
+            _dimOverlay.RemoveFromHierarchy();
+            _dimOverlay = null;
+        }
+    }
 
     public static readonly Dictionary<string, FriendInfo> FriendInfoCache = new Dictionary<string, FriendInfo>();
 
+    // Case-insensitive substring filter on username. Empty string = show all.
+    // Persisted across rebuilds so Steam state changes don't drop the filter.
+    private static string _searchFilter = "";
+
+    private static void EnsureSearchField(VisualElement friendsList)
+    {
+        if (friendsList == null) return;
+        const string containerName = "trl-bfl-search-container";
+
+        // Look for the FRIENDS title — search RECURSIVELY in each ancestor's
+        // subtree (the title may be a grandchild, not a direct child), starting
+        // from the "Friends" container that holds the list.
+        Label titleLabel = null;
+        VisualElement titleHost = null;
+        for (var p = friendsList.parent; p != null && titleLabel == null; p = p.parent)
+        {
+            foreach (var lbl in p.Query<Label>().ToList())
+            {
+                if (lbl == null || string.IsNullOrEmpty(lbl.text)) continue;
+                // Skip labels that live inside the friends list itself (those
+                // are friend rows, not the header).
+                bool insideList = false;
+                for (var a = lbl.parent; a != null; a = a.parent)
+                {
+                    if (a == friendsList) { insideList = true; break; }
+                }
+                if (insideList) continue;
+
+                string t = lbl.text.Trim();
+                if (t.StartsWith("Friends", StringComparison.OrdinalIgnoreCase) ||
+                    t.StartsWith("FRIENDS", StringComparison.Ordinal))
+                {
+                    titleLabel = lbl;
+                    titleHost = lbl.parent;
+                    break;
+                }
+            }
+            // Don't walk above the panel root.
+            if (p.parent == null) break;
+        }
+
+        VisualElement insertParent = titleHost ?? friendsList.parent;
+        if (insertParent == null) return;
+        if (insertParent.Q<VisualElement>(containerName) != null) return;
+
+        // Mirror the mod menu's "Filter: [ ___ ]" layout: a row container that
+        // grows to fill and pushes its contents right.
+        var searchContainer = new VisualElement();
+        searchContainer.name = containerName;
+        searchContainer.style.flexDirection = FlexDirection.Row;
+        searchContainer.style.alignItems = Align.Center;
+        searchContainer.style.flexGrow = 1;
+        searchContainer.style.justifyContent = Justify.FlexEnd;
+        searchContainer.style.marginRight = 8;
+
+        var searchLabel = new Label("Filter:");
+        searchLabel.style.fontSize = 16;
+        searchLabel.style.color = new Color(0.6f, 0.6f, 0.6f);
+        searchLabel.style.marginRight = 6;
+        searchContainer.Add(searchLabel);
+
+        var field = new TextField();
+        field.value = _searchFilter;
+        field.style.width = 200;
+        field.style.fontSize = 16;
+        field.RegisterCallback<AttachToPanelEvent>(_ =>
+        {
+            ToasterReskinLoader.qol.VanillaUIRetheme.RecolorTree(field);
+            var input = field.Q(className: "unity-base-text-field__input");
+            if (input != null)
+            {
+                input.style.backgroundColor = new StyleColor(new Color(0.15f, 0.15f, 0.15f));
+                input.style.color = Color.white;
+                input.style.paddingLeft = 8;
+                input.style.paddingRight = 8;
+                input.style.paddingTop = 4;
+                input.style.paddingBottom = 4;
+            }
+        });
+        field.RegisterCallback<ChangeEvent<string>>(evt =>
+        {
+            _searchFilter = evt.newValue ?? "";
+            ApplyFilter(friendsList);
+        });
+        searchContainer.Add(field);
+
+        if (titleLabel != null && titleHost != null)
+        {
+            // The host might be column-laid-out by vanilla; force it to row so
+            // the search container sits next to the FRIENDS label instead of
+            // dropping below it. Keep cross-axis centered to vertically align.
+            titleHost.style.flexDirection = FlexDirection.Row;
+            titleHost.style.alignItems = Align.Center;
+            int titleIdx = titleHost.IndexOf(titleLabel);
+            titleHost.Insert(titleIdx + 1, searchContainer);
+        }
+        else
+        {
+            int listIdx = insertParent.IndexOf(friendsList);
+            insertParent.Insert(Math.Max(0, listIdx), searchContainer);
+        }
+    }
+
+    private static void ApplyFilter(VisualElement friendsList)
+    {
+        if (friendsList == null) return;
+        string q = (_searchFilter ?? "").Trim();
+        bool empty = q.Length == 0;
+        foreach (var child in friendsList.Children())
+        {
+            string username = null;
+            // The row template's first label child holds the friend's display name.
+            var lbl = child.Q<Label>();
+            if (lbl != null) username = lbl.text;
+            bool match = empty
+                || (!string.IsNullOrEmpty(username)
+                    && username.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0);
+            child.style.display = match ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+    }
+
     public static void RebuildFriendsList(UIFriendsController controller)
     {
-        var uiFriends = AccessTools.Field(typeof(UIFriendsController), "uiFriends")
+        var uiFriends = BetterFriendsList.UIFriendsController_uiFriends
             .GetValue(controller) as UIFriends;
         if (uiFriends == null)
             return;
 
-        var friendsMap = AccessTools.Field(typeof(UIFriends), "friendsMap")
+        var friendsMap = BetterFriendsList.UIFriends_friendsMap
             .GetValue(uiFriends) as Dictionary<string, TemplateContainer>;
-        var friendsList = AccessTools.Field(typeof(UIFriends), "friendsList")
+        var friendsList = BetterFriendsList.UIFriends_friendsList
             .GetValue(uiFriends) as VisualElement;
 
         if (friendsMap != null && friendsList != null)
@@ -282,29 +468,45 @@ public static class FriendsListHelper
             uiFriends.AddFriend(friend.SteamId, friend.Username, avatar);
         }
 
-        friendsMap = AccessTools.Field(typeof(UIFriends), "friendsMap")
+        friendsMap = BetterFriendsList.UIFriends_friendsMap
             .GetValue(uiFriends) as Dictionary<string, TemplateContainer>;
 
+        // Walk friends once: render status labels and detect missing server
+        // previews in the same pass so LookupServerPreview (and its lock) is
+        // only hit once per friend.
+        bool needsServerNames = false;
         if (friendsMap != null)
         {
             foreach (var friend in friends)
             {
-                if (!friendsMap.ContainsKey(friend.SteamId))
-                    continue;
-
-                var container = friendsMap[friend.SteamId];
                 ServerPreviewData cachedPreview = null;
-                if (friend.Presence != null && !string.IsNullOrEmpty(friend.Presence.PlayerGroup))
+                bool hasGroup = friend.Presence != null && !string.IsNullOrEmpty(friend.Presence.PlayerGroup);
+                if (hasGroup)
                     cachedPreview = LookupServerPreview(friend.Presence.PlayerGroup);
 
-                AddStatusLabels(container, friend, cachedPreview);
+                if (friend.IsInPuck && hasGroup && cachedPreview == null)
+                    needsServerNames = true;
+
+                if (friendsMap.TryGetValue(friend.SteamId, out var container))
+                    AddStatusLabels(container, friend, cachedPreview);
+            }
+        }
+        else
+        {
+            foreach (var f in friends)
+            {
+                if (f.IsInPuck && f.Presence != null &&
+                    !string.IsNullOrEmpty(f.Presence.PlayerGroup) &&
+                    LookupServerPreview(f.Presence.PlayerGroup) == null)
+                {
+                    needsServerNames = true;
+                    break;
+                }
             }
         }
 
-        bool needsServerNames = friends.Any(f =>
-            f.IsInPuck && f.Presence != null &&
-            !string.IsNullOrEmpty(f.Presence.PlayerGroup) &&
-            LookupServerPreview(f.Presence.PlayerGroup) == null);
+        EnsureSearchField(friendsList);
+        ApplyFilter(friendsList);
 
         if (needsServerNames && !_refreshInProgress)
         {
@@ -343,7 +545,7 @@ public static class FriendsListHelper
 
     public static void UpdateSingleFriend(UIFriendsController controller, string steamId)
     {
-        var uiFriends = AccessTools.Field(typeof(UIFriendsController), "uiFriends")
+        var uiFriends = BetterFriendsList.UIFriendsController_uiFriends
             .GetValue(controller) as UIFriends;
         if (uiFriends == null)
             return;
@@ -411,7 +613,7 @@ public static class FriendsListHelper
             uiFriends.UpdateFriend(steamId, username, avatar);
         }
 
-        var friendsMap = AccessTools.Field(typeof(UIFriends), "friendsMap")
+        var friendsMap = BetterFriendsList.UIFriends_friendsMap
             .GetValue(uiFriends) as Dictionary<string, TemplateContainer>;
 
         if (friendsMap != null && friendsMap.ContainsKey(steamId))
@@ -453,7 +655,7 @@ public static class FriendsListHelper
                     }
                 }
 
-                var currentMap = AccessTools.Field(typeof(UIFriends), "friendsMap")
+                var currentMap = BetterFriendsList.UIFriends_friendsMap
                     .GetValue(uiFriendsRef) as Dictionary<string, TemplateContainer>;
                 if (currentMap == null) return;
 
@@ -811,7 +1013,7 @@ public static class FriendsListHelper
 
     private static void UpdateServerLabels(UIFriends uiFriends, List<FriendInfo> friends)
     {
-        var friendsMap = AccessTools.Field(typeof(UIFriends), "friendsMap")
+        var friendsMap = BetterFriendsList.UIFriends_friendsMap
             .GetValue(uiFriends) as Dictionary<string, TemplateContainer>;
 
         if (friendsMap == null)

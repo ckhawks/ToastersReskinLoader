@@ -63,6 +63,55 @@ public static class PacksSection
         titleRow.Add(sectionTitleGroup);
         titleRow.Add(findPacksButton);
         contentScrollViewContent.Add(titleRow);
+
+        // Surface duplicate unique-ids loudly — two packs sharing one id will
+        // silently clobber each other in ReskinProfileManager.
+        var dupes = ReskinRegistry.FindDuplicateUniqueIds();
+        if (dupes.Count > 0)
+        {
+            var banner = new VisualElement();
+            banner.style.flexDirection = FlexDirection.Column;
+            banner.style.marginTop = 8;
+            banner.style.marginBottom = 12;
+            banner.style.paddingTop = 10;
+            banner.style.paddingBottom = 10;
+            banner.style.paddingLeft = 14;
+            banner.style.paddingRight = 14;
+            banner.style.backgroundColor = new StyleColor(new Color(0.45f, 0.15f, 0.1f, 0.85f));
+            banner.style.borderTopLeftRadius = 4;
+            banner.style.borderTopRightRadius = 4;
+            banner.style.borderBottomLeftRadius = 4;
+            banner.style.borderBottomRightRadius = 4;
+
+            var header = new Label("<b>Duplicate pack unique-ids detected</b>");
+            header.enableRichText = true;
+            header.style.color = Color.white;
+            header.style.fontSize = 15;
+            header.style.marginBottom = 4;
+            banner.Add(header);
+
+            var sub = new Label(
+                "Packs that share a unique-id will overwrite each other's profile data. "
+                + "Ask the pack author to set a distinct unique-id in their reskinpack.json.");
+            sub.style.color = new Color(0.95f, 0.85f, 0.8f);
+            sub.style.fontSize = 13;
+            sub.style.whiteSpace = WhiteSpace.Normal;
+            sub.style.marginBottom = 6;
+            banner.Add(sub);
+
+            foreach (var (id, packs) in dupes)
+            {
+                string names = string.Join(", ", packs.ConvertAll(p => $"\"{p.Name}\""));
+                var line = new Label($"• <b>{id}</b> — {names}");
+                line.enableRichText = true;
+                line.style.color = Color.white;
+                line.style.fontSize = 13;
+                line.style.whiteSpace = WhiteSpace.Normal;
+                banner.Add(line);
+            }
+
+            contentScrollViewContent.Add(banner);
+        }
         
         // https://steamcommunity.com/workshop/browse/?appid=2994020&requiredtags[]=Resource+Pack
         

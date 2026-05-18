@@ -55,6 +55,31 @@ internal static class ServerPreviewCachePatches
         AccessTools.Method(typeof(UIServerBrowser), "FilterServers");
     private static readonly MethodInfo SortServersMethod =
         AccessTools.Method(typeof(UIServerBrowser), "SortServers");
+
+    // Open-instance delegates so the per-row calls below avoid per-call
+    // object[] boxing/allocation from MethodInfo.Invoke. A refresh wave hits
+    // these hundreds of times — at that volume the allocations show up.
+    private delegate void SetPreviewDelegate(UIServerBrowser self, EndPoint endPoint, ServerPreviewData data);
+    private delegate void StyleServerDelegate(UIServerBrowser self, EndPoint endPoint);
+    private delegate void FilterServersDelegate(UIServerBrowser self);
+    private delegate void SortServersDelegate(UIServerBrowser self);
+
+    private static readonly SetPreviewDelegate _setPreview =
+        SetPreviewMethod != null
+            ? (SetPreviewDelegate)Delegate.CreateDelegate(typeof(SetPreviewDelegate), SetPreviewMethod)
+            : null;
+    private static readonly StyleServerDelegate _styleServer =
+        StyleServerMethod != null
+            ? (StyleServerDelegate)Delegate.CreateDelegate(typeof(StyleServerDelegate), StyleServerMethod)
+            : null;
+    private static readonly FilterServersDelegate _filterServers =
+        FilterServersMethod != null
+            ? (FilterServersDelegate)Delegate.CreateDelegate(typeof(FilterServersDelegate), FilterServersMethod)
+            : null;
+    private static readonly SortServersDelegate _sortServers =
+        SortServersMethod != null
+            ? (SortServersDelegate)Delegate.CreateDelegate(typeof(SortServersDelegate), SortServersMethod)
+            : null;
     private static readonly FieldInfo EndPointMapField =
         AccessTools.Field(typeof(UIServerBrowser), "endPointVisualElementMap");
     private static readonly FieldInfo RefreshButtonField =
@@ -110,7 +135,10 @@ internal static class ServerPreviewCachePatches
 
                 UpdateCacheCountLabel();
 
-                int hits = 0;
+                // Pass 1: seed previews. Each _setPreview triggers our own
+                // SetServerPreviewData postfix which removes that endpoint
+                // from the stale set, so we add to stale AFTER all seeds.
+                List<EndPoint> seeded = null;
                 foreach (var ep in endPoints)
                 {
                     if (ep == null) continue;
@@ -125,22 +153,27 @@ internal static class ServerPreviewCachePatches
                         clientRequiredModIds = cached.clientRequiredModIds ?? Array.Empty<string>(),
                         ping = cached.lastPingMs,
                     };
-                    // Order matters: SetServerPreviewData triggers our own
-                    // postfix which would *remove* the endpoint from the
-                    // stale set (treating the seed as a "live" response).
-                    // Add to the stale set AFTER the seed call but BEFORE
-                    // StyleServer, so StyleServer's postfix sees it as stale
-                    // and applies the "?/maxPlayers" + "?" mask.
-                    SetPreviewMethod?.Invoke(__instance, new object[] { ep, synth });
-                    lock (_staleLock) _staleEndpoints.Add(ep);
-                    StyleServerMethod?.Invoke(__instance, new object[] { ep });
-                    hits++;
+                    _setPreview?.Invoke(__instance, ep, synth);
+                    (seeded ??= new List<EndPoint>()).Add(ep);
+                }
+
+                int hits = seeded?.Count ?? 0;
+                if (hits > 0)
+                {
+                    // Single-lock bulk-add to the stale set, then style each
+                    // row so StyleServer's postfix sees it as stale and
+                    // applies the "?/maxPlayers" + "?" mask.
+                    lock (_staleLock)
+                    {
+                        foreach (var ep in seeded) _staleEndpoints.Add(ep);
+                    }
+                    foreach (var ep in seeded) _styleServer?.Invoke(__instance, ep);
                 }
 
                 if (hits > 0)
                 {
-                    FilterServersMethod?.Invoke(__instance, null);
-                    SortServersMethod?.Invoke(__instance, null);
+                    _filterServers?.Invoke(__instance);
+                    _sortServers?.Invoke(__instance);
                 }
 
                 Plugin.LogDebug($"ServerPreviewCache: seeded {hits}/{endPoints.Length} rows from cache");
@@ -186,6 +219,15 @@ internal static class ServerPreviewCachePatches
         }
     }
 
+    // UQuery walks the visual tree on every call, so during a refresh wave
+    // this postfix would re-resolve the same three elements per row dozens
+    // of times. Stash them on the row's userData on first lookup and reuse.
+    private sealed class RowLabels
+    {
+        public Label playersLabel;
+        public Label pingLabel;
+    }
+
     [HarmonyPatch(typeof(UIServerBrowser), "StyleServer")]
     private static class Patch_StyleServer
     {
@@ -201,16 +243,23 @@ internal static class ServerPreviewCachePatches
                 if (EndPointMapField?.GetValue(__instance) is not Dictionary<EndPoint, VisualElement> map) return;
                 if (!map.TryGetValue(endPoint, out var rowRoot)) return;
 
-                var row = rowRoot.Query<VisualElement>("Server").First();
-                if (row == null) return;
-
-                var playersLabel = row.Query<Label>("PlayersLabel").First();
-                var pingLabel = row.Query<Label>("PingLabel").First();
+                var labels = rowRoot.userData as RowLabels;
+                if (labels == null)
+                {
+                    var row = rowRoot.Q<VisualElement>("Server");
+                    if (row == null) return;
+                    labels = new RowLabels
+                    {
+                        playersLabel = row.Q<Label>("PlayersLabel"),
+                        pingLabel = row.Q<Label>("PingLabel"),
+                    };
+                    rowRoot.userData = labels;
+                }
 
                 if (!ServerPreviewCache.TryGet(endPoint, out var cached)) return;
 
-                if (playersLabel != null) playersLabel.text = $"?/{cached.maxPlayers}";
-                if (pingLabel != null) pingLabel.text = "?";
+                if (labels.playersLabel != null) labels.playersLabel.text = $"?/{cached.maxPlayers}";
+                if (labels.pingLabel != null) labels.pingLabel.text = "?";
             }
             catch (Exception e)
             {
@@ -251,8 +300,8 @@ internal static class ServerPreviewCachePatches
                         ServerPreviewCache.Evict(endPoint);
                         MaybeFlush();
                         UpdateCacheCountLabel();
-                        SetPreviewMethod?.Invoke(__instance, new object[] { endPoint, null });
-                        StyleServerMethod?.Invoke(__instance, new object[] { endPoint });
+                        _setPreview?.Invoke(__instance, endPoint, null);
+                        _styleServer?.Invoke(__instance, endPoint);
                     }
                 }
             }

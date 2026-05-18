@@ -177,9 +177,10 @@ public static class PartyLineup
             .Where(id => id != localSteamId)
             .Take(4) // max 4 slots
             .ToList();
+        var otherSet = new HashSet<string>(otherMembers);
 
         // Remove slots for members who left
-        var toRemove = slots.Keys.Where(id => !otherMembers.Contains(id)).ToList();
+        var toRemove = slots.Keys.Where(id => !otherSet.Contains(id)).ToList();
         foreach (var id in toRemove)
             DestroySlot(id);
 

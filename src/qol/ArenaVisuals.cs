@@ -10,7 +10,6 @@
 
 using System;
 using System.IO;
-using System.Linq;
 using ToasterReskinLoader.qol;
 using UnityEngine;
 
@@ -20,6 +19,36 @@ public static class ArenaVisuals
 {
     private static Material _originalSkybox;
     private static Material _baseGameSkybox;
+
+    // Cached arena root, invalidated by InvalidateCache() (called from
+    // SwapperManager.OnSceneLoaded). Avoids scene-wide FindObjectsByType
+    // walks every time a user toggles a setting.
+    private static GameObject _cachedArenaRoot;
+
+    public static void InvalidateCache()
+    {
+        _cachedArenaRoot = null;
+    }
+
+    private static bool NameMatchesArenaRoot(string n) =>
+        n == "HockeyArenaRoot"
+        || n.IndexOf("OutdoorHockey", StringComparison.OrdinalIgnoreCase) >= 0
+        || n.IndexOf("HockeyArena", StringComparison.OrdinalIgnoreCase) >= 0;
+
+    private static GameObject FindArenaRoot()
+    {
+        if (_cachedArenaRoot != null) return _cachedArenaRoot;
+        var all = UnityEngine.Object.FindObjectsByType<GameObject>(UnityEngine.FindObjectsSortMode.None);
+        foreach (var go in all)
+        {
+            if (NameMatchesArenaRoot(go.name))
+            {
+                _cachedArenaRoot = go;
+                break;
+            }
+        }
+        return _cachedArenaRoot;
+    }
 
     private class AudioVolumeTracker : MonoBehaviour
     {
@@ -63,22 +92,23 @@ public static class ArenaVisuals
         try
         {
             var allObjects = UnityEngine.Object.FindObjectsByType<GameObject>(UnityEngine.FindObjectsSortMode.None);
-            var arenaObjects = allObjects
-                .Where(go =>
-                {
-                    if (go.GetComponentsInChildren<Renderer>(true).Length == 0 &&
-                        go.GetComponentsInChildren<MeshFilter>(true).Length == 0)
-                        return false;
-                    string name = go.name.ToLower();
-                    return name.Contains("hockeyarena") ||
-                           name.Contains("outdoorhockey") ||
-                           name.Contains("scenery") ||
-                           (name.Contains("arena") && (name.Contains("root") || name.Contains("(clone)")));
-                })
-                .ToArray();
-
-            foreach (var arenaObj in arenaObjects)
-                UnityEngine.Object.Destroy(arenaObj);
+            foreach (var go in allObjects)
+            {
+                string name = go.name;
+                bool nameMatch =
+                    name.IndexOf("HockeyArena",   StringComparison.OrdinalIgnoreCase) >= 0
+                    || name.IndexOf("OutdoorHockey", StringComparison.OrdinalIgnoreCase) >= 0
+                    || name.IndexOf("Scenery",       StringComparison.OrdinalIgnoreCase) >= 0
+                    || (name.IndexOf("arena", StringComparison.OrdinalIgnoreCase) >= 0
+                        && (name.IndexOf("root", StringComparison.OrdinalIgnoreCase) >= 0
+                            || name.IndexOf("(clone)", StringComparison.OrdinalIgnoreCase) >= 0));
+                if (!nameMatch) continue;
+                if (go.GetComponentsInChildren<Renderer>(true).Length == 0 &&
+                    go.GetComponentsInChildren<MeshFilter>(true).Length == 0)
+                    continue;
+                UnityEngine.Object.Destroy(go);
+            }
+            InvalidateCache();
 
             if (_originalSkybox == null && RenderSettings.skybox != null)
                 _originalSkybox = RenderSettings.skybox;
@@ -133,10 +163,7 @@ public static class ArenaVisuals
         if (cfg == null) return;
         try
         {
-            var arenaRoot = UnityEngine.Object.FindObjectsByType<GameObject>(UnityEngine.FindObjectsSortMode.None)
-                .FirstOrDefault(go => go.name == "HockeyArenaRoot" ||
-                                      go.name.Contains("OutdoorHockey") ||
-                                      go.name.Contains("HockeyArena"));
+            var arenaRoot = FindArenaRoot();
             if (arenaRoot == null) return;
 
             // When DISABLING, only touch scenery (skip players/UI/etc).
@@ -196,25 +223,28 @@ public static class ArenaVisuals
                 }
             }
 
-            var allAudio = UnityEngine.Object.FindObjectsByType<AudioSource>(UnityEngine.FindObjectsSortMode.None)
-                .Where(a =>
-                {
-                    var name = a.gameObject.name.ToLower();
-                    var parentName = a.transform.parent?.name.ToLower() ?? "";
-                    return !name.Contains("player") && !name.Contains("voice") && !name.Contains("puck") &&
-                           !parentName.Contains("player") && !parentName.Contains("voice");
-                })
-                .ToArray();
-
+            var allAudio = UnityEngine.Object.FindObjectsByType<AudioSource>(UnityEngine.FindObjectsSortMode.None);
             foreach (var audio in allAudio)
             {
-                if (audio.gameObject.GetComponent<AudioVolumeTracker>() == null)
+                var name = audio.gameObject.name;
+                if (name.IndexOf("player", StringComparison.OrdinalIgnoreCase) >= 0) continue;
+                if (name.IndexOf("voice",  StringComparison.OrdinalIgnoreCase) >= 0) continue;
+                if (name.IndexOf("puck",   StringComparison.OrdinalIgnoreCase) >= 0) continue;
+                var parent = audio.transform.parent;
+                if (parent != null)
                 {
-                    var tracker = audio.gameObject.AddComponent<AudioVolumeTracker>();
+                    var parentName = parent.name;
+                    if (parentName.IndexOf("player", StringComparison.OrdinalIgnoreCase) >= 0) continue;
+                    if (parentName.IndexOf("voice",  StringComparison.OrdinalIgnoreCase) >= 0) continue;
+                }
+
+                var tracker = audio.gameObject.GetComponent<AudioVolumeTracker>();
+                if (tracker == null)
+                {
+                    tracker = audio.gameObject.AddComponent<AudioVolumeTracker>();
                     tracker.originalVolume = audio.volume;
                 }
-                var t = audio.gameObject.GetComponent<AudioVolumeTracker>();
-                audio.volume = t.originalVolume * cfg.arenaAudioVolume;
+                audio.volume = tracker.originalVolume * cfg.arenaAudioVolume;
             }
         }
         catch (Exception e) { Debug.LogError("[PPKB/Arena] ApplyPartial failed: " + e); }
