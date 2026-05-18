@@ -80,6 +80,11 @@ public class QoLConfig
     // Frame timing / stutter profiler (overlay + Harmony instrumentation).
     // Off by default — only useful for diagnosing perf issues.
     public bool enableFrameProfiler = false;
+    // Heavyweight option: when the profiler is enabled, also Harmony-patch
+    // every Update/LateUpdate/FixedUpdate/OnGUI method in every other
+    // loaded mod assembly. Gives per-mod cost rows in the Top Calls table
+    // but adds 100s of patches at load time.
+    public bool enableFrameProfilerModInstrumentation = false;
     // Persisted dev console window position/size
     public float devConsoleX = 40f;
     public float devConsoleY = 40f;

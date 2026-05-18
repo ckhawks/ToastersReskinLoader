@@ -7,7 +7,7 @@ namespace ToasterReskinLoader.qol;
 
 // Frame timing / stutter profiler. Ported from the standalone
 // ToasterFrameProfiler mod and gated behind QoL.enableFrameProfiler in the
-// Developer section. F3 = toggle overlay, F4 = cycle modes, F5 = CSV.
+// Developer section. F4 = cycle modes, F5 = toggle CSV log.
 public static class FrameProfiler
 {
     const string HARMONY_ID = "pw.stellaric.toaster.reskinloader.frameprofiler";
@@ -23,6 +23,15 @@ public static class FrameProfiler
         try
         {
             FrameProfilerPatches.ApplyPatches(harmony);
+            FrameProfilerNetwork.ApplyPatches(harmony);
+
+            // Optional: patch other mods' Update methods for per-mod cost.
+            // Off by default — adds 100s of harmony patches at load time.
+            var cfg = QoLRunner.Instance?.Config;
+            if (cfg != null && cfg.enableFrameProfilerModInstrumentation)
+            {
+                FrameProfilerMods.ApplyPatches(harmony);
+            }
 
             if (IsDedicatedServer())
             {
@@ -33,7 +42,7 @@ public static class FrameProfiler
                 overlayHost = new GameObject("ToasterFrameProfiler");
                 UnityEngine.Object.DontDestroyOnLoad(overlayHost);
                 Overlay = overlayHost.AddComponent<FrameProfilerOverlay>();
-                Plugin.Log("[FrameProfiler] Enabled. F3 = overlay, F4 = mode, F5 = CSV.");
+                Plugin.Log("[FrameProfiler] Enabled. F4 = mode, F5 = CSV.");
             }
 
             enabled = true;
@@ -50,6 +59,8 @@ public static class FrameProfiler
         try
         {
             harmony.UnpatchSelf();
+            FrameProfilerNetwork.Reset();
+            FrameProfilerMods.Reset();
             if (overlayHost != null)
             {
                 UnityEngine.Object.Destroy(overlayHost);

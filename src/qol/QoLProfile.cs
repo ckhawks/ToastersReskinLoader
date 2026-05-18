@@ -89,6 +89,10 @@ public class QoLProfile
     public bool EnableDebugLogging { get; set; } = false;
     [JsonProperty("enableDevConsole")]
     public bool EnableDevConsole { get; set; } = false;
+    [JsonProperty("enableFrameProfiler")]
+    public bool EnableFrameProfiler { get; set; } = false;
+    [JsonProperty("enableFrameProfilerModInstrumentation")]
+    public bool EnableFrameProfilerModInstrumentation { get; set; } = false;
     [JsonProperty("devConsoleX")]
     public float DevConsoleX { get; set; } = 40f;
     [JsonProperty("devConsoleY")]
@@ -137,6 +141,8 @@ public class QoLProfile
             browserShowUnreachable = BrowserShowUnreachable,
             enableDebugLogging = EnableDebugLogging,
             enableDevConsole = EnableDevConsole,
+            enableFrameProfiler = EnableFrameProfiler,
+            enableFrameProfilerModInstrumentation = EnableFrameProfilerModInstrumentation,
             devConsoleX = DevConsoleX,
             devConsoleY = DevConsoleY,
             devConsoleW = DevConsoleW,
@@ -182,6 +188,8 @@ public class QoLProfile
         BrowserShowUnreachable = c.browserShowUnreachable;
         EnableDebugLogging = c.enableDebugLogging;
         EnableDevConsole = c.enableDevConsole;
+        EnableFrameProfiler = c.enableFrameProfiler;
+        EnableFrameProfilerModInstrumentation = c.enableFrameProfilerModInstrumentation;
         DevConsoleX = c.devConsoleX;
         DevConsoleY = c.devConsoleY;
         DevConsoleW = c.devConsoleW;

@@ -25,6 +25,51 @@ public static class FrameProfilerPatches
 
     static readonly Dictionary<string, EventAllocStats> eventAllocStats = new Dictionary<string, EventAllocStats>();
 
+    // Per-frame attribution: which instrumented call was the most expensive
+    // in the current Unity frame? Finalized on frame change and exposed for
+    // the overlay's spike attribution.
+    static int trackedFrame = -1;
+    static float frameWinnerMs = 0f;
+    static string frameWinnerName = "";
+    static int lastFinalizedFrame = -1;
+    static float lastFinalizedMs = 0f;
+    static string lastFinalizedName = "";
+
+    public static bool TryGetSpikeAttribution(int forFrame, out string name, out float ms)
+    {
+        // The spike-firing frame should be the one we just finalized
+        // (RecordAndReport ran during it, then Unity moved to next frame).
+        if (forFrame == lastFinalizedFrame)
+        {
+            name = lastFinalizedName;
+            ms = lastFinalizedMs;
+            return !string.IsNullOrEmpty(name);
+        }
+        name = "";
+        ms = 0f;
+        return false;
+    }
+
+    // Live snapshot for the Top Calls overlay mode. Returns count of
+    // populated entries.
+    public struct TopCallEntry
+    {
+        public string Name;
+        public int Calls;
+        public float TotalMs;
+        public float MaxMs;
+        public long TotalBytes;
+    }
+    public static int GetSystemCount() => (int)TrackedSystem.COUNT;
+    public static TopCallEntry GetSystemSnapshot(int i) => new TopCallEntry
+    {
+        Name = stats[i].Name,
+        Calls = stats[i].CallCount,
+        TotalMs = stats[i].TotalMs,
+        MaxMs = stats[i].MaxMs,
+        TotalBytes = stats[i].TotalAllocBytes,
+    };
+
     enum TrackedSystem
     {
         GameManagerTick,
@@ -132,9 +177,29 @@ public static class FrameProfilerPatches
         Plugin.Log($"[FrameProfiler][PATCH] {succeeded}/{targets.Length} patches applied successfully");
     }
 
+    static void TrackFrameWinner(string name, float ms)
+    {
+        int f = Time.frameCount;
+        if (f != trackedFrame)
+        {
+            lastFinalizedFrame = trackedFrame;
+            lastFinalizedMs = frameWinnerMs;
+            lastFinalizedName = frameWinnerName;
+            trackedFrame = f;
+            frameWinnerMs = 0f;
+            frameWinnerName = "";
+        }
+        if (ms > frameWinnerMs)
+        {
+            frameWinnerMs = ms;
+            frameWinnerName = name;
+        }
+    }
+
     static void RecordAndReport(TrackedSystem system, float elapsedMs, long allocBytes, string detail = null)
     {
         stats[(int)system].Record(elapsedMs, allocBytes);
+        TrackFrameWinner(stats[(int)system].Name, elapsedMs);
 
         if (elapsedMs > REPORT_THRESHOLD_MS || allocBytes > ALLOC_REPORT_THRESHOLD)
         {
@@ -193,6 +258,47 @@ public static class FrameProfilerPatches
                 shown++;
             }
             eventAllocStats.Clear();
+        }
+
+        // Also log the top built-in profiler markers for this window, then
+        // reset their accumulators so they track the same 10s window as
+        // the Harmony patches.
+        int markerCount = FrameProfilerBuiltinMarkers.GetCount();
+        if (markerCount > 0)
+        {
+            var rows = new FrameProfilerBuiltinMarkers.SystemStats[markerCount];
+            for (int i = 0; i < markerCount; i++) rows[i] = FrameProfilerBuiltinMarkers.GetSnapshot(i);
+            Array.Sort(rows, (a, b) => b.TotalMs.CompareTo(a.TotalMs));
+            Plugin.Log("[FrameProfiler] --- Top Unity Built-in Markers (last 10s) ---");
+            int shown = 0;
+            for (int i = 0; i < rows.Length && shown < 10; i++)
+            {
+                var r = rows[i];
+                if (r.Calls == 0 && r.TotalMs <= 0f) continue;
+                float avg = r.Calls > 0 ? r.TotalMs / r.Calls : 0f;
+                Plugin.Log($"[FrameProfiler]    {r.Name,-45} samples={r.Calls,6}  total={r.TotalMs,7:F0}ms avg={avg,5:F2}ms max={r.MaxMs,5:F2}ms");
+                shown++;
+            }
+            FrameProfilerBuiltinMarkers.ResetWindow();
+        }
+
+        // Per-mod rollup (only populated if mod instrumentation toggle is on).
+        int modCount = FrameProfilerMods.GetCount();
+        if (modCount > 0)
+        {
+            var mods = new List<FrameProfilerMods.ModStats>(FrameProfilerMods.Snapshot());
+            mods.Sort((a, b) => b.TotalMs.CompareTo(a.TotalMs));
+            Plugin.Log("[FrameProfiler] --- Per-Mod Cost (last 10s) ---");
+            int shown = 0;
+            foreach (var m in mods)
+            {
+                if (shown >= 10) break;
+                if (m.Calls == 0 && m.TotalMs <= 0f) continue;
+                float avg = m.Calls > 0 ? m.TotalMs / m.Calls : 0f;
+                Plugin.Log($"[FrameProfiler]    {m.ModName,-40} patched={m.PatchedMethods,3}  calls={m.Calls,6}  total={m.TotalMs,7:F0}ms avg={avg,5:F2}ms max={m.MaxMs,5:F2}ms  alloc={FormatBytes(m.TotalAllocBytes),8}");
+                shown++;
+            }
+            FrameProfilerMods.ResetAllWindows();
         }
 
         Plugin.Log("[FrameProfiler] =============================================");
@@ -304,6 +410,7 @@ public static class FrameProfilerPatches
             long alloc = Math.Max(0, GC.GetTotalMemory(false) - memBefore);
 
             stats[(int)TrackedSystem.EventManagerTrigger].Record(ms, alloc);
+            TrackFrameWinner($"EventManager.TriggerEvent(\"{currentEvent}\")", ms);
 
             if (alloc > 0)
             {

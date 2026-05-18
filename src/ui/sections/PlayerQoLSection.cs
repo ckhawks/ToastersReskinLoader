@@ -240,9 +240,31 @@ public static class PlayerQoLSection
             v => { cfg.enableDevConsole = v; runner.SaveAndRefresh(); });
 
         ToggleRow(contentScrollViewContent,
-            "Enable frame profiler (F3 overlay / F4 mode / F5 CSV) — requires restart",
+            "Enable frame profiler overlay (F4 cycles mode, F5 toggles CSV log)",
             cfg.enableFrameProfiler,
-            v => { cfg.enableFrameProfiler = v; runner.SaveAndRefresh(); });
+            v =>
+            {
+                cfg.enableFrameProfiler = v;
+                runner.SaveAndRefresh();
+                if (v) FrameProfiler.Enable(); else FrameProfiler.Disable();
+            });
+
+        ToggleRow(contentScrollViewContent,
+            "  └ Also instrument other mods (per-mod cost rows; adds many Harmony patches)",
+            cfg.enableFrameProfilerModInstrumentation,
+            v =>
+            {
+                cfg.enableFrameProfilerModInstrumentation = v;
+                runner.SaveAndRefresh();
+                // If the profiler is currently running, cycle it so the
+                // per-mod patches get applied (or removed) immediately
+                // instead of waiting for next startup.
+                if (cfg.enableFrameProfiler)
+                {
+                    FrameProfiler.Disable();
+                    FrameProfiler.Enable();
+                }
+            });
 
         var devButtonsRow = UITools.CreateConfigurationRow();
         devButtonsRow.style.justifyContent = Justify.FlexStart;

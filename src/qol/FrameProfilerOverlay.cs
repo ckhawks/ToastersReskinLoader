@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Unity.Netcode;
+using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Profiling;
@@ -8,16 +10,21 @@ using UnityEngine.Profiling;
 namespace ToasterReskinLoader.qol;
 
 // IMGUI overlay that tracks frame times, detects spikes, and helps isolate
-// stutter sources. F3 = toggle overlay, F4 = cycle display mode,
-// F5 = toggle CSV logging.
+// stutter sources. F4 = cycle display mode, F5 = toggle CSV logging.
+// Overlay visibility is controlled by the QoL toggle (Enable/Disable).
 public class FrameProfilerOverlay : MonoBehaviour
 {
     const int FRAME_HISTORY = 600;
     const float SPIKE_THRESHOLD_MS = 20f;
     const int SPIKE_LOG_MAX = 50;
     const float SUMMARY_INTERVAL = 5f;
+    // Cap drawn graph bars to this many per graph. With ~460px of graph
+    // width that gives ~3-4 source samples per drawn bar; we max-merge so
+    // spikes still show. Drops IMGUI draw calls from ~460/graph to ~150.
+    const int MAX_GRAPH_BARS = 150;
+    // Sample RTT/loss every Nth frame instead of every frame.
+    const int RTT_SAMPLE_INTERVAL_FRAMES = 4;
 
-    bool showOverlay = true;
     int displayMode = 0;
     readonly float[] frameTimes = new float[FRAME_HISTORY];
     int frameIndex = 0;
@@ -43,6 +50,25 @@ public class FrameProfilerOverlay : MonoBehaviour
     int spikeIntervalIndex = 0;
     int spikeIntervalCount = 0;
 
+    // Cached aggregates refreshed at ~5Hz from Update() instead of recomputed
+    // every OnGUI pass. The sort + string formatting was the dominant
+    // overlay cost.
+    readonly float[] sortBuffer = new float[FRAME_HISTORY];
+    float cachedOnePercentLow = 0f;
+    float cachedAvgFrameMs = 0f;
+    float cachedAvgFps = 0f;
+    // Frame-time axis auto-scales to the worst frame in the window (snapped
+    // to a nice band) so low-ms graphs aren't squished against the baseline.
+    float frameTimeAxisMs = 25f;
+    string cachedServerLine = "";
+    string cachedLine1 = "";
+    string cachedLine2 = "";
+    string cachedLine3 = "";
+    string cachedLine4 = "";
+    float lastStatRefreshTime = -1f;
+    float lastBakeTime = -1f;
+    const float BAKE_INTERVAL = 1f / 90f; // 90 Hz graph repaint
+
     bool csvLogging = false;
     StringBuilder csvBuffer = new StringBuilder();
     int csvFlushCounter = 0;
@@ -55,13 +81,51 @@ public class FrameProfilerOverlay : MonoBehaviour
     long totalReservedMemory = 0;
     int currentGcCount = 0;
 
+    // CPU/GPU split from Unity's built-in ProfilerRecorder counters.
+    // FrameTimingManager requires "Frame Timing Stats" enabled in Player
+    // Settings which we can't toggle on a shipped game — ProfilerRecorder
+    // works on every platform without that setting.
+    ProfilerRecorder mainThreadRecorder;
+    ProfilerRecorder renderThreadRecorder;
+    ProfilerRecorder gfxWaitRecorder;
+    ProfilerRecorder vsyncWaitRecorder;
+    readonly float[] cpuMainHistory = new float[FRAME_HISTORY];
+    readonly float[] cpuRenderHistory = new float[FRAME_HISTORY];
+    readonly float[] gfxWaitHistory = new float[FRAME_HISTORY];
+    float lastCpuMain = 0f;
+    float lastCpuRender = 0f;
+    float lastGfxWait = 0f;
+    float lastVsyncWait = 0f;
+    bool frameTimingAvailable = false;
+    string cachedCpuGpuLine = "";
+    string cachedCpuGpuVerdict = "";
+
     Texture2D graphBg;
     Texture2D spikeLine;
     Texture2D barGreen;
     Texture2D barYellow;
     Texture2D barRed;
+    Texture2D fpsLine;
+    Texture2D fpsRefLine;
+    Texture2D lossLine;
+    Texture2D dropMarker;
+
+    // Baked graphs — pixel-buffered, repainted at ~10Hz, drawn with one
+    // GUI.DrawTexture each per frame.
+    BakedGraph bakedFrame;
+    BakedGraph bakedFps;
+    BakedGraph bakedRtt;
+    BakedGraph bakedTick;
+    const int GRAPH_W = 460;
+    const int FRAME_H = 180;
+    const int FPS_H = 190;
+    const int RTT_H = 120;
+    const int TICK_H = 100;
     GUIStyle labelStyle;
     GUIStyle headerStyle;
+    GUIStyle graphTitleStyle;
+    GUIStyle rttMaxLabelStyle;
+    GUIStyle lossMaxLabelStyle;
     GUIStyle boxStyle;
     bool stylesInitialized = false;
 
@@ -73,12 +137,33 @@ public class FrameProfilerOverlay : MonoBehaviour
         public float IntervalSinceLast;
         public long MemoryDelta;
         public bool GcOccurred;
+        public string AttributedCall;   // most expensive instrumented call in that frame
+        public float AttributedMs;
     }
 
     void Start()
     {
         csvPath = Application.persistentDataPath + "/frame_profiler_log.csv";
         CreateTextures();
+        // Built-in Unity profiler markers — these are always recorded
+        // internally; ProfilerRecorder just subscribes to read them.
+        // Values are returned in nanoseconds.
+        mainThreadRecorder   = ProfilerRecorder.StartNew(ProfilerCategory.Internal, "Main Thread", 1);
+        renderThreadRecorder = ProfilerRecorder.StartNew(ProfilerCategory.Internal, "Render Thread", 1);
+        // GPU wait: time the render thread spent blocked on Present (= GPU
+        // busy / GPU-bound). High value => GPU bottleneck.
+        gfxWaitRecorder = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Gfx.WaitForPresentOnGfxThread", 1);
+        // VSync wait: time CPU spent idle hitting the target frame rate.
+        // High value => CPU has headroom (capped/vsynced).
+        vsyncWaitRecorder = ProfilerRecorder.StartNew(ProfilerCategory.Internal, "WaitForTargetFPS", 1);
+        FrameProfilerBuiltinMarkers.Start();
+        // Pre-allocate baked graphs. The semi-transparent black bg matches
+        // the original graphBg texture so the panel composites the same.
+        var bgC = new Color(0f, 0f, 0f, 0.75f);
+        bakedFrame = new BakedGraph(GRAPH_W, FRAME_H, bgC);
+        bakedFps   = new BakedGraph(GRAPH_W, FPS_H,   bgC);
+        bakedRtt   = new BakedGraph(GRAPH_W, RTT_H,   bgC);
+        bakedTick  = new BakedGraph(GRAPH_W, TICK_H,  bgC);
         Plugin.Log($"[FrameProfiler] Overlay started. Spike threshold: {SPIKE_THRESHOLD_MS}ms");
         Plugin.Log($"[FrameProfiler] CSV log path: {csvPath}");
     }
@@ -90,6 +175,10 @@ public class FrameProfilerOverlay : MonoBehaviour
         barGreen = MakeTex(1, 1, new Color(0.2f, 0.9f, 0.2f, 0.9f));
         barYellow = MakeTex(1, 1, new Color(0.9f, 0.9f, 0.2f, 0.9f));
         barRed = MakeTex(1, 1, new Color(0.9f, 0.2f, 0.2f, 0.9f));
+        fpsLine = MakeTex(1, 1, new Color(0.4f, 0.8f, 1f, 1f));
+        fpsRefLine = MakeTex(1, 1, new Color(0.5f, 0.5f, 0.5f, 0.4f));
+        lossLine = MakeTex(1, 1, new Color(1f, 0.3f, 0.3f, 0.95f));
+        dropMarker = MakeTex(1, 1, new Color(1f, 0.2f, 0.2f, 0.35f));
     }
 
     void InitStyles()
@@ -110,10 +199,24 @@ public class FrameProfilerOverlay : MonoBehaviour
             normal = { textColor = new Color(0.4f, 0.8f, 1f) }
         };
 
+        graphTitleStyle = new GUIStyle(GUI.skin.label)
+        {
+            fontSize = 12,
+            fontStyle = FontStyle.Bold,
+            padding = new RectOffset(0, 0, 0, 0),
+            margin = new RectOffset(0, 0, 0, 0),
+            wordWrap = false,
+            clipping = TextClipping.Clip,
+            normal = { textColor = new Color(0.85f, 0.85f, 0.85f) }
+        };
+
         boxStyle = new GUIStyle(GUI.skin.box)
         {
             normal = { background = graphBg }
         };
+
+        rttMaxLabelStyle = new GUIStyle(labelStyle); rttMaxLabelStyle.normal.textColor = new Color(0.4f, 0.8f, 1f);
+        lossMaxLabelStyle = new GUIStyle(labelStyle); lossMaxLabelStyle.normal.textColor = new Color(1f, 0.4f, 0.4f);
     }
 
     void Update()
@@ -122,6 +225,17 @@ public class FrameProfilerOverlay : MonoBehaviour
         float dtMs = dt * 1000f;
 
         frameTimes[frameIndex] = dtMs;
+        // Sample CPU/GPU timings BEFORE advancing frameIndex so they land
+        // in the same slot as this frame's frameTimes value.
+        SampleFrameTimings();
+        FrameProfilerBuiltinMarkers.Sample();
+        cpuMainHistory[frameIndex] = lastCpuMain;
+        cpuRenderHistory[frameIndex] = lastCpuRender;
+        gfxWaitHistory[frameIndex] = lastGfxWait;
+
+        if (Time.frameCount % RTT_SAMPLE_INTERVAL_FRAMES == 0)
+            FrameProfilerNetwork.SampleRtt();
+
         frameIndex = (frameIndex + 1) % FRAME_HISTORY;
         totalFrames++;
 
@@ -149,6 +263,16 @@ public class FrameProfilerOverlay : MonoBehaviour
             spikeCount++;
             float interval = Time.unscaledTime - lastSpikeTime;
 
+            // Spike attribution: pull the most expensive instrumented call
+            // recorded in the frame that just ended (Time.frameCount - 1).
+            string attrName;
+            float attrMs;
+            if (!FrameProfilerPatches.TryGetSpikeAttribution(Time.frameCount - 1, out attrName, out attrMs))
+            {
+                attrName = "";
+                attrMs = 0f;
+            }
+
             var entry = new SpikeEntry
             {
                 FrameNumber = Time.frameCount,
@@ -156,7 +280,9 @@ public class FrameProfilerOverlay : MonoBehaviour
                 TimeSinceStart = Time.unscaledTime,
                 IntervalSinceLast = lastSpikeTime > 0 ? interval : 0f,
                 MemoryDelta = memDelta,
-                GcOccurred = gcOccurred
+                GcOccurred = gcOccurred,
+                AttributedCall = attrName,
+                AttributedMs = attrMs,
             };
 
             if (spikeLog.Count < SPIKE_LOG_MAX)
@@ -201,11 +327,28 @@ public class FrameProfilerOverlay : MonoBehaviour
             lastSummaryTime = Time.unscaledTime;
         }
 
+        // Refresh stat strings at 10Hz (eye-friendly, cheap).
+        if (Time.unscaledTime - lastStatRefreshTime >= 0.1f)
+        {
+            lastStatRefreshTime = Time.unscaledTime;
+            RefreshCachedStats();
+        }
+        // Bake graphs at 90Hz (smooth, but capped so we don't pay the
+        // pixel-buffer cost on every render frame on a 240Hz monitor).
+        // Only bake mode 1 (Overview) graphs — other modes don't show them.
+        if (displayMode == 1 && Time.unscaledTime - lastBakeTime >= BAKE_INTERVAL)
+        {
+            lastBakeTime = Time.unscaledTime;
+            if (bakedFrame != null) BakeFrameGraph();
+            if (bakedFps   != null) BakeFpsGraph();
+            if (bakedRtt   != null) BakeRttGraph();
+            if (bakedTick  != null) BakeTickGraph();
+        }
+
         var kb = Keyboard.current;
         if (kb != null)
         {
-            if (kb.f3Key.wasPressedThisFrame) showOverlay = !showOverlay;
-            if (kb.f4Key.wasPressedThisFrame) displayMode = (displayMode + 1) % 3;
+            if (kb.f4Key.wasPressedThisFrame) displayMode = (displayMode + 1) % 4;
             if (kb.f5Key.wasPressedThisFrame)
             {
                 csvLogging = !csvLogging;
@@ -222,6 +365,282 @@ public class FrameProfilerOverlay : MonoBehaviour
                 }
             }
         }
+    }
+
+    void SampleFrameTimings()
+    {
+        const float NS_TO_MS = 1f / 1_000_000f;
+        try
+        {
+            if (mainThreadRecorder.Valid)
+                lastCpuMain = mainThreadRecorder.LastValue * NS_TO_MS;
+            if (renderThreadRecorder.Valid)
+                lastCpuRender = renderThreadRecorder.LastValue * NS_TO_MS;
+            if (gfxWaitRecorder.Valid)
+                lastGfxWait = gfxWaitRecorder.LastValue * NS_TO_MS;
+            if (vsyncWaitRecorder.Valid)
+                lastVsyncWait = vsyncWaitRecorder.LastValue * NS_TO_MS;
+            if (lastCpuMain > 0f || lastCpuRender > 0f) frameTimingAvailable = true;
+        }
+        catch { }
+    }
+
+    void RefreshCachedStats()
+    {
+        int sortCount = Math.Min(totalFrames, FRAME_HISTORY);
+        if (sortCount <= 0) return;
+
+        // Copy current ring into preallocated sort buffer, sort for percentile.
+        for (int i = 0; i < sortCount; i++)
+            sortBuffer[i] = frameTimes[(frameIndex - sortCount + i + FRAME_HISTORY) % FRAME_HISTORY];
+        Array.Sort(sortBuffer, 0, sortCount);
+        cachedOnePercentLow = 1000f / sortBuffer[sortCount - 1 - sortCount / 100];
+
+        // Rolling average over the FRAME_HISTORY window (~10s at 60fps).
+        float sumMs = 0f;
+        for (int i = 0; i < sortCount; i++) sumMs += sortBuffer[i];
+        cachedAvgFrameMs = sortCount > 0 ? sumMs / sortCount : 0f;
+        cachedAvgFps = cachedAvgFrameMs > 0f ? 1000f / cachedAvgFrameMs : 0f;
+
+        // Auto-scale the frame-time axis: peak in the window (already sorted
+        // ascending), snap to nice bands so the y-scale doesn't flicker.
+        float peakMs = sortBuffer[sortCount - 1];
+        frameTimeAxisMs =
+            peakMs <= 12f  ? 12f  :
+            peakMs <= 25f  ? 25f  :
+            peakMs <= 50f  ? 50f  :
+            peakMs <= 100f ? 100f :
+            peakMs <= 250f ? 250f : 500f;
+
+        float currentMs = frameTimes[(frameIndex - 1 + FRAME_HISTORY) % FRAME_HISTORY];
+        float fps = currentMs > 0 ? 1000f / currentMs : 0;
+
+        string serverIp = "";
+        try
+        {
+            var conn = GlobalStateManager.ConnectionState.Connection;
+            if (conn != null && conn.EndPoint != null)
+                serverIp = conn.EndPoint.ToString();
+        }
+        catch { }
+        cachedServerLine = string.IsNullOrEmpty(serverIp) ? "Server: (offline)" : $"Server: {serverIp}";
+
+        cachedLine1 = $"FPS: {fps:F0} ({cachedAvgFps:F0} 10s avg)  Frame: {currentMs:F1}ms ({cachedAvgFrameMs:F1} avg)  1%Low: {cachedOnePercentLow:F0}fps";
+        cachedLine2 = $"Spikes(>{SPIKE_THRESHOLD_MS}ms): {spikeCount}  GC0: {currentGcCount}  Heap: {FormatBytes(monoHeapSize)}";
+
+        float timeSinceGc = Time.unscaledTime - lastGcTime;
+        string gcAge = lastGcTime > 0 ? $"{timeSinceGc:F1}s ago" : "none";
+        cachedLine3 = $"Last GC: {gcAge}  Mono used: {FormatBytes(monoUsedSize)}";
+
+        if (spikeIntervalCount >= 3)
+        {
+            float sum = 0f;
+            int c = Math.Min(spikeIntervalCount, spikeIntervals.Length);
+            for (int i = 0; i < c; i++) sum += spikeIntervals[i];
+            float mean = sum / c;
+            cachedLine4 = $"Spike pattern: ~{mean:F2}s avg interval ({c} samples)";
+        }
+        else
+        {
+            cachedLine4 = "";
+        }
+
+        // CPU/GPU bound analysis from built-in profiler counters.
+        //   - Main thread / Render thread → CPU time on each thread
+        //   - Gfx.WaitForPresentOnGfxThread → time render thread spent
+        //     blocked waiting for GPU. High = GPU-bound.
+        //   - WaitForTargetFPS → time main thread spent idle for vsync/cap.
+        //     High = CPU has headroom, frame rate is capped not bottlenecked.
+        if (frameTimingAvailable)
+        {
+            float frameMs = sumFrameTime > 0 && statsFrameCount > 0
+                ? sumFrameTime / statsFrameCount : 16.7f;
+            float cpu = Mathf.Max(lastCpuMain - lastVsyncWait, lastCpuRender - lastGfxWait);
+            cpu = Mathf.Max(cpu, 0f);
+            string verdict;
+            if (lastVsyncWait > frameMs * 0.3f) verdict = "vsync/cap-limited";
+            else if (lastGfxWait > frameMs * 0.3f) verdict = "GPU-bound";
+            else if (lastCpuMain > lastCpuRender * 1.2f) verdict = "CPU-bound (main thread)";
+            else if (lastCpuRender > lastCpuMain * 1.2f) verdict = "CPU-bound (render thread)";
+            else verdict = "CPU-bound";
+            cachedCpuGpuLine = $"Main {lastCpuMain:F1}ms  Render {lastCpuRender:F1}ms  GpuWait {lastGfxWait:F1}ms  VSync {lastVsyncWait:F1}ms";
+            cachedCpuGpuVerdict = $"Verdict: {verdict}";
+        }
+        else
+        {
+            cachedCpuGpuLine = "CPU/GPU: profiler recorders not yet valid";
+            cachedCpuGpuVerdict = "";
+        }
+
+        // Refresh network aggregates for the network mode and any other
+        // consumers.
+        FrameProfilerNetwork.RefreshAggregates();
+    }
+
+    static readonly Color C_BAR_GREEN  = new Color(0.2f, 0.9f, 0.2f, 0.9f);
+    static readonly Color C_BAR_YELLOW = new Color(0.9f, 0.9f, 0.2f, 0.9f);
+    static readonly Color C_BAR_RED    = new Color(0.9f, 0.2f, 0.2f, 0.9f);
+    static readonly Color C_FPS_LINE   = new Color(0.4f, 0.8f, 1f, 1f);
+    static readonly Color C_REF_LINE   = new Color(0.5f, 0.5f, 0.5f, 0.4f);
+    static readonly Color C_SPIKE_LINE = new Color(1f, 0f, 0f, 0.5f);
+    static readonly Color C_LOSS       = new Color(1f, 0.3f, 0.3f, 0.95f);
+    static readonly Color C_DROP       = new Color(1f, 0.2f, 0.2f, 0.35f);
+
+    void BakeFrameGraph()
+    {
+        var g = bakedFrame;
+        g.Clear();
+        float axis = frameTimeAxisMs;
+        // Spike threshold reference line (only drawn when it's inside the
+        // visible range — at very high refresh rates the axis caps at 12ms
+        // and the line falls off the top).
+        if (SPIKE_THRESHOLD_MS <= axis)
+        {
+            int threshY = Mathf.RoundToInt((SPIKE_THRESHOLD_MS / axis) * g.H);
+            g.HLine(threshY, C_SPIKE_LINE);
+        }
+        int srcCount = Math.Min(FRAME_HISTORY, totalFrames);
+        if (srcCount <= 0) { g.Apply(); return; }
+        int stride = Math.Max(1, srcCount / g.W);
+        int barCount = Math.Min(g.W, srcCount / stride);
+        int barPx = Math.Max(1, g.W / barCount);
+        for (int i = 0; i < barCount; i++)
+        {
+            float ms = 0f;
+            for (int j = 0; j < stride; j++)
+            {
+                int idx = (frameIndex - srcCount + i * stride + j + FRAME_HISTORY) % FRAME_HISTORY;
+                if (frameTimes[idx] > ms) ms = frameTimes[idx];
+            }
+            int bh = Mathf.Clamp(Mathf.RoundToInt(ms / axis * g.H), 1, g.H - 1);
+            var c = ms < 12f ? C_BAR_GREEN : ms < SPIKE_THRESHOLD_MS ? C_BAR_YELLOW : C_BAR_RED;
+            g.Rect(i * barPx, 0, bh, barPx, c);
+        }
+        g.Apply();
+    }
+
+    void BakeFpsGraph()
+    {
+        var g = bakedFps;
+        g.Clear();
+        const float fpsMax = 1000f;
+        g.HLine(Mathf.RoundToInt(60f  / fpsMax * g.H), C_REF_LINE);
+        g.HLine(Mathf.RoundToInt(144f / fpsMax * g.H), C_REF_LINE);
+        int srcCount = Math.Min(FRAME_HISTORY, totalFrames);
+        if (srcCount <= 0) { g.Apply(); return; }
+        int stride = Math.Max(1, srcCount / g.W);
+        int barCount = Math.Min(g.W, srcCount / stride);
+        int barPx = Math.Max(1, g.W / barCount);
+        for (int i = 0; i < barCount; i++)
+        {
+            // Min-merge FPS over stride window so dips remain visible.
+            float minFps = float.MaxValue;
+            for (int j = 0; j < stride; j++)
+            {
+                int idx = (frameIndex - srcCount + i * stride + j + FRAME_HISTORY) % FRAME_HISTORY;
+                float ms = frameTimes[idx];
+                if (ms <= 0f) continue;
+                float f = Mathf.Min(1000f / ms, fpsMax);
+                if (f < minFps) minFps = f;
+            }
+            if (minFps == float.MaxValue) continue;
+            int y = Mathf.RoundToInt(minFps / fpsMax * g.H);
+            g.Dot(i * barPx, Mathf.Clamp(y, 0, g.H - 2), barPx, 2, C_FPS_LINE);
+        }
+        g.Apply();
+    }
+
+    void BakeRttGraph()
+    {
+        var g = bakedRtt;
+        g.Clear();
+        float rttMax = FrameProfilerNetwork.rttAxisMaxMs;
+        const float LOSS_MAX = 100f;
+        // Reference lines (depend on rttMax band)
+        void RefAt(float val) { int y = Mathf.RoundToInt(val / rttMax * g.H); g.HLine(y, C_REF_LINE); }
+        if (rttMax <= 25f)      { RefAt(10); RefAt(20); }
+        else if (rttMax <= 50f) { RefAt(20); RefAt(40); }
+        else if (rttMax <= 100f){ RefAt(25); RefAt(50); RefAt(75); }
+        else if (rttMax <= 200f){ RefAt(50); RefAt(100); RefAt(150); }
+        else                    { RefAt(rttMax*0.25f); RefAt(rttMax*0.5f); RefAt(rttMax*0.75f); }
+
+        int rttCount = Math.Min(FrameProfilerNetwork.rttTotal, FrameProfilerNetwork.RTT_RING);
+        if (rttCount <= 0) { g.Apply(); return; }
+        int rttStart = FrameProfilerNetwork.rttTotal < FrameProfilerNetwork.RTT_RING
+            ? 0 : FrameProfilerNetwork.rttIndex;
+        int stride = Math.Max(1, rttCount / g.W);
+        int barCount = Math.Min(g.W, rttCount / stride);
+        int barPx = Math.Max(1, g.W / barCount);
+        // Pass 1: loss as filled area from baseline up to %.
+        for (int i = 0; i < barCount; i++)
+        {
+            float loss = 0f;
+            for (int j = 0; j < stride; j++)
+            {
+                int idx = (rttStart + (rttCount - barCount * stride) + i * stride + j) % FrameProfilerNetwork.RTT_RING;
+                if (FrameProfilerNetwork.lossPct[idx] > loss) loss = FrameProfilerNetwork.lossPct[idx];
+            }
+            if (loss <= 0f) continue;
+            loss = Mathf.Min(loss, LOSS_MAX);
+            int top = Mathf.RoundToInt(loss / LOSS_MAX * g.H);
+            g.Rect(i * barPx, 0, top, barPx, C_LOSS);
+        }
+        // Pass 2: cyan RTT line on top.
+        for (int i = 0; i < barCount; i++)
+        {
+            float v = 0f;
+            for (int j = 0; j < stride; j++)
+            {
+                int idx = (rttStart + (rttCount - barCount * stride) + i * stride + j) % FrameProfilerNetwork.RTT_RING;
+                if (FrameProfilerNetwork.rttMs[idx] > v) v = FrameProfilerNetwork.rttMs[idx];
+            }
+            v = Mathf.Min(v, rttMax);
+            int y = Mathf.RoundToInt(v / rttMax * g.H);
+            g.Dot(i * barPx, Mathf.Clamp(y, 0, g.H - 2), barPx, 2, C_FPS_LINE);
+        }
+        g.Apply();
+    }
+
+    void BakeTickGraph()
+    {
+        var g = bakedTick;
+        g.Clear();
+        const float TICK_MAX = 150f;
+        g.HLine(Mathf.RoundToInt(50f  / TICK_MAX * g.H), C_REF_LINE);
+        g.HLine(Mathf.RoundToInt(100f / TICK_MAX * g.H), C_REF_LINE);
+        int tickCount = Math.Min(FrameProfilerNetwork.totalSamples, FrameProfilerNetwork.RING_SIZE);
+        if (tickCount <= 1) { g.Apply(); return; }
+        int tickStart = FrameProfilerNetwork.totalSamples < FrameProfilerNetwork.RING_SIZE
+            ? 0 : FrameProfilerNetwork.ringIndex;
+        int stride = Math.Max(1, tickCount / g.W);
+        int barCount = Math.Max(1, Math.Min(g.W, (tickCount - 1) / stride));
+        int barPx = Math.Max(1, g.W / barCount);
+        for (int i = 0; i < barCount; i++)
+        {
+            float minHz = float.MaxValue;
+            bool hadDrop = false;
+            for (int j = 0; j < stride; j++)
+            {
+                int kB = 1 + i * stride + j;
+                if (kB >= tickCount) break;
+                int idxA = (tickStart + kB - 1) % FrameProfilerNetwork.RING_SIZE;
+                int idxB = (tickStart + kB) % FrameProfilerNetwork.RING_SIZE;
+                float dt = FrameProfilerNetwork.arrivalTimes[idxB] - FrameProfilerNetwork.arrivalTimes[idxA];
+                if (dt > 0f)
+                {
+                    float hz = Mathf.Min(1f / dt, TICK_MAX);
+                    if (hz < minHz) minHz = hz;
+                }
+                if (FrameProfilerNetwork.sampleGap[idxB] > 0) hadDrop = true;
+            }
+            if (hadDrop) g.Rect(i * barPx, 0, g.H - 1, barPx, C_DROP);
+            if (minHz != float.MaxValue)
+            {
+                int y = Mathf.RoundToInt(minHz / TICK_MAX * g.H);
+                g.Dot(i * barPx, Mathf.Clamp(y, 0, g.H - 2), barPx, 2, C_BAR_GREEN);
+            }
+        }
+        g.Apply();
     }
 
     void PrintSummary()
@@ -278,122 +697,321 @@ public class FrameProfilerOverlay : MonoBehaviour
 
     void OnGUI()
     {
-        if (!showOverlay) return;
+        // OnGUI fires twice per frame (Layout + Repaint). DrawTexture is a
+        // no-op outside Repaint, but the per-bar loop still burns CPU — so
+        // bail entirely for non-Repaint events.
+        if (Event.current.type != EventType.Repaint) return;
         InitStyles();
 
+        // Four modes, simple → advanced → debug:
+        //   0 Minimal    — just FPS + frame time text (cheapest)
+        //   1 Overview   — all live graphs + stats on one panel
+        //   2 Diagnostics — spike log w/ attribution + top calls table
+        //   3 Debug      — memory/GC/system monitor
         switch (displayMode)
         {
-            case 0: DrawGraphAndStats(); break;
-            case 1: DrawSpikeLog(); break;
-            case 2: DrawSystemMonitors(); break;
+            case 0: DrawMinimal(); break;
+            case 1: DrawOverview(); break;
+            case 2: DrawDiagnostics(); break;
+            case 3: DrawSystemMonitors(); break;
         }
     }
 
-    void DrawGraphAndStats()
+    void DrawMinimal()
     {
-        float panelW = 420f;
-        float panelH = 240f;
+        float panelW = 240f;
+        float panelH = 90f;
+        float x = Screen.width - panelW - 10f;
+        float y = 10f;
+        GUI.Box(new Rect(x, y, panelW, panelH), "", boxStyle);
+        float currentMs = frameTimes[(frameIndex - 1 + FRAME_HISTORY) % FRAME_HISTORY];
+        float fps = currentMs > 0f ? 1000f / currentMs : 0f;
+        // headerStyle is fontSize 15 — needs ~22px of vertical space.
+        GUI.Label(new Rect(x + 8, y + 3,  panelW, 22), $"{fps:F0} fps  ({cachedAvgFps:F0} 10s avg)", headerStyle);
+        GUI.Label(new Rect(x + 8, y + 27, panelW, 18), $"{currentMs:F1} ms  ({cachedAvgFrameMs:F1} avg)", labelStyle);
+        GUI.Label(new Rect(x + 8, y + 47, panelW, 18), $"1% low: {cachedOnePercentLow:F0} fps", labelStyle);
+        GUI.Label(new Rect(x + 8, y + 69, panelW, 16), "F4 = cycle mode    F5 = toggle CSV log", graphTitleStyle);
+    }
+
+    void DrawOverview()
+    {
+        float panelW = 540f;
+        float panelH = 1200f;
         float x = Screen.width - panelW - 10f;
         float y = 10f;
 
         GUI.Box(new Rect(x, y, panelW, panelH), "", boxStyle);
 
         float graphX = x + 10f;
-        float graphY = y + 25f;
-        float graphW = panelW - 20f;
-        float graphH = 120f;
+        // Reserve ~70px on the right for axis labels.
+        float graphW = panelW - 80f;
+        float graphY = y + 45f;   // header + extra room for the first graph title (18px)
+        float graphH = 180f;
 
-        string serverIp = "";
-        try
+        string csvState = csvLogging ? "CSV:REC" : "CSV:off";
+        GUI.Label(new Rect(x + 10, y + 3, panelW, 22), $"Frame Profiler [F4 mode | F5 {csvState}]", headerStyle);
+
+        GUI.Label(new Rect(graphX, graphY - 20, graphW, 18),
+            "Frame time ms — red >20ms, yellow >12ms, green ok",
+            graphTitleStyle);
+        // Single blit of the baked texture replaces ~150 per-bar IMGUI calls.
+        if (bakedFrame != null) GUI.DrawTexture(new Rect(graphX, graphY, graphW, graphH), bakedFrame.Tex);
+        GUI.Label(new Rect(graphX + graphW + 2, graphY - 2, 60, 18), $"{frameTimeAxisMs:F0}ms", labelStyle);
+        if (SPIKE_THRESHOLD_MS <= frameTimeAxisMs)
         {
-            var conn = GlobalStateManager.ConnectionState.Connection;
-            if (conn != null && conn.EndPoint != null)
-                serverIp = $"  [{conn.EndPoint}]";
+            float thresholdY = graphY + graphH - (SPIKE_THRESHOLD_MS / frameTimeAxisMs) * graphH;
+            GUI.Label(new Rect(graphX + graphW + 2, thresholdY - 8, 60, 18), $"{SPIKE_THRESHOLD_MS}ms", labelStyle);
         }
-        catch { }
-        GUI.Label(new Rect(x + 10, y + 3, panelW, 22), $"Frame Profiler{serverIp} [F3 F4 F5]", headerStyle);
+        GUI.Label(new Rect(graphX + graphW + 2, graphY + graphH - 14, 60, 18), "0", labelStyle);
 
-        GUI.DrawTexture(new Rect(graphX, graphY, graphW, graphH), graphBg);
+        // FPS line graph below the frame-time bars (1000fps fixed scale).
+        float fpsY = graphY + graphH + 32f;  // 18 title + ~14 breathing room
+        float fpsH = 190f;
+        const float fpsMax = 1000f;
+        GUI.Label(new Rect(graphX, fpsY - 20, graphW, 18),
+            "FPS — reference lines at 60 and 144",
+            graphTitleStyle);
+        if (bakedFps != null) GUI.DrawTexture(new Rect(graphX, fpsY, graphW, fpsH), bakedFps.Tex);
 
-        float thresholdY = graphY + graphH - (SPIKE_THRESHOLD_MS / 50f) * graphH;
-        GUI.DrawTexture(new Rect(graphX, thresholdY, graphW, 1), spikeLine);
+        float ref60Y = fpsY + fpsH - (60f / fpsMax) * fpsH;
+        float ref144Y = fpsY + fpsH - (144f / fpsMax) * fpsH;
+        GUI.Label(new Rect(graphX + graphW + 2, fpsY - 2, 50, 18), "1000", labelStyle);
+        GUI.Label(new Rect(graphX + graphW + 2, ref144Y - 8, 50, 18), "144", labelStyle);
+        GUI.Label(new Rect(graphX + graphW + 2, ref60Y - 8, 50, 18), "60", labelStyle);
+        GUI.Label(new Rect(graphX + graphW + 2, fpsY + fpsH - 14, 50, 18), "0", labelStyle);
 
-        int barCount = Math.Min(FRAME_HISTORY, (int)graphW);
-        float barW = graphW / barCount;
-        for (int i = 0; i < barCount; i++)
+        // RTT line graph (cyan) with packet-loss % overlay (red, secondary
+        // Y axis on the right). Loss axis caps at 25% so even small drops
+        // are visible.
+        float rttY = fpsY + fpsH + 32f;
+        float rttH = 120f;
+        float rttMax = FrameProfilerNetwork.rttAxisMaxMs;
+        const float LOSS_MAX = 100f;
+        GUI.Label(new Rect(graphX, rttY - 20, graphW, 18),
+            "RTT ms (cyan) + Packet loss % (red, 0-100%)",
+            graphTitleStyle);
+        if (bakedRtt != null) GUI.DrawTexture(new Rect(graphX, rttY, graphW, rttH), bakedRtt.Tex);
+        GUI.Label(new Rect(graphX + graphW + 2, rttY - 2,         60, 18), $"{rttMax:F0}ms",  rttMaxLabelStyle);
+        GUI.Label(new Rect(graphX + graphW + 2, rttY + 14,        60, 18), $"{LOSS_MAX:F0}%", lossMaxLabelStyle);
+        GUI.Label(new Rect(graphX + graphW + 2, rttY + rttH - 14, 60, 18), "0", labelStyle);
+
+        // Server tick arrival rate: instantaneous Hz from inter-arrival gaps.
+        // Red vertical impulse drawn at each sample whose tickId showed a
+        // gap from the previous one (= server dropped or coalesced ticks).
+        float tickY = rttY + rttH + 32f;
+        float tickH = 100f;
+        const float TICK_MAX = 150f;
+        GUI.Label(new Rect(graphX, tickY - 20, graphW, 18),
+            "Server tick rate Hz (green) — red bars = dropped ticks (100Hz target)",
+            graphTitleStyle);
+        if (bakedTick != null) GUI.DrawTexture(new Rect(graphX, tickY, graphW, tickH), bakedTick.Tex);
+        GUI.Label(new Rect(graphX + graphW + 2, tickY - 2, 50, 18), $"Hz {TICK_MAX:F0}", labelStyle);
+        GUI.Label(new Rect(graphX + graphW + 2, tickY + tickH - 14, 50, 18), "0", labelStyle);
+
+        // Stats stack
+        float statsY = tickY + tickH + 6f;
+        float ly = statsY;
+        GUI.Label(new Rect(x + 10, ly, panelW, 18), cachedServerLine, labelStyle); ly += 18;
+        GUI.Label(new Rect(x + 10, ly, panelW, 18), cachedLine1, labelStyle); ly += 18;
+        GUI.Label(new Rect(x + 10, ly, panelW, 18), cachedLine2, labelStyle); ly += 18;
+        GUI.Label(new Rect(x + 10, ly, panelW, 18), cachedLine3, labelStyle); ly += 18;
+        if (!string.IsNullOrEmpty(cachedLine4))
         {
-            int idx = (frameIndex - barCount + i + FRAME_HISTORY) % FRAME_HISTORY;
-            float ms = frameTimes[idx];
-            float barH = Mathf.Clamp(ms / 50f * graphH, 1f, graphH);
-            float barY = graphY + graphH - barH;
-
-            Texture2D color = ms < 12f ? barGreen : ms < SPIKE_THRESHOLD_MS ? barYellow : barRed;
-            GUI.DrawTexture(new Rect(graphX + i * barW, barY, Mathf.Max(barW - 0.5f, 1f), barH), color);
+            GUI.Label(new Rect(x + 10, ly, panelW, 18), cachedLine4, labelStyle); ly += 18;
+        }
+        GUI.Label(new Rect(x + 10, ly, panelW, 18), cachedCpuGpuLine, labelStyle); ly += 18;
+        if (!string.IsNullOrEmpty(cachedCpuGpuVerdict))
+        {
+            GUI.Label(new Rect(x + 10, ly, panelW, 18), cachedCpuGpuVerdict, labelStyle); ly += 18;
         }
 
-        GUI.Label(new Rect(graphX + graphW + 2, graphY - 2, 50, 18), "50ms", labelStyle);
-        GUI.Label(new Rect(graphX + graphW + 2, thresholdY - 8, 50, 18), $"{SPIKE_THRESHOLD_MS}ms", labelStyle);
-        GUI.Label(new Rect(graphX + graphW + 2, graphY + graphH - 14, 50, 18), "0", labelStyle);
+        // Frame composition breakdown — horizontal bars normalized to the
+        // longest segment so you can see the proportions at a glance.
+        ly += 4;
+        GUI.Label(new Rect(x + 10, ly, panelW, 16),
+            "Frame composition (last frame) — bars scaled to the slowest segment:",
+            graphTitleStyle);
+        ly += 18;
+        float labelColW = 80f;
+        float valueColW = 110f;
+        float barColX = x + 10 + labelColW;
+        float barColW = panelW - 20 - labelColW - valueColW;
+        float maxSeg = Mathf.Max(0.001f,
+            Mathf.Max(Mathf.Max(lastCpuMain, lastCpuRender),
+                      Mathf.Max(lastGfxWait, lastVsyncWait)));
+        DrawCompBar(x + 10, ly, labelColW, barColX, barColW, valueColW, "CPU main",   lastCpuMain,   maxSeg, C_BAR_GREEN); ly += 17;
+        DrawCompBar(x + 10, ly, labelColW, barColX, barColW, valueColW, "CPU render", lastCpuRender, maxSeg, C_FPS_LINE);  ly += 17;
+        DrawCompBar(x + 10, ly, labelColW, barColX, barColW, valueColW, "GPU wait",   lastGfxWait,   maxSeg, C_BAR_YELLOW); ly += 17;
+        DrawCompBar(x + 10, ly, labelColW, barColX, barColW, valueColW, "VSync wait", lastVsyncWait, maxSeg, C_REF_LINE);   ly += 17;
 
-        float statsY = graphY + graphH + 5f;
-        float currentMs = frameTimes[(frameIndex - 1 + FRAME_HISTORY) % FRAME_HISTORY];
-        float fps = currentMs > 0 ? 1000f / currentMs : 0;
-
-        float[] sorted = new float[Math.Min(totalFrames, FRAME_HISTORY)];
-        int sortCount = sorted.Length;
-        for (int i = 0; i < sortCount; i++)
-            sorted[i] = frameTimes[(frameIndex - sortCount + i + FRAME_HISTORY) % FRAME_HISTORY];
-        Array.Sort(sorted);
-        float onePercentLow = sortCount > 0 ? 1000f / sorted[sortCount - 1 - sortCount / 100] : 0;
-
-        GUI.Label(new Rect(x + 10, statsY, panelW, 18),
-            $"FPS: {fps:F0}  Frame: {currentMs:F1}ms  1%Low: {onePercentLow:F0}fps", labelStyle);
-        GUI.Label(new Rect(x + 10, statsY + 18, panelW, 18),
-            $"Spikes(>{SPIKE_THRESHOLD_MS}ms): {spikeCount}  GC0: {currentGcCount}  " +
-            $"Heap: {FormatBytes(monoHeapSize)}", labelStyle);
-
-        float timeSinceGc = Time.unscaledTime - lastGcTime;
-        string gcAge = lastGcTime > 0 ? $"{timeSinceGc:F1}s ago" : "none";
-        GUI.Label(new Rect(x + 10, statsY + 36, panelW, 18),
-            $"Last GC: {gcAge}  Mono used: {FormatBytes(monoUsedSize)}", labelStyle);
-
-        if (spikeIntervalCount >= 3)
+        // Per-function breakdown of THIS frame — top 6 built-in profiler
+        // markers by last-frame cost. Bars normalized to current frame
+        // time (cachedAvgFrameMs as a reasonable visual reference).
+        ly += 4;
+        GUI.Label(new Rect(x + 10, ly, panelW, 16),
+            "Top functions this frame (built-in profiler markers, sorted by last-frame ms):",
+            graphTitleStyle);
+        ly += 18;
+        int markerCount = FrameProfilerBuiltinMarkers.GetCount();
+        // Show ANY marker with a nonzero LastValue. Many real ones are
+        // sub-millisecond on a fast frame and the previous 0.01ms cutoff
+        // was hiding them.
+        var topFns = new List<(string name, float ms)>();
+        for (int i = 0; i < markerCount; i++)
         {
-            float sum = 0f;
-            int c = Math.Min(spikeIntervalCount, spikeIntervals.Length);
-            for (int i = 0; i < c; i++) sum += spikeIntervals[i];
-            float mean = sum / c;
-            GUI.Label(new Rect(x + 10, statsY + 54, panelW, 18),
-                $"Spike pattern: ~{mean:F2}s avg interval ({c} samples)", labelStyle);
+            float ms = FrameProfilerBuiltinMarkers.GetLastMs(i);
+            if (ms > 0f) topFns.Add((FrameProfilerBuiltinMarkers.GetName(i), ms));
+        }
+        topFns.Sort((a, b) => b.ms.CompareTo(a.ms));
+        float fnMax = topFns.Count > 0 ? topFns[0].ms : 1f;
+        int rowsToShow = Math.Min(6, topFns.Count);
+        for (int i = 0; i < rowsToShow; i++)
+        {
+            DrawCompBar(x + 10, ly, 210f, x + 10 + 210f, panelW - 20 - 210f - 90f, 90f,
+                topFns[i].name, topFns[i].ms, fnMax, C_FPS_LINE);
+            ly += 17;
+        }
+        if (rowsToShow == 0)
+        {
+            GUI.Label(new Rect(x + 10, ly, panelW, 16),
+                "(profiler markers not yet emitting data — wait a frame)",
+                labelStyle);
+            ly += 17;
+        }
+
+        // Network summary lines
+        GUI.Label(new Rect(x + 10, ly, panelW, 18),
+            $"RTT {FrameProfilerNetwork.currentRttMs:F0}ms  Ticks {FrameProfilerNetwork.currentTickRateHz:F1}Hz/100  Jitter {FrameProfilerNetwork.jitterMs:F1}ms",
+            labelStyle); ly += 18;
+        GUI.Label(new Rect(x + 10, ly, panelW, 18),
+            $"Loss {FrameProfilerNetwork.currentLossPct:F1}%  Net {FormatBytes((long)FrameProfilerNetwork.currentBytesPerSec)}/s  Dropped +{FrameProfilerNetwork.droppedInWindow}/s (total {FrameProfilerNetwork.droppedTickCount})",
+            labelStyle);
+    }
+
+    void DrawRttRefLines(float gx, float gy, float gw, float gh, float rttMax)
+    {
+        if (rttMax <= 25f)
+        {
+            DrawRefLine(gx, gy, gw, gh, 10f, rttMax);
+            DrawRefLine(gx, gy, gw, gh, 20f, rttMax);
+        }
+        else if (rttMax <= 50f)
+        {
+            DrawRefLine(gx, gy, gw, gh, 20f, rttMax);
+            DrawRefLine(gx, gy, gw, gh, 40f, rttMax);
+        }
+        else if (rttMax <= 100f)
+        {
+            DrawRefLine(gx, gy, gw, gh, 25f, rttMax);
+            DrawRefLine(gx, gy, gw, gh, 50f, rttMax);
+            DrawRefLine(gx, gy, gw, gh, 75f, rttMax);
+        }
+        else if (rttMax <= 200f)
+        {
+            DrawRefLine(gx, gy, gw, gh, 50f, rttMax);
+            DrawRefLine(gx, gy, gw, gh, 100f, rttMax);
+            DrawRefLine(gx, gy, gw, gh, 150f, rttMax);
+        }
+        else
+        {
+            DrawRefLine(gx, gy, gw, gh, rttMax * 0.25f, rttMax);
+            DrawRefLine(gx, gy, gw, gh, rttMax * 0.5f, rttMax);
+            DrawRefLine(gx, gy, gw, gh, rttMax * 0.75f, rttMax);
         }
     }
 
-    void DrawSpikeLog()
+    // Mode 1: spike log (with per-frame call attribution) on top, top-calls
+    // table below. Single panel so you see both views at once.
+    void DrawDiagnostics()
     {
-        float panelW = 520f;
-        float panelH = 340f;
+        float panelW = 800f;
+        float panelH = 620f;
         float x = Screen.width - panelW - 10f;
         float y = 10f;
 
         GUI.Box(new Rect(x, y, panelW, panelH), "", boxStyle);
-        GUI.Label(new Rect(x + 10, y + 3, panelW, 22), "Spike Log [F4:mode]", headerStyle);
+        GUI.Label(new Rect(x + 10, y + 3, panelW, 22),
+            $"Diagnostics — Spike Log + Top Calls [F4 mode | F5 {(csvLogging ? "CSV:REC" : "CSV:off")}]", headerStyle);
 
-        float ly = y + 28f;
+        // Spike Log
+        float ly = y + 30f;
+        GUI.Label(new Rect(x + 10, ly, panelW, 14),
+            "Frame stutters (>20ms) — \"Attributed call\" = most expensive instrumented function in that frame",
+            graphTitleStyle); ly += 16f;
         GUI.Label(new Rect(x + 10, ly, panelW, 18),
-            "Frame      Time     Since    Interval  MemDelta    GC", labelStyle);
+            "Frame      Time     Since   Interval  MemDelta   GC  Attributed call (ms)", labelStyle);
         ly += 18f;
 
-        int count = Math.Min(spikeLog.Count, 16);
+        int count = Math.Min(spikeLog.Count, 14);
         int start = Math.Max(0, spikeLog.Count - count);
         for (int i = start; i < spikeLog.Count; i++)
         {
             var s = spikeLog[i];
             string gc = s.GcOccurred ? "YES" : "   ";
             string interval = s.IntervalSinceLast > 0 ? $"{s.IntervalSinceLast,7:F2}s" : "     --";
+            string attr = string.IsNullOrEmpty(s.AttributedCall)
+                ? "(none instrumented)"
+                : $"{s.AttributedCall} ({s.AttributedMs:F1}ms)";
             GUI.Label(new Rect(x + 10, ly, panelW, 18),
-                $"{s.FrameNumber,7}  {s.TimeMs,7:F1}ms  {s.TimeSinceStart,6:F1}s  {interval}  {FormatBytesSigned(s.MemoryDelta),9}  {gc}",
+                $"{s.FrameNumber,7}  {s.TimeMs,7:F1}ms  {s.TimeSinceStart,6:F1}s  {interval}  {FormatBytesSigned(s.MemoryDelta),9}  {gc}  {attr}",
                 labelStyle);
             ly += 17f;
+        }
+
+        // Separator
+        float sepY = y + 30f + 16f + 18f + 14 * 17f + 4f;
+        var sepTex = fpsRefLine;
+        GUI.DrawTexture(new Rect(x + 10, sepY, panelW - 20, 1), sepTex);
+
+        // Top Calls — combined view: hand-instrumented Harmony patches
+        // (allocation-aware) + Unity built-in profiler markers (broad
+        // engine-subsystem coverage). Sorted by total ms in the window.
+        float topY = sepY + 8f;
+        GUI.Label(new Rect(x + 10, topY, panelW, 18),
+            "Top calls — Harmony patches (with alloc tracking) + Unity built-in markers, sorted by total ms",
+            graphTitleStyle); topY += 18f;
+        GUI.Label(new Rect(x + 10, topY, panelW, 18),
+            "Source  System                                  Calls    Avg ms    Max ms   Total ms    Alloc", labelStyle);
+        topY += 18f;
+
+        // Build unified rows from three sources:
+        //   patch  — our 9 hand-instrumented Harmony patches (with alloc)
+        //   marker — Unity built-in profiler markers
+        //   mod    — per-mod aggregate from FrameProfilerMods (when enabled)
+        int nPatches = FrameProfilerPatches.GetSystemCount();
+        int nMarkers = FrameProfilerBuiltinMarkers.GetCount();
+        var modList = new List<FrameProfilerMods.ModStats>(FrameProfilerMods.Snapshot());
+        int nMods = modList.Count;
+        var combined = new (string src, string name, int calls, float total, float max, long bytes)[nPatches + nMarkers + nMods];
+        for (int i = 0; i < nPatches; i++)
+        {
+            var r = FrameProfilerPatches.GetSystemSnapshot(i);
+            combined[i] = ("patch ", r.Name, r.Calls, r.TotalMs, r.MaxMs, r.TotalBytes);
+        }
+        for (int i = 0; i < nMarkers; i++)
+        {
+            var r = FrameProfilerBuiltinMarkers.GetSnapshot(i);
+            combined[nPatches + i] = ("marker", r.Name, r.Calls, r.TotalMs, r.MaxMs, 0L);
+        }
+        for (int i = 0; i < nMods; i++)
+        {
+            var m = modList[i];
+            combined[nPatches + nMarkers + i] = ("mod   ", m.ModName, m.Calls, m.TotalMs, m.MaxMs, m.TotalAllocBytes);
+        }
+        Array.Sort(combined, (a, b) => b.total.CompareTo(a.total));
+
+        int rowsShown = 0;
+        for (int i = 0; i < combined.Length && rowsShown < 18; i++)
+        {
+            var r = combined[i];
+            if (r.calls == 0 && r.total <= 0f) continue; // skip totally inactive
+            float avg = r.calls > 0 ? r.total / r.calls : 0f;
+            string alloc = r.bytes > 0 ? FormatBytes(r.bytes) : "      —";
+            GUI.Label(new Rect(x + 10, topY, panelW, 18),
+                $"{r.src}  {r.name,-38}  {r.calls,6}  {avg,7:F2}  {r.max,7:F2}  {r.total,8:F1}   {alloc,10}",
+                labelStyle);
+            topY += 17f;
+            rowsShown++;
         }
     }
 
@@ -405,7 +1023,7 @@ public class FrameProfilerOverlay : MonoBehaviour
         float y = 10f;
 
         GUI.Box(new Rect(x, y, panelW, panelH), "", boxStyle);
-        GUI.Label(new Rect(x + 10, y + 3, panelW, 22), "System Monitor [F4:mode]", headerStyle);
+        GUI.Label(new Rect(x + 10, y + 3, panelW, 22), $"System Monitor [F4 mode | F5 {(csvLogging ? "CSV:REC" : "CSV:off")}]", headerStyle);
 
         float ly = y + 28f;
         int lineH = 19;
@@ -419,6 +1037,42 @@ public class FrameProfilerOverlay : MonoBehaviour
         GUI.Label(new Rect(x + 10, ly, panelW, 18), $"GC Gen2 Count:      {GC.CollectionCount(2)}", labelStyle); ly += lineH;
         GUI.Label(new Rect(x + 10, ly, panelW, 18), $"Total Frame Count:  {Time.frameCount}", labelStyle); ly += lineH;
         GUI.Label(new Rect(x + 10, ly, panelW, 18), $"Time.timeScale:     {Time.timeScale:F2}", labelStyle); ly += lineH;
+    }
+
+    void DrawRefLine(float gx, float gy, float gw, float gh, float val, float max)
+    {
+        float ry = gy + gh - (val / max) * gh;
+        GUI.DrawTexture(new Rect(gx, ry, gw, 1), fpsRefLine);
+        GUI.Label(new Rect(gx + gw + 2, ry - 8, 50, 18), $"{val:F0}", labelStyle);
+    }
+
+    // One row of the frame composition breakdown: text label, horizontal
+    // bar normalized to the largest segment, ms + % value on the right.
+    void DrawCompBar(float lx, float y, float labelW, float barX, float barW, float valueW,
+                     string label, float ms, float maxMs, Color color)
+    {
+        GUI.Label(new Rect(lx, y, labelW, 16), label, labelStyle);
+        float frac = maxMs > 0f ? Mathf.Clamp01(ms / maxMs) : 0f;
+        // bg trough
+        GUI.DrawTexture(new Rect(barX, y + 3, barW, 10), graphBg);
+        // filled portion
+        if (frac > 0.001f)
+        {
+            var tex = ColorTex(color);
+            GUI.DrawTexture(new Rect(barX, y + 3, barW * frac, 10), tex);
+        }
+        float pct = maxMs > 0f ? ms / maxMs * 100f : 0f;
+        GUI.Label(new Rect(barX + barW + 4, y, valueW, 16), $"{ms,5:F2} ms  {pct,3:F0}%", labelStyle);
+    }
+
+    // Cache of 1x1 colored textures for use in DrawCompBar / other bars.
+    readonly Dictionary<Color, Texture2D> colorTexCache = new Dictionary<Color, Texture2D>();
+    Texture2D ColorTex(Color c)
+    {
+        if (colorTexCache.TryGetValue(c, out var t) && t != null) return t;
+        t = MakeTex(1, 1, c);
+        colorTexCache[c] = t;
+        return t;
     }
 
     void FlushCsv()
@@ -438,12 +1092,25 @@ public class FrameProfilerOverlay : MonoBehaviour
 
     public void OnDestroy()
     {
+        if (mainThreadRecorder.Valid) mainThreadRecorder.Dispose();
+        if (renderThreadRecorder.Valid) renderThreadRecorder.Dispose();
+        if (gfxWaitRecorder.Valid) gfxWaitRecorder.Dispose();
+        if (vsyncWaitRecorder.Valid) vsyncWaitRecorder.Dispose();
+        FrameProfilerBuiltinMarkers.Stop();
+        bakedFrame?.Dispose();
+        bakedFps?.Dispose();
+        bakedRtt?.Dispose();
+        bakedTick?.Dispose();
         if (csvLogging) FlushCsv();
         if (graphBg != null) Destroy(graphBg);
         if (spikeLine != null) Destroy(spikeLine);
         if (barGreen != null) Destroy(barGreen);
         if (barYellow != null) Destroy(barYellow);
         if (barRed != null) Destroy(barRed);
+        if (fpsLine != null) Destroy(fpsLine);
+        if (fpsRefLine != null) Destroy(fpsRefLine);
+        if (lossLine != null) Destroy(lossLine);
+        if (dropMarker != null) Destroy(dropMarker);
     }
 
     static Texture2D MakeTex(int w, int h, Color col)
