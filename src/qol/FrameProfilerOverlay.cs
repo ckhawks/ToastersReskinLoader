@@ -27,6 +27,13 @@ public class FrameProfilerOverlay : MonoBehaviour
 
     int displayMode = 0;
     readonly float[] frameTimes = new float[FRAME_HISTORY];
+    // Ticks-processed parallel ring: how many server tick RPCs arrived
+    // during each Unity frame. >=3 in a single frame ≈ server backlog
+    // burst (multiple delayed ticks landing at once → client must process
+    // them all in one frame → can drive a frame-time spike that's NOT
+    // the client's fault).
+    readonly int[] ticksPerFrame = new int[FRAME_HISTORY];
+    const int BACKLOG_BURST_THRESHOLD = 3;
     int frameIndex = 0;
     int totalFrames = 0;
 
@@ -60,6 +67,8 @@ public class FrameProfilerOverlay : MonoBehaviour
     // Frame-time axis auto-scales to the worst frame in the window (snapped
     // to a nice band) so low-ms graphs aren't squished against the baseline.
     float frameTimeAxisMs = 25f;
+    int cachedBacklogFrames = 0;
+    int cachedServerSuspectedSpikes = 0;
     string cachedServerLine = "";
     string cachedLine1 = "";
     string cachedLine2 = "";
@@ -139,6 +148,8 @@ public class FrameProfilerOverlay : MonoBehaviour
         public bool GcOccurred;
         public string AttributedCall;   // most expensive instrumented call in that frame
         public float AttributedMs;
+        public int TicksThisFrame;       // server tick RPCs processed during this Unity frame
+        public bool ServerSuspected;     // ticksThisFrame >= BACKLOG_BURST_THRESHOLD
     }
 
     void Start()
@@ -232,6 +243,7 @@ public class FrameProfilerOverlay : MonoBehaviour
         cpuMainHistory[frameIndex] = lastCpuMain;
         cpuRenderHistory[frameIndex] = lastCpuRender;
         gfxWaitHistory[frameIndex] = lastGfxWait;
+        ticksPerFrame[frameIndex] = FrameProfilerNetwork.ConsumeAndResetFrameTickCount();
 
         if (Time.frameCount % RTT_SAMPLE_INTERVAL_FRAMES == 0)
             FrameProfilerNetwork.SampleRtt();
@@ -273,6 +285,12 @@ public class FrameProfilerOverlay : MonoBehaviour
                 attrMs = 0f;
             }
 
+            // ticksPerFrame was written above with the index that just
+            // recorded this frame's data — (frameIndex - 1) after the
+            // advance.
+            int spikeIdx = (frameIndex - 1 + FRAME_HISTORY) % FRAME_HISTORY;
+            int ticksThisFrame = ticksPerFrame[spikeIdx];
+
             var entry = new SpikeEntry
             {
                 FrameNumber = Time.frameCount,
@@ -283,6 +301,8 @@ public class FrameProfilerOverlay : MonoBehaviour
                 GcOccurred = gcOccurred,
                 AttributedCall = attrName,
                 AttributedMs = attrMs,
+                TicksThisFrame = ticksThisFrame,
+                ServerSuspected = ticksThisFrame >= BACKLOG_BURST_THRESHOLD,
             };
 
             if (spikeLog.Count < SPIKE_LOG_MAX)
@@ -405,6 +425,21 @@ public class FrameProfilerOverlay : MonoBehaviour
         // Auto-scale the frame-time axis: peak in the window (already sorted
         // ascending), snap to nice bands so the y-scale doesn't flicker.
         float peakMs = sortBuffer[sortCount - 1];
+        // Count backlog-burst frames in window + spikes that overlap them.
+        int backlogFrames = 0;
+        int serverSpikes = 0;
+        for (int i = 0; i < sortCount; i++)
+        {
+            int idx = (frameIndex - sortCount + i + FRAME_HISTORY) % FRAME_HISTORY;
+            if (ticksPerFrame[idx] >= BACKLOG_BURST_THRESHOLD)
+            {
+                backlogFrames++;
+                if (frameTimes[idx] > SPIKE_THRESHOLD_MS) serverSpikes++;
+            }
+        }
+        cachedBacklogFrames = backlogFrames;
+        cachedServerSuspectedSpikes = serverSpikes;
+
         frameTimeAxisMs =
             peakMs <= 12f  ? 12f  :
             peakMs <= 25f  ? 25f  :
@@ -515,6 +550,7 @@ public class FrameProfilerOverlay : MonoBehaviour
     static readonly Color C_SPIKE_LINE = new Color(1f, 0f, 0f, 0.5f);
     static readonly Color C_LOSS       = new Color(1f, 0.3f, 0.3f, 0.95f);
     static readonly Color C_DROP       = new Color(1f, 0.2f, 0.2f, 0.35f);
+    static readonly Color C_BACKLOG    = new Color(0.7f, 0.4f, 1f, 0.95f);  // purple cap = server backlog burst
 
     void BakeFrameGraph()
     {
@@ -537,14 +573,24 @@ public class FrameProfilerOverlay : MonoBehaviour
         for (int i = 0; i < barCount; i++)
         {
             float ms = 0f;
+            int maxTicks = 0;
             for (int j = 0; j < stride; j++)
             {
                 int idx = (frameIndex - srcCount + i * stride + j + FRAME_HISTORY) % FRAME_HISTORY;
                 if (frameTimes[idx] > ms) ms = frameTimes[idx];
+                if (ticksPerFrame[idx] > maxTicks) maxTicks = ticksPerFrame[idx];
             }
             int bh = Mathf.Clamp(Mathf.RoundToInt(ms / axis * g.H), 1, g.H - 1);
             var c = ms < 12f ? C_BAR_GREEN : ms < SPIKE_THRESHOLD_MS ? C_BAR_YELLOW : C_BAR_RED;
             g.Rect(i * barPx, 0, bh, barPx, c);
+            // Purple cap on top of bars where >=3 server ticks landed in
+            // that Unity frame — signals server backlog burst, regardless
+            // of whether the frame was actually a stutter.
+            if (maxTicks >= BACKLOG_BURST_THRESHOLD)
+            {
+                int capH = Math.Min(3, g.H - bh);
+                if (capH > 0) g.Rect(i * barPx, bh, bh + capH - 1, barPx, C_BACKLOG);
+            }
         }
         g.Apply();
     }
@@ -766,7 +812,7 @@ public class FrameProfilerOverlay : MonoBehaviour
     void DrawOverview()
     {
         float panelW = 540f;
-        float panelH = 1200f;
+        float panelH = 1220f;
         float x = Screen.width - panelW - 10f;
         float y = 10f;
 
@@ -782,7 +828,7 @@ public class FrameProfilerOverlay : MonoBehaviour
         GUI.Label(new Rect(x + 10, y + 3, panelW, 22), $"Frame Profiler [F4 mode | F5 {csvState}]", headerStyle);
 
         GUI.Label(new Rect(graphX, graphY - 20, graphW, 18),
-            "Frame time ms — red >20ms, yellow >12ms, green ok",
+            "Frame time ms — red>20 yellow>12 green ok | purple cap = server backlog burst",
             graphTitleStyle);
         // Single blit of the baked texture replaces ~150 per-bar IMGUI calls.
         if (bakedFrame != null) GUI.DrawTexture(new Rect(graphX, graphY, graphW, graphH), bakedFrame.Tex);
@@ -915,6 +961,9 @@ public class FrameProfilerOverlay : MonoBehaviour
             labelStyle); ly += 18;
         GUI.Label(new Rect(x + 10, ly, panelW, 18),
             $"Loss {FrameProfilerNetwork.currentLossPct:F1}%  Net {FormatBytes((long)FrameProfilerNetwork.currentBytesPerSec)}/s  Dropped +{FrameProfilerNetwork.droppedInWindow}/s (total {FrameProfilerNetwork.droppedTickCount})",
+            labelStyle); ly += 18;
+        GUI.Label(new Rect(x + 10, ly, panelW, 18),
+            $"Server backlog frames: {cachedBacklogFrames} (of which {cachedServerSuspectedSpikes} were stutters >{SPIKE_THRESHOLD_MS}ms)",
             labelStyle);
     }
 
@@ -969,7 +1018,7 @@ public class FrameProfilerOverlay : MonoBehaviour
             "Frame stutters (>20ms) — \"Attributed call\" = most expensive instrumented function in that frame",
             graphTitleStyle); ly += 16f;
         GUI.Label(new Rect(x + 10, ly, panelW, 18),
-            "Frame      Time     Since   Interval  MemDelta   GC  Attributed call (ms)", labelStyle);
+            "Frame      Time     Since   Interval  MemDelta   GC  Tks  Cause", labelStyle);
         ly += 18f;
 
         int count = Math.Min(spikeLog.Count, 14);
@@ -979,11 +1028,20 @@ public class FrameProfilerOverlay : MonoBehaviour
             var s = spikeLog[i];
             string gc = s.GcOccurred ? "YES" : "   ";
             string interval = s.IntervalSinceLast > 0 ? $"{s.IntervalSinceLast,7:F2}s" : "     --";
-            string attr = string.IsNullOrEmpty(s.AttributedCall)
-                ? "(none instrumented)"
-                : $"{s.AttributedCall} ({s.AttributedMs:F1}ms)";
+            // "Cause" column merges attributed-call attribution with
+            // server-backlog detection. SERVER tag means N>=3 server ticks
+            // landed in this Unity frame → likely server backlog flush.
+            string cause;
+            if (s.ServerSuspected)
+                cause = string.IsNullOrEmpty(s.AttributedCall)
+                    ? "*SERVER backlog burst*"
+                    : $"*SERVER backlog* + {s.AttributedCall} ({s.AttributedMs:F1}ms)";
+            else if (string.IsNullOrEmpty(s.AttributedCall))
+                cause = "(none instrumented — local cause unattributed)";
+            else
+                cause = $"{s.AttributedCall} ({s.AttributedMs:F1}ms)";
             GUI.Label(new Rect(x + 10, ly, panelW, 18),
-                $"{s.FrameNumber,7}  {s.TimeMs,7:F1}ms  {s.TimeSinceStart,6:F1}s  {interval}  {FormatBytesSigned(s.MemoryDelta),9}  {gc}  {attr}",
+                $"{s.FrameNumber,7}  {s.TimeMs,7:F1}ms  {s.TimeSinceStart,6:F1}s  {interval}  {FormatBytesSigned(s.MemoryDelta),9}  {gc}  {s.TicksThisFrame,3}  {cause}",
                 labelStyle);
             ly += 17f;
         }

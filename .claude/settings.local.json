@@ -8,7 +8,11 @@
       "Bash(rtk git:*)",
       "Bash(rtk dotnet *)",
       "Bash(powershell *)",
-      "Read(//c/Users/stlrc/Downloads/**)"
+      "Read(//c/Users/stlrc/Downloads/**)",
+      "Read(//c/Projects/Puck Plugins/ToasterReskinLoader/**)",
+      "Bash(gh api *)",
+      "Read(//tmp/**)",
+      "PowerShell(gh api *)"
     ]
   }
 }

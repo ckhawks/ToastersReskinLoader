@@ -41,6 +41,17 @@ public static class FrameProfilerNetwork
     public static int rttTotal = 0;
 
     public static int droppedTickCount = 0;
+    // Per-Unity-frame tick arrival counter. Each tick RPC increments it;
+    // the overlay consumes+resets it once per Update so each frame gets
+    // an accurate "ticks processed this frame" count for correlating
+    // client stutters with server-side issues.
+    public static int frameTickCounter = 0;
+    public static int ConsumeAndResetFrameTickCount()
+    {
+        int v = frameTickCounter;
+        frameTickCounter = 0;
+        return v;
+    }
     public static ushort lastTickId = 0;
     public static bool hasFirstTick = false;
     public static float lastArrivalTime = 0f;
@@ -161,6 +172,7 @@ public static class FrameProfilerNetwork
         lastTickId = tickId;
         hasFirstTick = true;
         lastArrivalTime = now;
+        frameTickCounter++;
     }
 
     // Refresh aggregates over the last `windowSec` seconds. Called by the
