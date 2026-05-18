@@ -135,15 +135,24 @@ public static class FrameProfilerMods
     }
 
     // Attribute Harmony-patched cost back to the patching mod. Walks every
-    // method patched by anyone (us, foreign mods, the game itself), and for
-    // each foreign prefix/postfix/finalizer, patches that patch method with
-    // a timing wrapper. The owner string on each Harmony Patch identifies
-    // which mod installed it.
+    // method patched by anyone foreign and wraps each foreign POSTFIX
+    // (only — see safety notes below) with a timing wrapper.
+    //
+    // Safety filters (learned the hard way after wrapping Prefixes broke
+    // chat/scoreboard/minimap in earlier sessions):
+    //   - Skip our own patches AND any other patch from a pw.stellaric.*
+    //     owner. The host plugin's own Harmony instance is what powered
+    //     chat/UI patches we don't want to interfere with.
+    //   - Only wrap Postfixes. Prefixes can `return bool` to skip the
+    //     original method, and Finalizers can swallow exceptions via
+    //     `return Exception`. Wrapping those risks dropping their return
+    //     value through Harmony's chain.
+    //   - Only wrap patch methods whose ReturnType is void. Defense-in-
+    //     depth against postfixes that secretly return a value.
     public static void ApplyHarmonyAttributionPatches(Harmony harmony)
     {
         string ourId = harmony.Id;
         int count = 0;
-        int ownerCount = 0;
         var seenOwners = new HashSet<string>();
 
         MethodBase[] allPatched;
@@ -156,14 +165,19 @@ public static class FrameProfilerMods
             try { info = Harmony.GetPatchInfo(m); }
             catch { continue; }
             if (info == null) continue;
-            count += PatchEach(harmony, info.Prefixes, ourId, seenOwners);
             count += PatchEach(harmony, info.Postfixes, ourId, seenOwners);
-            count += PatchEach(harmony, info.Finalizers, ourId, seenOwners);
-            // Skip transpilers — they execute once at IL-rewrite time, not
-            // per-call, so timing them gives 0 meaningful runtime data.
+            // Intentionally skip Prefixes and Finalizers — return-value
+            // semantics. Skip Transpilers too — they run once at IL time.
         }
-        ownerCount = seenOwners.Count;
-        Plugin.Log($"[FrameProfiler][HARMONY] Wrapped {count} foreign Harmony patches across {ownerCount} owners (excludes our own '{ourId}')");
+        Plugin.Log($"[FrameProfiler][HARMONY] Wrapped {count} foreign Harmony postfixes across {seenOwners.Count} owners (only void postfixes, skips pw.stellaric.*)");
+    }
+
+    static bool IsOurOwner(string owner, string ourId)
+    {
+        if (string.IsNullOrEmpty(owner)) return true;
+        if (owner == ourId) return true;
+        if (owner.StartsWith("pw.stellaric.", StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
     }
 
     static int PatchEach(Harmony ourHarmony, System.Collections.ObjectModel.ReadOnlyCollection<HarmonyLib.Patch> patches,
@@ -176,10 +190,12 @@ public static class FrameProfilerMods
         foreach (var p in patches)
         {
             if (p == null) continue;
-            if (string.IsNullOrEmpty(p.owner) || p.owner == ourId) continue;
+            if (IsOurOwner(p.owner, ourId)) continue;
             var pm = p.PatchMethod;
             if (pm == null) continue;
-            if (methodToStats.ContainsKey(pm)) { seenOwners.Add(p.owner); continue; } // already wrapped
+            // Belt-and-suspenders: only wrap genuine void-returning postfixes.
+            if (pm.ReturnType != typeof(void)) continue;
+            if (methodToStats.ContainsKey(pm)) { seenOwners.Add(p.owner); continue; }
 
             string displayName = "[harmony] " + p.owner;
             if (!modStats.TryGetValue(displayName, out var stats))

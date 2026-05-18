@@ -415,15 +415,45 @@ public class FrameProfilerOverlay : MonoBehaviour
         float currentMs = frameTimes[(frameIndex - 1 + FRAME_HISTORY) % FRAME_HISTORY];
         float fps = currentMs > 0 ? 1000f / currentMs : 0;
 
+        string serverEndpoint = "";
         string serverIp = "";
         try
         {
             var conn = GlobalStateManager.ConnectionState.Connection;
             if (conn != null && conn.EndPoint != null)
-                serverIp = conn.EndPoint.ToString();
+            {
+                serverEndpoint = conn.EndPoint.ToString();
+                // EndPoint.ToString() is typically "ip:port"; split.
+                int colon = serverEndpoint.LastIndexOf(':');
+                serverIp = colon > 0 ? serverEndpoint.Substring(0, colon) : serverEndpoint;
+            }
         }
         catch { }
-        cachedServerLine = string.IsNullOrEmpty(serverIp) ? "Server: (offline)" : $"Server: {serverIp}";
+        if (string.IsNullOrEmpty(serverEndpoint))
+        {
+            cachedServerLine = "Server: (offline)";
+        }
+        else
+        {
+            // Trigger geoip fetch on first sighting of this IP. Cached after.
+            if (!FrameProfilerGeoIP.TryGet(serverIp, out var geo))
+            {
+                StartCoroutine(FrameProfilerGeoIP.FetchAsync(serverIp));
+                cachedServerLine = $"Server: {serverEndpoint} (resolving…)";
+            }
+            else if (geo.LookupFailed)
+            {
+                cachedServerLine = $"Server: {serverEndpoint}";
+            }
+            else
+            {
+                string locale = !string.IsNullOrEmpty(geo.City)
+                    ? $"{geo.City}, {geo.Country}"
+                    : geo.Country ?? "";
+                string isp = !string.IsNullOrEmpty(geo.Isp) ? $" — {geo.Isp}" : "";
+                cachedServerLine = $"Server: {serverEndpoint} ({locale}{isp})";
+            }
+        }
 
         cachedLine1 = $"FPS: {fps:F0} ({cachedAvgFps:F0} 10s avg)  Frame: {currentMs:F1}ms ({cachedAvgFrameMs:F1} avg)  1%Low: {cachedOnePercentLow:F0}fps";
         cachedLine2 = $"Spikes(>{SPIKE_THRESHOLD_MS}ms): {spikeCount}  GC0: {currentGcCount}  Heap: {FormatBytes(monoHeapSize)}";
