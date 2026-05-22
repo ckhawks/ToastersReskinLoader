@@ -13,7 +13,12 @@ public static class BeaconPinger
     public const int ConnectTimeoutMs = 1000;
     public const int ResponseTimeoutMs = 1000;
     public const int RefreshCooldownMs = 5000;
-    public const int PerBeaconStaggerMs = 50;
+    // Bounded-parallel sweep — replaces the old "stagger N ms between each
+    // ping" loop, which serialized the whole sweep behind 1s timeouts on
+    // dead regions. 8 in flight is enough to finish a 20-beacon sweep in
+    // ~2s worst case without bursting connect-floods past what a home
+    // router NAT can absorb.
+    public const int SweepConcurrency = 8;
 
     public class PingResult
     {
@@ -54,26 +59,34 @@ public static class BeaconPinger
 
     private static void SweepCore(IReadOnlyList<Beacon> beacons)
     {
+        var sem = new SemaphoreSlim(SweepConcurrency, SweepConcurrency);
         try
         {
-            for (int i = 0; i < beacons.Count; i++)
+            var tasks = new List<Task>(beacons.Count);
+            foreach (var b in beacons)
             {
-                var beacon = beacons[i];
-                if (beacon == null) continue;
-
-                if (i > 0 && PerBeaconStaggerMs > 0)
-                    Thread.Sleep(PerBeaconStaggerMs);
-
-                int? rtt = PingOne(beacon);
-                try { OnResult?.Invoke(new PingResult { BeaconId = beacon.id, RttMs = rtt }); }
-                catch (Exception e) { Plugin.LogError($"OnResult handler threw: {e.Message}"); }
+                if (b == null) continue;
+                sem.Wait();
+                var beacon = b;
+                tasks.Add(Task.Run(() =>
+                {
+                    try
+                    {
+                        int? rtt = PingOne(beacon);
+                        try { OnResult?.Invoke(new PingResult { BeaconId = beacon.id, RttMs = rtt }); }
+                        catch (Exception e) { Plugin.LogError($"OnResult handler threw: {e.Message}"); }
+                    }
+                    finally { sem.Release(); }
+                }));
             }
+            Task.WhenAll(tasks).Wait();
         }
         finally
         {
             try { OnSweepComplete?.Invoke(); }
             catch (Exception e) { Plugin.LogError($"OnSweepComplete handler threw: {e.Message}"); }
             Interlocked.Exchange(ref _sweepInFlight, 0);
+            sem.Dispose();
         }
     }
 

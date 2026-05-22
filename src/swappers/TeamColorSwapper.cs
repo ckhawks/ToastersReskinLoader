@@ -410,14 +410,14 @@ public static class TeamColorSwapper
     public static class WrapInTeamColorPatch
     {
         [HarmonyPostfix]
-        public static void Postfix(ref string __result, string username, PlayerTeam team)
+        public static void Postfix(ref string __result, string text, PlayerTeam team)
         {
             try
             {
                 Color? overrideColor = GetOverrideColor(team);
                 if (overrideColor == null) return;
 
-                __result = $"<color={ColorToHex(overrideColor.Value)}>{username}</color>";
+                __result = $"<color={ColorToHex(overrideColor.Value)}>{text}</color>";
             }
             catch (Exception e)
             {

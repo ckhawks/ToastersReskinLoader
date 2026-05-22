@@ -60,6 +60,30 @@ public static class PlayerQoLSection
         ToggleRow(contentScrollViewContent, "Show minimap for spectators", cfg.enableSpectatorMinimap,
             v => { cfg.enableSpectatorMinimap = v; runner.SaveAndRefresh(); });
 
+        // Minimap rotation mode — mutually exclusive dropdown.
+        {
+            var row = UITools.CreateConfigurationRow();
+            row.Add(UITools.CreateConfigurationLabel("Minimap rotation"));
+
+            var labels = new List<string> { "Off (vanilla)", "Rotated 90°", "Follow player orientation" };
+            var values = new List<string> { "off", "rotate90", "followPlayer" };
+            var currentIdx = Math.Max(0, values.IndexOf(cfg.minimapRotationMode ?? "off"));
+
+            var dd = UITools.CreateStringDropdownField(labels, labels[currentIdx]);
+            dd.RegisterCallback<ChangeEvent<string>>(evt =>
+            {
+                var idx = labels.IndexOf(evt.newValue);
+                if (idx < 0) idx = 0;
+                cfg.minimapRotationMode = values[idx];
+                runner.SaveAndRefresh();
+            });
+            row.Add(dd);
+            contentScrollViewContent.Add(row);
+        }
+
+        ToggleRow(contentScrollViewContent, "Color floating player names by team", cfg.enablePlayerUsernameTeamColors,
+            v => { cfg.enablePlayerUsernameTeamColors = v; runner.SaveAndRefresh(); });
+
         ToggleRow(contentScrollViewContent, "Show jersey number in player name", cfg.enableNumberedNames,
             v => { cfg.enableNumberedNames = v; runner.SaveAndRefresh(); });
 
@@ -185,6 +209,9 @@ public static class PlayerQoLSection
 
         ToggleRow(contentScrollViewContent, "Cache server browser (instant rows on open)", cfg.enableServerPreviewCache,
             v => { cfg.enableServerPreviewCache = v; runner.SaveAndRefresh(); });
+
+        ToggleRow(contentScrollViewContent, "Fast server browser scanning (parallel pings)", cfg.enableFastServerBrowserScanning,
+            v => { cfg.enableFastServerBrowserScanning = v; runner.SaveAndRefresh(); });
 
         ToggleRow(contentScrollViewContent, "Auto-connect to matchmaking matches", cfg.enableAutoConnectMatchmaking,
             v =>

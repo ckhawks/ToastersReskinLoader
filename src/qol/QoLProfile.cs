@@ -39,6 +39,10 @@ public class QoLProfile
     public bool EnableHideInactiveChat { get; set; } = false;
     [JsonProperty("enableSpectatorMinimap")]
     public bool EnableSpectatorMinimap { get; set; } = true;
+    [JsonProperty("minimapRotationMode")]
+    public string MinimapRotationMode { get; set; } = "off";
+    [JsonProperty("enablePlayerUsernameTeamColors")]
+    public bool EnablePlayerUsernameTeamColors { get; set; } = false;
     [JsonProperty("enableBrowserFilterPersistence")]
     public bool EnableBrowserFilterPersistence { get; set; } = true;
     [JsonProperty("enableNumberedNames")]
@@ -61,6 +65,8 @@ public class QoLProfile
     public bool EnableBeaconPing { get; set; } = true;
     [JsonProperty("enableServerPreviewCache")]
     public bool EnableServerPreviewCache { get; set; } = true;
+    [JsonProperty("enableFastServerBrowserScanning")]
+    public bool EnableFastServerBrowserScanning { get; set; } = true;
     [JsonProperty("enableVanillaUIRetheme")]
     public bool EnableVanillaUIRetheme { get; set; } = true;
     [JsonProperty("enableEnhancedModMenu")]
@@ -119,6 +125,8 @@ public class QoLProfile
             enableInlineServerBrowserFilters = EnableInlineServerBrowserFilters,
             enableHideInactiveChat = EnableHideInactiveChat,
             enableSpectatorMinimap = EnableSpectatorMinimap,
+            minimapRotationMode = MinimapRotationMode,
+            enablePlayerUsernameTeamColors = EnablePlayerUsernameTeamColors,
             enableBrowserFilterPersistence = EnableBrowserFilterPersistence,
             enableNumberedNames = EnableNumberedNames,
             enableTeamButtonPlayerCount = EnableTeamButtonPlayerCount,
@@ -129,6 +137,7 @@ public class QoLProfile
             enableBetterFriendsList = EnableBetterFriendsList,
             enableBeaconPing = EnableBeaconPing,
             enableServerPreviewCache = EnableServerPreviewCache,
+            enableFastServerBrowserScanning = EnableFastServerBrowserScanning,
             enableVanillaUIRetheme = EnableVanillaUIRetheme,
             enableEnhancedModMenu = EnableEnhancedModMenu,
             enableAutoConnectMatchmaking = EnableAutoConnectMatchmaking,
@@ -166,6 +175,8 @@ public class QoLProfile
         EnableInlineServerBrowserFilters = c.enableInlineServerBrowserFilters;
         EnableHideInactiveChat = c.enableHideInactiveChat;
         EnableSpectatorMinimap = c.enableSpectatorMinimap;
+        MinimapRotationMode = c.minimapRotationMode ?? "off";
+        EnablePlayerUsernameTeamColors = c.enablePlayerUsernameTeamColors;
         EnableBrowserFilterPersistence = c.enableBrowserFilterPersistence;
         EnableNumberedNames = c.enableNumberedNames;
         EnableTeamButtonPlayerCount = c.enableTeamButtonPlayerCount;
@@ -176,6 +187,7 @@ public class QoLProfile
         EnableBetterFriendsList = c.enableBetterFriendsList;
         EnableBeaconPing = c.enableBeaconPing;
         EnableServerPreviewCache = c.enableServerPreviewCache;
+        EnableFastServerBrowserScanning = c.enableFastServerBrowserScanning;
         EnableVanillaUIRetheme = c.enableVanillaUIRetheme;
         EnableEnhancedModMenu = c.enableEnhancedModMenu;
         EnableAutoConnectMatchmaking = c.enableAutoConnectMatchmaking;

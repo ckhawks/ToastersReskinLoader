@@ -29,6 +29,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 using HarmonyLib;
 using ToasterReskinLoader.qol.beacon;
 using UnityEngine.UIElements;
@@ -55,8 +56,16 @@ internal static class ServerPreviewCachePatches
         AccessTools.Method(typeof(UIServerBrowser), "StyleServer");
     private static readonly MethodInfo FilterServersMethod =
         AccessTools.Method(typeof(UIServerBrowser), "FilterServers");
+    private static readonly MethodInfo FilterServerMethod =
+        AccessTools.Method(typeof(UIServerBrowser), "FilterServer");
     private static readonly MethodInfo SortServersMethod =
         AccessTools.Method(typeof(UIServerBrowser), "SortServers");
+    private static readonly MethodInfo RemoveAllServersMethod =
+        AccessTools.Method(typeof(UIServerBrowser), "RemoveAllServers");
+    private static readonly MethodInfo AddServerMethod =
+        AccessTools.Method(typeof(UIServerBrowser), "AddServer");
+    private static readonly MethodInfo PingServerMethod =
+        AccessTools.Method(typeof(UIServerBrowser), "PingServer");
 
     // Open-instance delegates so the per-row calls below avoid per-call
     // object[] boxing/allocation from MethodInfo.Invoke. A refresh wave hits
@@ -64,7 +73,11 @@ internal static class ServerPreviewCachePatches
     private delegate void SetPreviewDelegate(UIServerBrowser self, EndPoint endPoint, ServerPreviewData data);
     private delegate void StyleServerDelegate(UIServerBrowser self, EndPoint endPoint);
     private delegate void FilterServersDelegate(UIServerBrowser self);
+    private delegate void FilterServerDelegate(UIServerBrowser self, EndPoint endPoint);
     private delegate void SortServersDelegate(UIServerBrowser self);
+    private delegate void RemoveAllServersDelegate(UIServerBrowser self);
+    private delegate void AddServerDelegate(UIServerBrowser self, EndPoint endPoint);
+    private delegate ServerPreviewData PingServerDelegate(UIServerBrowser self, EndPoint endPoint, int connectTimeout, int responseTimeout);
 
     // CreateDelegate can throw if AccessTools.Method resolves a base-class
     // declaration whose signature/declaring-type doesn't line up with our
@@ -88,8 +101,16 @@ internal static class ServerPreviewCachePatches
         TryCreateDelegate<StyleServerDelegate>(StyleServerMethod, nameof(StyleServerMethod));
     private static readonly FilterServersDelegate _filterServers =
         TryCreateDelegate<FilterServersDelegate>(FilterServersMethod, nameof(FilterServersMethod));
+    private static readonly FilterServerDelegate _filterServer =
+        TryCreateDelegate<FilterServerDelegate>(FilterServerMethod, nameof(FilterServerMethod));
     private static readonly SortServersDelegate _sortServers =
         TryCreateDelegate<SortServersDelegate>(SortServersMethod, nameof(SortServersMethod));
+    private static readonly RemoveAllServersDelegate _removeAllServers =
+        TryCreateDelegate<RemoveAllServersDelegate>(RemoveAllServersMethod, nameof(RemoveAllServersMethod));
+    private static readonly AddServerDelegate _addServer =
+        TryCreateDelegate<AddServerDelegate>(AddServerMethod, nameof(AddServerMethod));
+    private static readonly PingServerDelegate _pingServer =
+        TryCreateDelegate<PingServerDelegate>(PingServerMethod, nameof(PingServerMethod));
     private static readonly FieldInfo EndPointMapField =
         AccessTools.Field(typeof(UIServerBrowser), "endPointVisualElementMap");
     private static readonly FieldInfo RefreshButtonField =
@@ -112,87 +133,233 @@ internal static class ServerPreviewCachePatches
     [HarmonyPatch(typeof(UIServerBrowser), "UpdateEndPoints")]
     private static class Patch_UpdateEndPoints
     {
+        // Full replacement for vanilla UpdateEndPoints. Vanilla does its row
+        // setup synchronously then kicks off a single Task.Run that pings
+        // every endpoint sequentially — a 50-server refresh stalls for
+        // ~50s if any tail is unreachable. We replicate the row setup,
+        // seed from cache, then fan the ping wave out across N workers
+        // using a semaphore so refresh finishes in roughly (N/concurrency)
+        // × timeout.
+        //
+        // Returns false to skip vanilla (which would otherwise run its
+        // sequential loop in parallel with ours and double-write rows).
+        // If any delegate bind failed at static init, fall back to vanilla
+        // so the browser still works.
+        [HarmonyPrefix]
+        static bool Prefix(UIServerBrowser __instance, EndPoint[] endPoints)
+        {
+            if (!Enabled || endPoints == null) return true;
+            // Fast scan off → let vanilla do its sequential ping wave; the
+            // postfix below still seeds from cache so cached rows appear
+            // immediately.
+            if (!(QoLRunner.Instance?.Config?.enableFastServerBrowserScanning ?? true)) return true;
+            if (_removeAllServers == null || _addServer == null || _pingServer == null
+                || _filterServers == null || _sortServers == null || _setPreview == null
+                || _styleServer == null || _filterServer == null)
+            {
+                Plugin.LogError("ServerPreviewCache: missing delegate binding, falling back to vanilla UpdateEndPoints");
+                return true;
+            }
+
+            try
+            {
+                // --- Vanilla row setup (main thread) -------------------------
+                _removeAllServers(__instance);
+                try { if (RefreshButtonField?.GetValue(__instance) is Button btn) btn.SetEnabled(false); }
+                catch (Exception e) { Plugin.LogError($"ServerPreviewCache: disable refresh button failed: {e.Message}"); }
+
+                foreach (var ep in endPoints)
+                {
+                    if (ep == null) continue;
+                    _addServer(__instance, ep);
+                }
+                _filterServers(__instance);
+                _sortServers(__instance);
+
+                SeedFromCache(__instance, endPoints);
+
+                // --- Bounded-parallel ping wave ----------------------------
+                var cfg = QoLRunner.Instance?.Config;
+                int concurrency = Math.Max(1, cfg?.serverBrowserPingConcurrency ?? 16);
+                int connectTimeout = Math.Max(50, cfg?.serverBrowserPingConnectTimeoutMs ?? 1000);
+                int responseTimeout = Math.Max(50, cfg?.serverBrowserPingResponseTimeoutMs ?? 1000);
+
+                StartParallelPingWave(__instance, endPoints, concurrency, connectTimeout, responseTimeout);
+            }
+            catch (Exception e)
+            {
+                Plugin.LogError($"ServerPreviewCache UpdateEndPoints prefix failed: {e}");
+                // Don't fall through to vanilla here — we've already done row
+                // setup, running vanilla would duplicate rows. Just leave the
+                // user with seeded-from-cache state and no live refresh wave.
+            }
+            return false;
+        }
+
+        // Runs only when the prefix returned true (fast scan disabled or
+        // delegate bind failed) — vanilla has now done its own row setup, so
+        // we just seed from cache on top of it.
         [HarmonyPostfix]
         static void Postfix(UIServerBrowser __instance, EndPoint[] endPoints)
         {
             if (!Enabled || endPoints == null) return;
+            if (QoLRunner.Instance?.Config?.enableFastServerBrowserScanning ?? true)
+            {
+                // Prefix handled it (or chose to fall back, in which case
+                // delegate bindings are missing and SeedFromCache can't run
+                // either).
+                return;
+            }
+            if (_setPreview == null || _styleServer == null
+                || _filterServers == null || _sortServers == null) return;
+            try { SeedFromCache(__instance, endPoints); }
+            catch (Exception e) { Plugin.LogError($"ServerPreviewCache UpdateEndPoints postfix failed: {e}"); }
+        }
+    }
+
+    // Cache bookkeeping + seed shared between the fast-scan prefix and the
+    // vanilla-fallback postfix.
+    private static void SeedFromCache(UIServerBrowser instance, EndPoint[] endPoints)
+    {
+        lock (_staleLock) _staleEndpoints.Clear();
+
+        CaptureRefreshButton(instance);
+        Interlocked.Exchange(ref _refreshTotal, endPoints.Length);
+        Interlocked.Exchange(ref _refreshDone, 0);
+        UpdateRefreshButton(0, endPoints.Length);
+        EnsureCacheCountLabel(instance);
+
+        var keepKeys = new HashSet<string>();
+        foreach (var ep in endPoints)
+        {
+            if (ep == null) continue;
+            keepKeys.Add(ServerPreviewCache.Key(ep));
+        }
+        int evicted = ServerPreviewCache.RetainOnly(keepKeys);
+        if (evicted > 0)
+        {
+            MaybeFlush();
+            Plugin.LogDebug($"ServerPreviewCache: evicted {evicted} stale entries (no longer in master list)");
+        }
+
+        UpdateCacheCountLabel();
+
+        List<EndPoint> seeded = null;
+        foreach (var ep in endPoints)
+        {
+            if (ep == null) continue;
+            if (!ServerPreviewCache.TryGet(ep, out var cached)) continue;
+
+            var synth = new ServerPreviewData
+            {
+                name = cached.name,
+                players = 0,
+                maxPlayers = cached.maxPlayers,
+                isPasswordProtected = cached.isPasswordProtected,
+                clientRequiredModIds = cached.clientRequiredModIds ?? Array.Empty<string>(),
+                ping = cached.lastPingMs,
+            };
+            _setPreview(instance, ep, synth);
+            (seeded ??= new List<EndPoint>()).Add(ep);
+        }
+
+        int hits = seeded?.Count ?? 0;
+        if (hits > 0)
+        {
+            lock (_staleLock)
+            {
+                foreach (var ep in seeded) _staleEndpoints.Add(ep);
+            }
+            foreach (var ep in seeded) _styleServer(instance, ep);
+            _filterServers(instance);
+            _sortServers(instance);
+        }
+
+        Plugin.LogDebug($"ServerPreviewCache: seeded {hits}/{endPoints.Length} rows from cache");
+    }
+
+    private static void StartParallelPingWave(
+        UIServerBrowser instance, EndPoint[] endPoints,
+        int concurrency, int connectTimeout, int responseTimeout)
+    {
+        // Snapshot the endpoint list so a follow-up refresh doesn't stomp
+        // mid-wave. Capture instance too — patches see the same singleton,
+        // but holding the ref keeps it alive across the wave.
+        var snapshot = (EndPoint[])endPoints.Clone();
+        var sem = new SemaphoreSlim(concurrency, concurrency);
+
+        Task.Run(async () =>
+        {
             try
             {
-                lock (_staleLock) _staleEndpoints.Clear();
-
-                CaptureRefreshButton(__instance);
-                Interlocked.Exchange(ref _refreshTotal, endPoints.Length);
-                Interlocked.Exchange(ref _refreshDone, 0);
-                UpdateRefreshButton(0, endPoints.Length);
-                EnsureCacheCountLabel(__instance);
-
-                // Garbage-collect cached entries the master server is no
-                // longer advertising. Without this the lifetime cache only
-                // grows, so "Cached: N" drifts arbitrarily far above the
-                // current refresh wave's denominator.
-                var keepKeys = new HashSet<string>();
-                foreach (var ep in endPoints)
+                var tasks = new List<Task>(snapshot.Length);
+                foreach (var ep in snapshot)
                 {
                     if (ep == null) continue;
-                    keepKeys.Add(ServerPreviewCache.Key(ep));
-                }
-                int evicted = ServerPreviewCache.RetainOnly(keepKeys);
-                if (evicted > 0)
-                {
-                    MaybeFlush();
-                    Plugin.LogDebug($"ServerPreviewCache: evicted {evicted} stale entries (no longer in master list)");
-                }
+                    await sem.WaitAsync().ConfigureAwait(false);
 
-                UpdateCacheCountLabel();
-
-                // Pass 1: seed previews. Each _setPreview triggers our own
-                // SetServerPreviewData postfix which removes that endpoint
-                // from the stale set, so we add to stale AFTER all seeds.
-                List<EndPoint> seeded = null;
-                foreach (var ep in endPoints)
-                {
-                    if (ep == null) continue;
-                    if (!ServerPreviewCache.TryGet(ep, out var cached)) continue;
-
-                    var synth = new ServerPreviewData
+                    var epCapture = ep;
+                    tasks.Add(Task.Run(() =>
                     {
-                        name = cached.name,
-                        players = 0,
-                        maxPlayers = cached.maxPlayers,
-                        isPasswordProtected = cached.isPasswordProtected,
-                        clientRequiredModIds = cached.clientRequiredModIds ?? Array.Empty<string>(),
-                        ping = cached.lastPingMs,
-                    };
-                    _setPreview?.Invoke(__instance, ep, synth);
-                    (seeded ??= new List<EndPoint>()).Add(ep);
+                        ServerPreviewData data = null;
+                        try
+                        {
+                            data = _pingServer(instance, epCapture, connectTimeout, responseTimeout);
+                        }
+                        catch (Exception e)
+                        {
+                            Plugin.LogError($"ServerPreviewCache: PingServer({epCapture}) threw: {e.Message}");
+                        }
+                        finally
+                        {
+                            try
+                            {
+                                var dataCapture = data;
+                                // UIElements is main-thread-only. Vanilla
+                                // ignores this and gets away with it; we
+                                // marshal so we don't corrupt the panel
+                                // pick cache the way the cache-count label
+                                // bug did earlier.
+                                BeaconMainThread.Run(() =>
+                                {
+                                    try
+                                    {
+                                        _setPreview(instance, epCapture, dataCapture);
+                                        _styleServer(instance, epCapture);
+                                        _filterServer(instance, epCapture);
+                                    }
+                                    catch (Exception e)
+                                    {
+                                        Plugin.LogError($"ServerPreviewCache: ping-complete UI apply failed: {e.Message}");
+                                    }
+                                });
+                            }
+                            finally
+                            {
+                                sem.Release();
+                            }
+                        }
+                    }));
                 }
 
-                int hits = seeded?.Count ?? 0;
-                if (hits > 0)
-                {
-                    // Single-lock bulk-add to the stale set, then style each
-                    // row so StyleServer's postfix sees it as stale and
-                    // applies the "?/maxPlayers" + "?" mask.
-                    lock (_staleLock)
-                    {
-                        foreach (var ep in seeded) _staleEndpoints.Add(ep);
-                    }
-                    foreach (var ep in seeded) _styleServer?.Invoke(__instance, ep);
-                }
-
-                if (hits > 0)
-                {
-                    _filterServers?.Invoke(__instance);
-                    _sortServers?.Invoke(__instance);
-                }
-
-                Plugin.LogDebug($"ServerPreviewCache: seeded {hits}/{endPoints.Length} rows from cache");
+                await Task.WhenAll(tasks).ConfigureAwait(false);
             }
             catch (Exception e)
             {
-                Plugin.LogError($"ServerPreviewCache UpdateEndPoints postfix failed: {e}");
+                Plugin.LogError($"ServerPreviewCache: parallel ping wave failed: {e}");
             }
-        }
+            finally
+            {
+                // Final sort once the wave settles so ping-based ordering
+                // reflects the live values, not the cache seeds.
+                BeaconMainThread.Run(() =>
+                {
+                    try { _sortServers?.Invoke(instance); }
+                    catch (Exception e) { Plugin.LogError($"ServerPreviewCache: final sort failed: {e.Message}"); }
+                });
+                sem.Dispose();
+            }
+        });
     }
 
     [HarmonyPatch(typeof(UIServerBrowser), "SetServerPreviewData")]

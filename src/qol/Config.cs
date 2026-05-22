@@ -33,6 +33,14 @@ public class QoLConfig
     public bool enableInlineServerBrowserFilters = true;
     public bool enableHideInactiveChat = false;
     public bool enableSpectatorMinimap = true;
+    // Minimap rotation mode. Mutually exclusive — only one applies at a time.
+    // Values: "off" (vanilla), "rotate90" (fixed 90° turn), "followPlayer"
+    // (continuously yaw the minimap so the local player's facing is "up").
+    public string minimapRotationMode = "off";
+    // Re-color floating world-space player username labels by team. Uses
+    // TeamColorSwapper.GetOverrideColor first, falling back to the
+    // profile's default blue/red.
+    public bool enablePlayerUsernameTeamColors = false;
     public bool enableBrowserFilterPersistence = true;
     public bool enableNumberedNames = false;
     public bool enableTeamButtonPlayerCount = true;
@@ -45,6 +53,17 @@ public class QoLConfig
     public bool enableBetterFriendsList = true;
     public bool enableBeaconPing = true;
     public bool enableServerPreviewCache = true;
+    // Fast server browser scanning. Vanilla pings servers one at a time on a
+    // single worker; with N servers and ~1s timeout per dead one, a refresh
+    // stalls for tens of seconds. When on, we fan the pings out across
+    // multiple workers using a semaphore so the wave finishes in roughly
+    // (N / concurrency) × timeout — a 50-server refresh drops from ~50s to
+    // ~3-4s. Off falls back to vanilla's sequential wave; cache seeding
+    // still works either way.
+    public bool enableFastServerBrowserScanning = true;
+    public int  serverBrowserPingConcurrency = 16;
+    public int  serverBrowserPingConnectTimeoutMs = 1000;
+    public int  serverBrowserPingResponseTimeoutMs = 1000;
     public bool enableVanillaUIRetheme = true;
     public bool enableEnhancedModMenu = true;
     public bool enableAutoConnectMatchmaking = false;
