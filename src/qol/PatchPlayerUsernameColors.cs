@@ -19,25 +19,12 @@ public static class PatchPlayerUsernameColors
     private static readonly FieldInfo _mapField = typeof(UIUsernames)
         .GetField("playerBodyVisualElementMap", BindingFlags.Instance | BindingFlags.NonPublic);
 
-    private static readonly MethodInfo _getOverrideColor = typeof(TeamColorSwapper)
-        .GetMethod("GetOverrideColor", BindingFlags.Static | BindingFlags.NonPublic);
-
     private static Color GetTeamColor(PlayerTeam team)
     {
-        // Try TRL's override first; fall back to the profile's default team color
-        // so behavior matches the rest of the team-colored UI when overrides are off.
-        var profile = ReskinProfileManager.currentProfile;
-        if (_getOverrideColor != null)
-        {
-            var maybe = _getOverrideColor.Invoke(null, new object[] { team }) as Color?;
-            if (maybe.HasValue) return maybe.Value;
-        }
-        if (profile != null)
-        {
-            if (team == PlayerTeam.Blue) return profile.blueTeamColor;
-            if (team == PlayerTeam.Red)  return profile.redTeamColor;
-        }
-        return Color.white;
+        // Use the user's custom team color when custom team colors are enabled;
+        // otherwise fall back to the game's vanilla team color so usernames stay
+        // team-colored and match the rest of the UI when overrides are off.
+        return TeamColorSwapper.GetOverrideColor(team) ?? TeamColorSwapper.GetDefaultTeamColor(team);
     }
 
     private static void ApplyTo(VisualElement playerVisualElement, PlayerBody playerBody)
