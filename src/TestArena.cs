@@ -10,9 +10,12 @@ public static class TestArena
     public static bool ChangeLevel()
     {
         // string assetBundlePath = System.IO.Path.Combine(Paths.GameRootPath, "reskinpacks/test1/arenas/city/cityarena.test");
+        // Locals feed the disabled LoadAndPlaceGameObject/scene scaffolding below.
+#pragma warning disable CS0219
         string assetName = "arena";
         Vector3 position = new Vector3(0, 0, 0);
         Quaternion rotation = Quaternion.identity;
+#pragma warning restore CS0219
 
         // TODO this is disabled currently
         

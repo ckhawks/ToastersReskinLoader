@@ -13,10 +13,13 @@ namespace ToasterReskinLoader.swappers;
 /// </summary>
 public static class FullArenaSwapper
 {
-    // Reflection references to SceneryChanger mod's internal types/methods
+    // Reflection references to SceneryChanger mod's internal types/methods.
+    // requestUnloadMethod is reserved for planned unload support; not yet wired up.
     private static Type sceneInformationType;
     private static MethodInfo requestLoadMethod;
+#pragma warning disable CS0169
     private static MethodInfo requestUnloadMethod;
+#pragma warning restore CS0169
     public static bool isInitialized = false;
 
     /// <summary>

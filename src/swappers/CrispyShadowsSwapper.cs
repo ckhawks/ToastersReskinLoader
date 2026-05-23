@@ -23,7 +23,7 @@ public static class CrispyShadowsSwapper
                 return;
             }
 
-            PostProcessing pp = UnityEngine.Object.FindObjectOfType<PostProcessing>();
+            PostProcessing pp = UnityEngine.Object.FindFirstObjectByType<PostProcessing>();
             if (pp == null)
             {
                 Plugin.LogWarning("CrispyShadows: PostProcessing is null.");

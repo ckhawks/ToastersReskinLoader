@@ -286,8 +286,11 @@ public static class AppearanceAPI
     private static readonly Dictionary<string, AppearanceData> appearanceCache = new();
     // Steam IDs we've already requested (to avoid duplicate fetches)
     private static readonly HashSet<string> requestedIds = new();
-    // Whether we've done the initial bulk fetch for the current server
+    // Whether we've done the initial bulk fetch for the current server.
+    // Tracked for planned use; currently written but not yet read.
+#pragma warning disable CS0414
     private static bool initialFetchDone;
+#pragma warning restore CS0414
 
     /// <summary>
     /// Called when joining a server. Collects all player steam IDs and fetches their appearances.

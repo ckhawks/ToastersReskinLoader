@@ -115,9 +115,9 @@ public static class MinimapSwapper
         // Player icon scale
         float scale = profile.minimapPlayerScale;
         if (Math.Abs(scale - 1f) > 0.001f)
-            playerEl.transform.scale = new Vector3(scale, scale, 1f);
+            playerEl.style.scale = new StyleScale(new Scale(new Vector2(scale, scale)));
         else
-            playerEl.transform.scale = Vector3.one;
+            playerEl.style.scale = new StyleScale(new Scale(Vector2.one));
     }
 
     private static void ApplyPuckStyle(VisualElement puckEl, ReskinProfileManager.Profile profile)
@@ -127,9 +127,9 @@ public static class MinimapSwapper
         // Puck scale
         float scale = profile.minimapPuckScale;
         if (Math.Abs(scale - 1f) > 0.001f)
-            puckEl.transform.scale = new Vector3(scale, scale, 1f);
+            puckEl.style.scale = new StyleScale(new Scale(new Vector2(scale, scale)));
         else
-            puckEl.transform.scale = Vector3.one;
+            puckEl.style.scale = new StyleScale(new Scale(Vector2.one));
 
         // Puck color — try tinting the deepest child with a background image,
         // falling back to the root element itself.

@@ -129,6 +129,9 @@ public static class FrameProfilerGeoIP
 
     // ipapi.co schema. Fields are snake_case in the API. On rate-limit /
     // bad-request the API returns { "error": true, "reason": "..." }.
+    // Fields are assigned by the JSON deserializer via reflection, so CS0649
+    // ("never assigned") is a false positive here.
+#pragma warning disable CS0649
     [Serializable]
     class IpapiCoResponse
     {
@@ -140,4 +143,5 @@ public static class FrameProfilerGeoIP
         public string country_code;
         public string org;
     }
+#pragma warning restore CS0649
 }

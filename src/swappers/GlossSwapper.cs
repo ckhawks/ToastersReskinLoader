@@ -45,10 +45,10 @@ public static class GlossSwapper
     {
         if (!ReskinProfileManager.currentProfile.glossRemoverEnabled) return;
 
-        var meshes = Object.FindObjectsOfType<MeshRenderer>();
+        var meshes = Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None);
         foreach (var r in meshes) ProcessRenderer(r);
 
-        var skinned = Object.FindObjectsOfType<SkinnedMeshRenderer>();
+        var skinned = Object.FindObjectsByType<SkinnedMeshRenderer>(FindObjectsSortMode.None);
         foreach (var r in skinned) ProcessRenderer(r);
     }
 

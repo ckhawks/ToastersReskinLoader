@@ -35,7 +35,7 @@ public static class PuckFXSwapper
     {
         try
         {
-            PostProcessing ppm = Object.FindObjectOfType<PostProcessing>();
+            PostProcessing ppm = Object.FindFirstObjectByType<PostProcessing>();
             if (ppm == null)
             {
                 Plugin.LogWarning("PostProcessing not found, cannot set puck outline.");
@@ -249,7 +249,7 @@ public static class PuckFXSwapper
         // Apply verticality line + elevation indicator to all active controllers
         try
         {
-            var controllers = Object.FindObjectsOfType<PuckElevationIndicatorController>();
+            var controllers = Object.FindObjectsByType<PuckElevationIndicatorController>(FindObjectsSortMode.None);
             foreach (var controller in controllers)
             {
                 UpdateVerticalityLine(controller);
@@ -307,7 +307,7 @@ public static class PuckFXSwapper
     {
         try
         {
-            PostProcessing ppm = Object.FindObjectOfType<PostProcessing>();
+            PostProcessing ppm = Object.FindFirstObjectByType<PostProcessing>();
             if (ppm == null)
             {
                 Plugin.LogWarning("PostProcessing not found, cannot set puck silhouette color.");
