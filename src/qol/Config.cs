@@ -52,15 +52,19 @@ public class QoLConfig
     // Additions — opt-in QoL enhancements layered on top of vanilla
     public bool enableBetterFriendsList = true;
     public bool enableBeaconPing = true;
-    public bool enableServerPreviewCache = true;
+    // Default off. Persisted under a renamed JSON key (see QoLProfile) so that
+    // users who already had the original default-on key saved start fresh at
+    // off rather than inheriting their old "true".
+    public bool enableServerPreviewCache = false;
     // Fast server browser scanning. Vanilla pings servers one at a time on a
     // single worker; with N servers and ~1s timeout per dead one, a refresh
     // stalls for tens of seconds. When on, we fan the pings out across
     // multiple workers using a semaphore so the wave finishes in roughly
     // (N / concurrency) × timeout — a 50-server refresh drops from ~50s to
     // ~3-4s. Off falls back to vanilla's sequential wave; cache seeding
-    // still works either way.
-    public bool enableFastServerBrowserScanning = true;
+    // still works either way. Default off, persisted under a renamed JSON
+    // key (see QoLProfile) for the same migration reason as the cache toggle.
+    public bool enableFastServerBrowserScanning = false;
     public int  serverBrowserPingConcurrency = 16;
     public int  serverBrowserPingConnectTimeoutMs = 1000;
     public int  serverBrowserPingResponseTimeoutMs = 1000;

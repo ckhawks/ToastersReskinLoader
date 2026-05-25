@@ -25,6 +25,7 @@
 // stops appearing in subsequent sessions.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -39,7 +40,7 @@ namespace ToasterReskinLoader.qol.serverbrowser;
 internal static class ServerPreviewCachePatches
 {
     private static bool Enabled =>
-        QoLRunner.Instance?.Config?.enableServerPreviewCache ?? true;
+        QoLRunner.Instance?.Config?.enableServerPreviewCache ?? false;
 
     // Endpoints currently showing cached-only data (no live ping response
     // received yet this refresh wave). Populated by the UpdateEndPoints
@@ -152,7 +153,7 @@ internal static class ServerPreviewCachePatches
             // Fast scan off → let vanilla do its sequential ping wave; the
             // postfix below still seeds from cache so cached rows appear
             // immediately.
-            if (!(QoLRunner.Instance?.Config?.enableFastServerBrowserScanning ?? true)) return true;
+            if (!(QoLRunner.Instance?.Config?.enableFastServerBrowserScanning ?? false)) return true;
             if (_removeAllServers == null || _addServer == null || _pingServer == null
                 || _filterServers == null || _sortServers == null || _setPreview == null
                 || _styleServer == null || _filterServer == null)
@@ -203,7 +204,7 @@ internal static class ServerPreviewCachePatches
         static void Postfix(UIServerBrowser __instance, EndPoint[] endPoints)
         {
             if (!Enabled || endPoints == null) return;
-            if (QoLRunner.Instance?.Config?.enableFastServerBrowserScanning ?? true)
+            if (QoLRunner.Instance?.Config?.enableFastServerBrowserScanning ?? false)
             {
                 // Prefix handled it (or chose to fall back, in which case
                 // delegate bindings are missing and SeedFromCache can't run
@@ -286,80 +287,131 @@ internal static class ServerPreviewCachePatches
         // mid-wave. Capture instance too — patches see the same singleton,
         // but holding the ref keeps it alive across the wave.
         var snapshot = (EndPoint[])endPoints.Clone();
-        var sem = new SemaphoreSlim(concurrency, concurrency);
 
+        // Each live connection makes SimpleTcpClient spin up ~3 ThreadPool
+        // tasks (DataReceiver + idle/connection monitors), and the response
+        // we wait on is only delivered by DataReceiver. Raise the pool floor
+        // before the wave so a cold pool (min == ProcessorCount, grows only
+        // ~1-2 threads/sec) doesn't make those tasks queue behind our blocked
+        // pings — that queueing is what made the first browser open time out
+        // ~95% of servers while a second refresh "magically" worked.
+        EnsureThreadPoolFloor(concurrency);
+
+        // Drain the endpoints from a shared queue using a fixed set of
+        // DEDICATED (LongRunning) threads — not ThreadPool threads. PingServer
+        // blocks its caller for up to connect+response timeout; running that
+        // on the pool would starve the very pool DataReceiver needs. Dedicated
+        // threads sleep on I/O without touching the pool, and we cap them at
+        // `concurrency` so a 200-server list spins up ~16 threads, not 200.
+        var queue = new ConcurrentQueue<EndPoint>();
+        foreach (var ep in snapshot)
+        {
+            if (ep != null) queue.Enqueue(ep);
+        }
+
+        int workerCount = Math.Max(1, Math.Min(concurrency, queue.Count));
+        if (workerCount == 0)
+        {
+            FinishWave(instance);
+            return;
+        }
+
+        var workers = new Task[workerCount];
+        for (int i = 0; i < workerCount; i++)
+        {
+            workers[i] = Task.Factory.StartNew(
+                () =>
+                {
+                    while (queue.TryDequeue(out var ep))
+                    {
+                        PingOne(instance, ep, connectTimeout, responseTimeout);
+                    }
+                },
+                CancellationToken.None,
+                TaskCreationOptions.LongRunning,
+                TaskScheduler.Default);
+        }
+
+        // Watch the dedicated workers from a single pool continuation (cheap —
+        // it just awaits) so we can do the settle-sort once the wave drains.
         Task.Run(async () =>
         {
-            try
-            {
-                var tasks = new List<Task>(snapshot.Length);
-                foreach (var ep in snapshot)
-                {
-                    if (ep == null) continue;
-                    await sem.WaitAsync().ConfigureAwait(false);
-
-                    var epCapture = ep;
-                    tasks.Add(Task.Run(() =>
-                    {
-                        ServerPreviewData data = null;
-                        try
-                        {
-                            data = _pingServer(instance, epCapture, connectTimeout, responseTimeout);
-                        }
-                        catch (Exception e)
-                        {
-                            Plugin.LogError($"ServerPreviewCache: PingServer({epCapture}) threw: {e.Message}");
-                        }
-                        finally
-                        {
-                            try
-                            {
-                                var dataCapture = data;
-                                // UIElements is main-thread-only. Vanilla
-                                // ignores this and gets away with it; we
-                                // marshal so we don't corrupt the panel
-                                // pick cache the way the cache-count label
-                                // bug did earlier.
-                                BeaconMainThread.Run(() =>
-                                {
-                                    try
-                                    {
-                                        _setPreview(instance, epCapture, dataCapture);
-                                        _styleServer(instance, epCapture);
-                                        _filterServer(instance, epCapture);
-                                    }
-                                    catch (Exception e)
-                                    {
-                                        Plugin.LogError($"ServerPreviewCache: ping-complete UI apply failed: {e.Message}");
-                                    }
-                                });
-                            }
-                            finally
-                            {
-                                sem.Release();
-                            }
-                        }
-                    }));
-                }
-
-                await Task.WhenAll(tasks).ConfigureAwait(false);
-            }
-            catch (Exception e)
-            {
-                Plugin.LogError($"ServerPreviewCache: parallel ping wave failed: {e}");
-            }
-            finally
-            {
-                // Final sort once the wave settles so ping-based ordering
-                // reflects the live values, not the cache seeds.
-                BeaconMainThread.Run(() =>
-                {
-                    try { _sortServers?.Invoke(instance); }
-                    catch (Exception e) { Plugin.LogError($"ServerPreviewCache: final sort failed: {e.Message}"); }
-                });
-                sem.Dispose();
-            }
+            try { await Task.WhenAll(workers).ConfigureAwait(false); }
+            catch (Exception e) { Plugin.LogError($"ServerPreviewCache: parallel ping wave failed: {e}"); }
+            finally { FinishWave(instance); }
         });
+    }
+
+    // One server's blocking ping + UI apply. Runs on a dedicated worker
+    // thread; only the UIElements touches are marshalled to the main thread.
+    private static void PingOne(
+        UIServerBrowser instance, EndPoint ep, int connectTimeout, int responseTimeout)
+    {
+        ServerPreviewData data = null;
+        try
+        {
+            data = _pingServer(instance, ep, connectTimeout, responseTimeout);
+        }
+        catch (Exception e)
+        {
+            Plugin.LogError($"ServerPreviewCache: PingServer({ep}) threw: {e.Message}");
+        }
+        finally
+        {
+            var dataCapture = data;
+            // UIElements is main-thread-only. Vanilla ignores this and gets
+            // away with it; we marshal so we don't corrupt the panel pick
+            // cache the way the cache-count label bug did earlier.
+            BeaconMainThread.Run(() =>
+            {
+                try
+                {
+                    _setPreview(instance, ep, dataCapture);
+                    _styleServer(instance, ep);
+                    _filterServer(instance, ep);
+                }
+                catch (Exception e)
+                {
+                    Plugin.LogError($"ServerPreviewCache: ping-complete UI apply failed: {e.Message}");
+                }
+            });
+        }
+    }
+
+    private static void FinishWave(UIServerBrowser instance)
+    {
+        // Final sort once the wave settles so ping-based ordering reflects the
+        // live values, not the cache seeds.
+        BeaconMainThread.Run(() =>
+        {
+            try { _sortServers?.Invoke(instance); }
+            catch (Exception e) { Plugin.LogError($"ServerPreviewCache: final sort failed: {e.Message}"); }
+        });
+    }
+
+    // Raise the ThreadPool's minimum thread count (never lower it) to a floor
+    // sized off concurrency, not ProcessorCount: the burst we need to absorb
+    // is SimpleTcpClient's ~3 tasks per live connection, which tracks the
+    // number of simultaneous pings, not the core count. Idempotent — each wave
+    // takes the max with whatever is already set.
+    private static void EnsureThreadPoolFloor(int concurrency)
+    {
+        try
+        {
+            int needed = Math.Max(16, concurrency * 4);
+            ThreadPool.GetMinThreads(out int curWorker, out int curIo);
+            int newWorker = Math.Max(curWorker, needed);
+            int newIo = Math.Max(curIo, needed);
+            if (newWorker != curWorker || newIo != curIo)
+            {
+                if (!ThreadPool.SetMinThreads(newWorker, newIo))
+                    Plugin.LogError($"ServerPreviewCache: SetMinThreads({newWorker},{newIo}) rejected");
+            }
+        }
+        catch (Exception e)
+        {
+            Plugin.LogError($"ServerPreviewCache: EnsureThreadPoolFloor failed: {e.Message}");
+        }
     }
 
     [HarmonyPatch(typeof(UIServerBrowser), "SetServerPreviewData")]

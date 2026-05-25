@@ -63,10 +63,15 @@ public class QoLProfile
     public bool EnableBetterFriendsList { get; set; } = true;
     [JsonProperty("enableBeaconPing")]
     public bool EnableBeaconPing { get; set; } = true;
-    [JsonProperty("enableServerPreviewCache")]
-    public bool EnableServerPreviewCache { get; set; } = true;
-    [JsonProperty("enableFastServerBrowserScanning")]
-    public bool EnableFastServerBrowserScanning { get; set; } = true;
+    // NOTE: JSON keys intentionally renamed (…V2) so existing users — who had
+    // the original default-on keys ("enableServerPreviewCache" /
+    // "enableFastServerBrowserScanning") saved as true — get the new
+    // default-off behavior instead of inheriting their old value. Newtonsoft
+    // ignores the now-orphaned old keys on load and drops them on next save.
+    [JsonProperty("enableServerPreviewCacheV2")]
+    public bool EnableServerPreviewCache { get; set; } = false;
+    [JsonProperty("enableFastServerBrowserScanningV2")]
+    public bool EnableFastServerBrowserScanning { get; set; } = false;
     [JsonProperty("enableVanillaUIRetheme")]
     public bool EnableVanillaUIRetheme { get; set; } = true;
     [JsonProperty("enableEnhancedModMenu")]
