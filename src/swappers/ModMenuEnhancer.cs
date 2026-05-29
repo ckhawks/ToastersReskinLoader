@@ -180,6 +180,45 @@ namespace ToasterReskinLoader.swappers
             return null;
         }
 
+        // Steam Workshop app id for Puck. Subscribed workshop items install under
+        // <Steam>\steamapps\workshop\content\<APP_ID>\<itemId>\.
+        private const string WORKSHOP_APP_ID = "2994020";
+
+        // A workshop mod is "missing files" when its content folder isn't actually
+        // on disk — subscribed but not downloaded yet, or the files were deleted.
+        // Local plugins always live on disk (that's how they're discovered), so
+        // they're never flagged.
+        private static bool IsMissingLocalFolder(object entry)
+        {
+            if (entry is not Mod m) return false;
+            return ResolveModFolder(m) == null;
+        }
+
+        // Returns the existing on-disk folder for a workshop mod, or null if none
+        // is found. Steam's reported install path is authoritative; fall back to
+        // the conventional UGC location relative to the game dir (the game runs
+        // with its working directory set to the install folder), which keeps us
+        // correct even before Steam has populated Mod.Path.
+        private static string ResolveModFolder(Mod m)
+        {
+            try
+            {
+                string p = m.Path;
+                if (!string.IsNullOrEmpty(p) && System.IO.Directory.Exists(p)) return p;
+
+                string id = m.Id;
+                if (!string.IsNullOrEmpty(id))
+                {
+                    string conventional = System.IO.Path.GetFullPath(System.IO.Path.Combine(
+                        System.IO.Path.GetFullPath("."), "..", "..",
+                        "workshop", "content", WORKSHOP_APP_ID, id));
+                    if (System.IO.Directory.Exists(conventional)) return conventional;
+                }
+            }
+            catch { }
+            return null;
+        }
+
         // Workshop subscribers/downloads. -1 means "unknown" (local plugin or details
         // not yet loaded) so sorts can push it to the bottom regardless of direction.
         private static int GetDownloads(object entry)
@@ -751,6 +790,7 @@ namespace ToasterReskinLoader.swappers
 
             btn.clicked += () =>
             {
+                ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer] Changing filter to '{filter}' from '{activeFilter}'");
                 activeFilter = filter;
                 UpdateTabVisuals();
                 ApplyFilters();
@@ -858,8 +898,6 @@ namespace ToasterReskinLoader.swappers
                     visible.Add(kvp);
             }
 
-            ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer] ApplyFilters: filter='{activeFilter}', search='{search}', total={allEntries.Count}, visible={visible.Count}");
-
             SortVisible(visible, sortMode);
 
             int removed = 0;
@@ -871,8 +909,6 @@ namespace ToasterReskinLoader.swappers
                     ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer] ApplyFilters: Remove threw for '{GetTitle(kvp.Key)}': {ex}");
                 }
             }
-
-            ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer] ApplyFilters: modsList type={modsList.GetType().Name}, contentContainerNull={modsList.contentContainer == null}, childCount before Add={modsList.childCount}");
 
             int added = 0;
             foreach (var kvp in visible)
@@ -894,7 +930,6 @@ namespace ToasterReskinLoader.swappers
                 }
             }
 
-            ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer] ApplyFilters: removed={removed}, added={added}, modsList childCount={modsList.childCount}");
         }
 
         // ── Patches: UpdateMod / UpdatePlugin ────────────────────────
@@ -906,7 +941,6 @@ namespace ToasterReskinLoader.swappers
             public static void Postfix(UIMods __instance, Mod mod)
             {
                 if (!IsEnabled()) return;
-                ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer] UpdateMod postfix for mod id={mod?.Id}");
                 var map = _modTemplateMapField?.GetValue(__instance) as System.Collections.IDictionary;
                 if (map == null || !map.Contains(mod))
                 {
@@ -926,7 +960,6 @@ namespace ToasterReskinLoader.swappers
             public static void Postfix(UIMods __instance, global::Plugin plugin)
             {
                 if (!IsEnabled()) return;
-                ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer] UpdatePlugin postfix for plugin id={plugin?.Id}");
                 var map = _pluginTemplateMapField?.GetValue(__instance) as System.Collections.IDictionary;
                 if (map == null || !map.Contains(plugin))
                 {
@@ -943,7 +976,6 @@ namespace ToasterReskinLoader.swappers
         {
             string entryName = GetTitle(entry);
             string entryType = IsLocalPlugin(entry) ? "Plugin" : "Mod";
-            ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer] ApplyEnhancements start: {entryType} '{entryName}' (HasAssembly={HasAssembly(entry)}, IsEnabled={IsEnabled(entry)}, element={element?.GetType().Name}, attached={element?.panel != null})");
 
             var desc = element.Q<Label>("DescriptionLabel");
             var preview = element.Q<VisualElement>("Preview");
@@ -954,7 +986,6 @@ namespace ToasterReskinLoader.swappers
             // also catch it once vanilla calls them inside Ready.
             if (desc == null || preview == null)
             {
-                ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer]   children not ready (desc={desc != null}, preview={preview != null}, panel={element.panel != null}). Deferring '{entryName}'");
                 if (element.panel == null)
                 {
                     EventCallback<AttachToPanelEvent> handler = null;
@@ -967,7 +998,6 @@ namespace ToasterReskinLoader.swappers
                 }
                 return;
             }
-            ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer]   '{entryName}' element layout: rect={element.layout}, resolvedHeight={element.resolvedStyle.height}, resolvedMaxHeight={element.resolvedStyle.maxHeight}, display={element.resolvedStyle.display}");
 
             // ── Let the row grow vertically to fit our extra content ──
             // Walk up the chain stripping height clamps that prevent expansion.
@@ -1146,6 +1176,7 @@ namespace ToasterReskinLoader.swappers
                             VisualElement capturedElement = element;
                             toggle.RegisterValueChangedCallback(evt =>
                             {
+                                ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer] User clicked {entryType} '{entryName}' to {(evt.newValue ? "ENABLE; ENABLING..." : "DISABLE; DISABLING...")}");
                                 UpdateToggleChip(chip, stateLabel, evt.newValue);
                                 float op = evt.newValue ? 1f : 0.3f;
                                 if (capturedInfo != null) capturedInfo.style.opacity = op;
@@ -1159,7 +1190,24 @@ namespace ToasterReskinLoader.swappers
                 }
 
                 var stateLbl = chip.Q<Label>("trl-state-label");
-                if (HasAssembly(entry))
+                if (IsMissingLocalFolder(entry))
+                {
+                    // Subscribed but the content folder isn't on disk (Steam hasn't
+                    // finished downloading, or the files were removed). There's
+                    // nothing for the loader to load, so pull the toggle into the
+                    // chip, make it non-interactive so the mod can't be enabled,
+                    // and flag the row.
+                    var toggles = element.Query<Toggle>().ToList();
+                    foreach (var t in toggles)
+                    {
+                        if (t.parent != chip)
+                            ReparentToggleIntoChip(t, chip);
+                    }
+                    var toggle = chip.Q<Toggle>() ?? (toggles.Count > 0 ? toggles[0] : null);
+                    if (toggle != null) toggle.SetEnabled(false);
+                    if (stateLbl != null) UpdateMissingFilesChip(chip, stateLbl);
+                }
+                else if (HasAssembly(entry))
                 {
                     // Walk EVERY Toggle in the row. The one already inside the chip
                     // stays. Any others (the vanilla template's toggle that drifted
@@ -1173,7 +1221,6 @@ namespace ToasterReskinLoader.swappers
                             ReparentToggleIntoChip(t, chip);
                     }
                     var toggle = chip.Q<Toggle>() ?? (toggles.Count > 0 ? toggles[0] : null);
-                    ToasterReskinLoader.Plugin.Log($"[ModMenuEnhancer]   '{entryName}' toggles found={toggles.Count}, in-chip after={(toggle != null && toggle.parent == chip)}");
 
                     if (IsOutdatedMod(entry))
                     {
@@ -1600,6 +1647,14 @@ namespace ToasterReskinLoader.swappers
             label.style.color = new Color(0.85f, 0.85f, 0.85f);
             label.style.marginRight = 0;
             chip.style.backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f, 0.85f));
+        }
+
+        private static void UpdateMissingFilesChip(VisualElement chip, Label label)
+        {
+            label.text = "MISSING FILES";
+            label.style.color = new Color(1f, 0.55f, 0.2f);
+            label.style.marginRight = 0;
+            chip.style.backgroundColor = new StyleColor(new Color(0.4f, 0.15f, 0.05f, 0.9f));
         }
 
         private static void UpdateToggleChip(VisualElement chip, Label label, bool enabled)
