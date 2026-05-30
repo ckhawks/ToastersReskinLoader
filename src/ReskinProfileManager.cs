@@ -1330,7 +1330,7 @@ public static class ReskinProfileManager
     /// A lightweight, serializable reference to a specific reskin entry.
     /// </summary>
     [Serializable]
-    private class ReskinReference
+    public class ReskinReference
     {
         [JsonProperty("packId")]
         public string PackId { get; set; }
