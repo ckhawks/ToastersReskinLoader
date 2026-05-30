@@ -1042,21 +1042,21 @@ public static class ReskinProfileManager
     public class Profile
     {
         // Sticks section
-        [PresetField("Sticks", "Attacker (team)", ReskinType = "stick_attacker")]
+        [PresetField("Sticks", "Team stick", ReskinType = "stick_attacker")]
         public ReskinRegistry.ReskinEntry stickAttackerBlue;
-        [PresetField("Sticks", "Attacker (personal)", ReskinType = "stick_attacker")]
+        [PresetField("Sticks", "Personal stick", ReskinType = "stick_attacker")]
         public ReskinRegistry.ReskinEntry stickAttackerBluePersonal;
-        [PresetField("Sticks", "Attacker (team)", ReskinType = "stick_attacker")]
+        [PresetField("Sticks", "Team stick", ReskinType = "stick_attacker")]
         public ReskinRegistry.ReskinEntry stickAttackerRed;
-        [PresetField("Sticks", "Attacker (personal)", ReskinType = "stick_attacker")]
+        [PresetField("Sticks", "Personal stick", ReskinType = "stick_attacker")]
         public ReskinRegistry.ReskinEntry stickAttackerRedPersonal;
-        [PresetField("Sticks", "Goalie (team)", ReskinType = "stick_goalie")]
+        [PresetField("Sticks", "Team stick", ReskinType = "stick_goalie")]
         public ReskinRegistry.ReskinEntry stickGoalieBlue;
-        [PresetField("Sticks", "Goalie (personal)", ReskinType = "stick_goalie")]
+        [PresetField("Sticks", "Personal stick", ReskinType = "stick_goalie")]
         public ReskinRegistry.ReskinEntry stickGoalieBluePersonal;
-        [PresetField("Sticks", "Goalie (team)", ReskinType = "stick_goalie")]
+        [PresetField("Sticks", "Team stick", ReskinType = "stick_goalie")]
         public ReskinRegistry.ReskinEntry stickGoalieRed;
-        [PresetField("Sticks", "Goalie (personal)", ReskinType = "stick_goalie")]
+        [PresetField("Sticks", "Personal stick", ReskinType = "stick_goalie")]
         public ReskinRegistry.ReskinEntry stickGoalieRedPersonal;
         
         // Jerseys (grouped with Skaters / Goalies to match the menu's section layout)
@@ -1191,63 +1191,63 @@ public static class ReskinProfileManager
 
         // Stick Tape Customization
         // Blue Team Skater
-        [PresetField("Tape", "Skater blade mode")]
+        [PresetField("Tape", "Blade mode")]
         public string blueSkaterBladeTapeMode = "Unchanged";
-        [PresetField("Tape", "Skater blade", ReskinType = "tape_attacker_blade")]
+        [PresetField("Tape", "Blade", ReskinType = "tape_attacker_blade")]
         public ReskinRegistry.ReskinEntry blueSkaterBladeTape;
-        [PresetField("Tape", "Skater blade color")]
+        [PresetField("Tape", "Blade color")]
         public Color blueSkaterBladeTapeColor = Color.white;
 
-        [PresetField("Tape", "Skater shaft mode")]
+        [PresetField("Tape", "Shaft mode")]
         public string blueSkaterShaftTapeMode = "Unchanged";
-        [PresetField("Tape", "Skater shaft", ReskinType = "tape_attacker_shaft")]
+        [PresetField("Tape", "Shaft", ReskinType = "tape_attacker_shaft")]
         public ReskinRegistry.ReskinEntry blueSkaterShaftTape;
-        [PresetField("Tape", "Skater shaft color")]
+        [PresetField("Tape", "Shaft color")]
         public Color blueSkaterShaftTapeColor = Color.white;
 
         // Blue Team Goalie
-        [PresetField("Tape", "Goalie blade mode")]
+        [PresetField("Tape", "Blade mode")]
         public string blueGoalieBladeTapeMode = "Unchanged";
-        [PresetField("Tape", "Goalie blade", ReskinType = "tape_goalie_blade")]
+        [PresetField("Tape", "Blade", ReskinType = "tape_goalie_blade")]
         public ReskinRegistry.ReskinEntry blueGoalieBladeTape;
-        [PresetField("Tape", "Goalie blade color")]
+        [PresetField("Tape", "Blade color")]
         public Color blueGoalieBladeTapeColor = Color.white;
 
-        [PresetField("Tape", "Goalie shaft mode")]
+        [PresetField("Tape", "Shaft mode")]
         public string blueGoalieShaftTapeMode = "Unchanged";
-        [PresetField("Tape", "Goalie shaft", ReskinType = "tape_goalie_shaft")]
+        [PresetField("Tape", "Shaft", ReskinType = "tape_goalie_shaft")]
         public ReskinRegistry.ReskinEntry blueGoalieShaftTape;
-        [PresetField("Tape", "Goalie shaft color")]
+        [PresetField("Tape", "Shaft color")]
         public Color blueGoalieShaftTapeColor = Color.white;
 
         // Red Team Skater
-        [PresetField("Tape", "Skater blade mode")]
+        [PresetField("Tape", "Blade mode")]
         public string redSkaterBladeTapeMode = "Unchanged";
-        [PresetField("Tape", "Skater blade", ReskinType = "tape_attacker_blade")]
+        [PresetField("Tape", "Blade", ReskinType = "tape_attacker_blade")]
         public ReskinRegistry.ReskinEntry redSkaterBladeTape;
-        [PresetField("Tape", "Skater blade color")]
+        [PresetField("Tape", "Blade color")]
         public Color redSkaterBladeTapeColor = Color.white;
 
-        [PresetField("Tape", "Skater shaft mode")]
+        [PresetField("Tape", "Shaft mode")]
         public string redSkaterShaftTapeMode = "Unchanged";
-        [PresetField("Tape", "Skater shaft", ReskinType = "tape_attacker_shaft")]
+        [PresetField("Tape", "Shaft", ReskinType = "tape_attacker_shaft")]
         public ReskinRegistry.ReskinEntry redSkaterShaftTape;
-        [PresetField("Tape", "Skater shaft color")]
+        [PresetField("Tape", "Shaft color")]
         public Color redSkaterShaftTapeColor = Color.white;
 
         // Red Team Goalie
-        [PresetField("Tape", "Goalie blade mode")]
+        [PresetField("Tape", "Blade mode")]
         public string redGoalieBladeTapeMode = "Unchanged";
-        [PresetField("Tape", "Goalie blade", ReskinType = "tape_goalie_blade")]
+        [PresetField("Tape", "Blade", ReskinType = "tape_goalie_blade")]
         public ReskinRegistry.ReskinEntry redGoalieBladeTape;
-        [PresetField("Tape", "Goalie blade color")]
+        [PresetField("Tape", "Blade color")]
         public Color redGoalieBladeTapeColor = Color.white;
 
-        [PresetField("Tape", "Goalie shaft mode")]
+        [PresetField("Tape", "Shaft mode")]
         public string redGoalieShaftTapeMode = "Unchanged";
-        [PresetField("Tape", "Goalie shaft", ReskinType = "tape_goalie_shaft")]
+        [PresetField("Tape", "Shaft", ReskinType = "tape_goalie_shaft")]
         public ReskinRegistry.ReskinEntry redGoalieShaftTape;
-        [PresetField("Tape", "Goalie shaft color")]
+        [PresetField("Tape", "Shaft color")]
         public Color redGoalieShaftTapeColor = Color.white;
 
         // Team colors (per-team enable — replaced the single teamColorsEnabled toggle)

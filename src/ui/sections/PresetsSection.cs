@@ -679,10 +679,13 @@ public static class PresetsSection
         selectionToggle.style.marginRight = 8;
         header.Add(selectionToggle);
 
+        // The ▾/▸ glyphs render small for their point size, so scale them up relative to the
+        // row's font size (they otherwise look ~60% too small next to the labels).
+        int chevronSize = Mathf.RoundToInt(fontSize * 1.7f);
         var chevron = new Label(startExpanded ? "▾" : "▸");
         chevron.style.color = Color.white;
-        chevron.style.fontSize = fontSize;
-        chevron.style.width = 16;
+        chevron.style.fontSize = chevronSize;
+        chevron.style.width = chevronSize + 6;
         chevron.style.unityTextAlign = TextAnchor.MiddleCenter;
         header.Add(chevron);
 
