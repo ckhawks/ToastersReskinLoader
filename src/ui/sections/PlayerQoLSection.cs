@@ -123,6 +123,12 @@ public static class PlayerQoLSection
                 else   UnicodeFontFallback.Disable();
             });
 
+        ToggleRow(contentScrollViewContent, "Fix shared player country flags", cfg.enableFlagMaterialFix,
+            v => { cfg.enableFlagMaterialFix = v; runner.SaveAndRefresh(); });
+        Note(contentScrollViewContent,
+            "Vanilla bug: every player's helmet flag shares one material, so everyone ends up showing the same flag. "
+            + "Takes effect as players (re)spawn.");
+
         // ── Trusted server mod lists (DISABLED) ───────────────────────────
         // The MODS REQUIRED popup suppression is shelved for now — see
         // MissingModsPopupSuppression.cs. When re-enabling, uncomment

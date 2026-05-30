@@ -48,6 +48,9 @@ public class QoLConfig
     public bool enableSavedServerPasswords = true;
     public bool enableServerBrowserSortTweaks = true;
     public bool enableUnicodeFontFallback = true;
+    // Fixes the vanilla bug where every player's country flag renders identical
+    // (all flag meshes share one baked material asset). See FlagMaterialFix.
+    public bool enableFlagMaterialFix = true;
 
     // Additions — opt-in QoL enhancements layered on top of vanilla
     public bool enableBetterFriendsList = true;
