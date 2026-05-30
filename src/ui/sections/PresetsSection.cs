@@ -480,6 +480,7 @@ public static class PresetsSection
         // tree: bucket -> role -> category -> field
         _children.Clear();
         _parent.Clear();
+        _partial.Clear();
         BuildBucket("Blue Team", PresetTeam.Blue, toggles);
         BuildBucket("Red Team", PresetTeam.Red, toggles);
         BuildBucket("Global", PresetTeam.None, toggles);
@@ -775,15 +776,18 @@ public static class PresetsSection
         foreach (var c in children) _parent[c] = parent;
     }
 
+    // Tracks which group toggles are currently in the partial (indeterminate) state, so an
+    // ancestor can tell that a child has *some* selection even though the child's own checkbox
+    // value is false. This is what lets the dash flow all the way up the tree.
+    private static readonly HashSet<Toggle> _partial = new();
+
     private static void OnUserToggle(Toggle toggle, bool value)
     {
         CascadeDown(toggle, value);
         var p = _parent.TryGetValue(toggle, out var pp) ? pp : null;
         while (p != null)
         {
-            var kids = _children[p];
-            p.SetValueWithoutNotify(kids.All(k => k.value));
-            ApplyTriState(p, kids);
+            RefreshNode(p, _children[p]);
             p = _parent.TryGetValue(p, out var gp) ? gp : null;
         }
     }
@@ -796,16 +800,27 @@ public static class PresetsSection
             k.SetValueWithoutNotify(value);
             CascadeDown(k, value);
         }
-        ApplyTriState(toggle, kids);
+        // After a uniform set this node is fully checked or fully empty — never partial.
+        _partial.Remove(toggle);
+        SetDash(toggle, false);
     }
 
-    // Unity Toggle has no indeterminate state, so overlay a dash on the checkbox when some — but
-    // not all — descendants are selected.
-    private static void ApplyTriState(Toggle parent, List<Toggle> children)
+    // Recompute a parent's state from its children. A child counts as "selected" if its own box
+    // is checked OR it is itself partial, so partial state propagates upward.
+    private static void RefreshNode(Toggle node, List<Toggle> kids)
     {
-        bool all = children.Count > 0 && children.All(c => c.value);
-        bool partial = !all && children.Any(c => c.value);
+        bool allFull = kids.Count > 0 && kids.All(k => k.value);
+        bool anySel = kids.Any(k => k.value || _partial.Contains(k));
+        node.SetValueWithoutNotify(allFull);
 
+        bool partial = anySel && !allFull;
+        if (partial) _partial.Add(node); else _partial.Remove(node);
+        SetDash(node, partial);
+    }
+
+    // Unity Toggle has no indeterminate state, so overlay a dash on the checkbox when partial.
+    private static void SetDash(Toggle parent, bool partial)
+    {
         var input = parent.Q(className: "unity-toggle__input");
         if (input == null) return;
 
