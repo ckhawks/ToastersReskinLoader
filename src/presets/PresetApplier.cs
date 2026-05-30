@@ -79,6 +79,10 @@ public static class PresetApplier
         return result;
     }
 
+    /// Re-apply the whole profile to the world without applying a preset (used after
+    /// "Reset all to defaults").
+    public static void RefreshWorld() => RefreshAll();
+
     /// Re-apply everything to the world. Mirrors the Reload button (textures + SetAll) and adds
     /// the few things SetAll doesn't cover (sticks, pucks, team-color notify) so a preset that
     /// touches them takes effect without waiting for a respawn. Each step is isolated so one

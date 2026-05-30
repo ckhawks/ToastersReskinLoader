@@ -1117,6 +1117,17 @@ public static class ReskinProfileManager
             swappers.GlossSwapper.Scan();
     }
 
+    /// <summary>
+    /// Resets the entire profile to defaults (the "start fresh" action in the Presets
+    /// section). Callers should refresh the world afterward (PresetApplier.RefreshWorld).
+    /// </summary>
+    public static void ResetAllToDefault()
+    {
+        Plugin.Log("Resetting ALL reskin settings to their default values.");
+        currentProfile = new Profile();
+        SaveProfile();
+    }
+
     public static void ResetMinimapToDefault()
     {
         Plugin.Log("Resetting minimap settings to their default values.");
@@ -1156,22 +1167,22 @@ public static class ReskinProfileManager
         [PresetField("Sticks", "Goalie (personal)", ReskinType = "stick_goalie")]
         public ReskinRegistry.ReskinEntry stickGoalieRedPersonal;
         
-        // Jerseys
-        [PresetField("Jersey", "Skater torso", ReskinType = "jersey_torso")]
+        // Jerseys (grouped with Skaters / Goalies to match the menu's section layout)
+        [PresetField("Skaters", "Jersey torso", ReskinType = "jersey_torso")]
         public ReskinRegistry.ReskinEntry blueSkaterTorso;
-        [PresetField("Jersey", "Skater groin", ReskinType = "jersey_groin")]
+        [PresetField("Skaters", "Jersey groin", ReskinType = "jersey_groin")]
         public ReskinRegistry.ReskinEntry blueSkaterGroin;
-        [PresetField("Jersey", "Goalie torso", ReskinType = "jersey_torso")]
+        [PresetField("Goalies", "Jersey torso", ReskinType = "jersey_torso")]
         public ReskinRegistry.ReskinEntry blueGoalieTorso;
-        [PresetField("Jersey", "Goalie groin", ReskinType = "jersey_groin")]
+        [PresetField("Goalies", "Jersey groin", ReskinType = "jersey_groin")]
         public ReskinRegistry.ReskinEntry blueGoalieGroin;
-        [PresetField("Jersey", "Skater torso", ReskinType = "jersey_torso")]
+        [PresetField("Skaters", "Jersey torso", ReskinType = "jersey_torso")]
         public ReskinRegistry.ReskinEntry  redSkaterTorso;
-        [PresetField("Jersey", "Skater groin", ReskinType = "jersey_groin")]
+        [PresetField("Skaters", "Jersey groin", ReskinType = "jersey_groin")]
         public ReskinRegistry.ReskinEntry  redSkaterGroin;
-        [PresetField("Jersey", "Goalie torso", ReskinType = "jersey_torso")]
+        [PresetField("Goalies", "Jersey torso", ReskinType = "jersey_torso")]
         public ReskinRegistry.ReskinEntry  redGoalieTorso;
-        [PresetField("Jersey", "Goalie groin", ReskinType = "jersey_groin")]
+        [PresetField("Goalies", "Jersey groin", ReskinType = "jersey_groin")]
         public ReskinRegistry.ReskinEntry  redGoalieGroin;
         [PresetField("Goalies", "Left pad", ReskinType = "legpad")]
         public ReskinRegistry.ReskinEntry blueLegPadLeft;
