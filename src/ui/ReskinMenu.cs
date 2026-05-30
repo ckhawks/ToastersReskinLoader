@@ -34,7 +34,7 @@ public static class ReskinMenu
     {
         (null, new[] { "Packs" }),
         (null, new[] { "Presets" }),
-        ("Reskins", new[] { "Players", "Sticks", "Tapes", "Pucks" }),
+        ("Reskins", new[] { "Players", "Pucks" }),
         ("Effects", new[] { "Puck FX", "Skybox", "Shadows", "Glossiness" }),
         (null, new[] { "Arena" }),
         (null, new[] { "Appearance" }),

@@ -17,8 +17,6 @@ namespace ToasterReskinLoader.ui.sections;
 /// </summary>
 public static class PlayersSection
 {
-    private static readonly string[] HiddenGroups = { "Sticks", "Tape" };
-
     private static PresetTeam _team = PresetTeam.Blue;
     private static PresetRole _role = PresetRole.Skater;
     private static VisualElement _root;
@@ -79,16 +77,24 @@ public static class PlayersSection
         heading.style.marginBottom = 8;
         _root.Add(heading);
 
-        var fields = CellFields(_team, _role);
-        if (fields.Count == 0)
-        {
-            _root.Add(UITools.CreateConfigurationLabel("(no editable settings for this cell)"));
-        }
-        else
-        {
-            foreach (var field in fields)
-                RenderField(field);
-        }
+        var cellFields = CellFields(_team, _role);
+
+        // Team look: everything except the personal stick and tape (which only you see).
+        var appearance = cellFields.Where(f => f.Group != "Sticks" && f.Group != "Tape").ToList();
+        var teamStick = cellFields.FirstOrDefault(f => f.Group == "Sticks" && !f.Id.Contains("Personal"));
+        var personalStick = cellFields.FirstOrDefault(f => f.Group == "Sticks" && f.Id.Contains("Personal"));
+
+        foreach (var field in appearance)
+            RenderField(field);
+        if (teamStick != null)
+            RenderField(teamStick);
+
+        // Personal equipment — applies to your own stick only, not how the team looks.
+        _root.Add(SubHeading("Your stick", "Only you see this — your own stick skin and tape."));
+        if (personalStick != null)
+            RenderField(personalStick);
+        RenderTapeControl(_team, _role, "Blade");
+        RenderTapeControl(_team, _role, "Shaft");
 
         Preview();
     }
@@ -97,8 +103,92 @@ public static class PlayersSection
 
     private static List<PresetField> CellFields(PresetTeam team, PresetRole role)
         => PresetFieldRegistry.All
-            .Where(f => f.Team == team && f.Role == role && !HiddenGroups.Contains(f.Group))
+            .Where(f => f.Team == team && f.Role == role)
             .ToList();
+
+    private static VisualElement SubHeading(string title, string subtitle)
+    {
+        var c = new VisualElement();
+        c.style.marginTop = 16;
+        c.style.marginBottom = 4;
+        var t = new Label(title);
+        t.style.fontSize = 18;
+        t.style.unityFontStyleAndWeight = FontStyle.Bold;
+        t.style.color = Color.white;
+        c.Add(t);
+        if (!string.IsNullOrEmpty(subtitle))
+        {
+            var s = UITools.CreateConfigurationLabel(subtitle);
+            s.style.fontSize = 12;
+            s.style.color = new Color(0.6f, 0.6f, 0.6f);
+            c.Add(s);
+        }
+        return c;
+    }
+
+    // Tape is a mode (Unchanged / RGB / Textured) plus a color (RGB) and a texture (Textured).
+    // The three live as separate registry fields; we find them by kind for the chosen blade/shaft.
+    private static void RenderTapeControl(PresetTeam team, PresetRole role, string which)
+    {
+        var profile = ReskinProfileManager.currentProfile;
+        var fields = PresetFieldRegistry.All
+            .Where(f => f.Team == team && f.Role == role && f.Group == "Tape" && f.Id.Contains(which))
+            .ToList();
+        var modeField = fields.FirstOrDefault(f => f.Kind == PresetValueKind.String);
+        var texField = fields.FirstOrDefault(f => f.Kind == PresetValueKind.ReskinRef);
+        var colorField = fields.FirstOrDefault(f => f.Kind == PresetValueKind.Color);
+        if (modeField == null || texField == null || colorField == null) return;
+
+        string label = $"{which} tape";
+
+        var modeRow = UITools.CreateConfigurationRow();
+        modeRow.Add(UITools.CreateConfigurationLabel($"{label} mode"));
+        var modeDropdown = UITools.CreateStringDropdownField(
+            new List<string> { "Unchanged", "RGB", "Textured" },
+            (string)modeField.GetValue(profile) ?? "Unchanged");
+        modeRow.Add(modeDropdown);
+        _root.Add(modeRow);
+
+        var colorSection = UITools.CreateColorConfigurationRow(
+            $"{label} color",
+            (Color)colorField.GetValue(profile),
+            false,
+            c => { colorField.SetValue(profile, c); Preview(); },
+            ReskinProfileManager.SaveProfile);
+        _root.Add(colorSection);
+
+        var texRow = UITools.CreateConfigurationRow();
+        texRow.Add(UITools.CreateConfigurationLabel($"{label} texture"));
+        var unchanged = new ReskinRegistry.ReskinEntry { Name = "Unchanged", Path = null, Type = texField.ReskinType };
+        var choices = ReskinRegistry.GetReskinEntriesByType(texField.ReskinType);
+        choices.Insert(0, unchanged);
+        var texDropdown = UITools.CreateConfigurationDropdownField();
+        texDropdown.choices = choices;
+        texDropdown.value = (texField.GetValue(profile) as ReskinRegistry.ReskinEntry) ?? unchanged;
+        texDropdown.RegisterCallback<ChangeEvent<ReskinRegistry.ReskinEntry>>(evt =>
+        {
+            var chosen = evt.newValue;
+            texField.SetValue(profile, chosen != null && chosen.Path != null ? chosen : null);
+            ReskinProfileManager.SaveProfile();
+            Preview();
+        });
+        texRow.Add(texDropdown);
+        _root.Add(texRow);
+
+        void UpdateVisibility(string mode)
+        {
+            colorSection.style.display = mode == "RGB" ? DisplayStyle.Flex : DisplayStyle.None;
+            texRow.style.display = mode == "Textured" ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+        modeDropdown.RegisterValueChangedCallback(evt =>
+        {
+            modeField.SetValue(profile, evt.newValue);
+            ReskinProfileManager.SaveProfile();
+            UpdateVisibility(evt.newValue);
+            Preview();
+        });
+        UpdateVisibility(modeDropdown.value);
+    }
 
     private static void RenderField(PresetField field)
     {
