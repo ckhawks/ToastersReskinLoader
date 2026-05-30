@@ -99,6 +99,9 @@ public static class PresetApplier
             SwapperManager.OnRedTeamStickChanged();
         }, "sticks");
         Safe(() => ToasterReskinLoaderAPI.NotifyTeamColorsChanged(), "team colors");
+        // In the locker room the in-game swappers above have no live Player to act on — the
+        // preview mannequin is driven separately. No-op outside the main menu.
+        Safe(() => ChangingRoomHelper.RefreshPreview(), "locker room preview");
     }
 
     private static void Safe(Action action, string what)
