@@ -568,7 +568,10 @@ public static class PresetsSection
             var t = UITools.CreateConfigurationCheckbox(false);
             t.style.marginRight = 8;
             row.Add(t);
-            row.Add(UITools.CreateConfigurationLabel(field.DisplayName));
+            var nameLabel = UITools.CreateConfigurationLabel(field.DisplayName);
+            nameLabel.style.flexGrow = 1;
+            row.Add(nameLabel);
+            row.Add(BuildValuePreview(field));
             body.Add(row);
             toggles[field.Id] = t;
             leaves.Add(t);
@@ -576,6 +579,93 @@ public static class PresetsSection
 
         WireParent(catToggle, leaves);
         return catToggle;
+    }
+
+    // Right-aligned preview of a field's current value: color swatch, texture thumbnail + name,
+    // or text.
+    private static VisualElement BuildValuePreview(PresetField field)
+    {
+        object value = field.GetValue(ReskinProfileManager.currentProfile);
+
+        switch (field.Kind)
+        {
+            case PresetValueKind.Color:
+                var swatch = new VisualElement();
+                swatch.style.width = 24;
+                swatch.style.height = 14;
+                swatch.style.flexShrink = 0;
+                swatch.style.marginLeft = 8;
+                swatch.style.backgroundColor = value is Color col ? col : Color.clear;
+                var bc = new Color(0.4f, 0.4f, 0.4f);
+                swatch.style.borderTopWidth = 1; swatch.style.borderBottomWidth = 1;
+                swatch.style.borderLeftWidth = 1; swatch.style.borderRightWidth = 1;
+                swatch.style.borderTopColor = bc; swatch.style.borderBottomColor = bc;
+                swatch.style.borderLeftColor = bc; swatch.style.borderRightColor = bc;
+                return swatch;
+
+            case PresetValueKind.ReskinRef:
+                return BuildRefPreview(value as ReskinRegistry.ReskinEntry);
+
+            case PresetValueKind.ReskinRefList:
+                int n = (value as IEnumerable<ReskinRegistry.ReskinEntry>)?.Count(e => e != null) ?? 0;
+                return TextPreview(n == 0 ? "none" : $"{n} item{(n == 1 ? "" : "s")}");
+
+            case PresetValueKind.Bool:
+                return TextPreview(value is bool b && b ? "On" : "Off");
+
+            case PresetValueKind.Int:
+                return TextPreview(value?.ToString() ?? "");
+
+            case PresetValueKind.Float:
+                return TextPreview(value is float fl ? fl.ToString("0.###") : "");
+
+            case PresetValueKind.String:
+                var s = value as string;
+                return TextPreview(string.IsNullOrEmpty(s) ? "(default)" : s);
+
+            default:
+                return TextPreview("");
+        }
+    }
+
+    private static VisualElement BuildRefPreview(ReskinRegistry.ReskinEntry entry)
+    {
+        var container = UITools.CreateRow();
+        container.style.flexShrink = 0;
+        container.style.marginLeft = 8;
+
+        if (entry == null || entry.Path == null)
+        {
+            container.Add(TextPreview("Unchanged"));
+            return container;
+        }
+
+        var thumb = new VisualElement();
+        thumb.style.width = 18;
+        thumb.style.height = 18;
+        thumb.style.marginRight = 6;
+        thumb.style.flexShrink = 0;
+        try
+        {
+            var tex = TextureManager.GetTexture(entry);
+            if (tex != null) thumb.style.backgroundImage = new StyleBackground(tex);
+        }
+        catch { /* preview only — ignore load failures */ }
+
+        container.Add(thumb);
+        container.Add(TextPreview(entry.Name));
+        return container;
+    }
+
+    private static Label TextPreview(string text)
+    {
+        var l = UITools.CreateConfigurationLabel(text);
+        l.style.fontSize = 12;
+        l.style.color = new Color(0.6f, 0.6f, 0.6f);
+        l.style.unityTextAlign = TextAnchor.MiddleRight;
+        l.style.flexShrink = 0;
+        l.style.marginLeft = 8;
+        return l;
     }
 
     // Header row with a selection checkbox + a click-to-expand label/chevron, plus the body
