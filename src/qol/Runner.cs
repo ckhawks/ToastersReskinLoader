@@ -43,10 +43,10 @@ public sealed class QoLRunner : MonoBehaviour
     private void Awake()
     {
         _instance = this;
+        // DisplaySettingsMigration runs standalone earlier in Plugin.OnEnable (before the reskin
+        // profile can be re-saved), so it's intentionally not called here.
         try { ReloadFromProfile(); }
         catch (Exception e) { Debug.LogError("[QoL] ReloadFromProfile failed: " + e); }
-        try { DisplaySettingsMigration.Run(); }
-        catch (Exception e) { Debug.LogError("[QoL] DisplaySettingsMigration failed: " + e); }
         try { SavedServerPasswords.Initialize(); }
         catch (Exception e) { Debug.LogError("[QoL] SavedServerPasswords.Initialize failed: " + e); }
     }

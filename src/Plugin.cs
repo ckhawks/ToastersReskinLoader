@@ -14,7 +14,7 @@ namespace ToasterReskinLoader;
 public class Plugin : IPuckPlugin
 {
     public static string MOD_NAME = "ToasterReskinLoader";
-    public static string MOD_VERSION = "2.1.7";
+    public static string MOD_VERSION = "2.2.0";
     public static string MOD_GUID = "pw.stellaric.toaster.reskinloader";
 
     static readonly Harmony harmony = new Harmony(MOD_GUID);
@@ -51,7 +51,13 @@ public class Plugin : IPuckPlugin
                 
                 modSettings = ModSettings.Load();
                 modSettings.Save(); // So that it writes any missing config values immediately
-                
+
+                // Run the display-settings migration FIRST (standalone — doesn't need QoLRunner).
+                // It reads the OLD keys (shadows/gloss/minimap/chat/team-indicator) straight from
+                // ReskinProfile.json, so it must run BEFORE LoadProfile / PuckFXMigrator can
+                // re-save and strip those keys from the profile.
+                ToasterReskinLoader.qol.DisplaySettingsMigration.Run();
+
                 // 1. Load all available reskin packs first. This populates the registry.
                 ReskinRegistry.LoadPacks();
                 Plugin.Log($"Packs are loaded!");
