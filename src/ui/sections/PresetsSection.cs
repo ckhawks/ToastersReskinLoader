@@ -373,14 +373,10 @@ public static class PresetsSection
 
         if (preset.IsTeamScoped)
         {
-            var profile = ReskinProfileManager.currentProfile;
-            string blueName = string.IsNullOrWhiteSpace(profile.blueTeamName) ? "Blue" : profile.blueTeamName;
-            string redName = string.IsNullOrWhiteSpace(profile.redTeamName) ? "Red" : profile.redTeamName;
-
             btnRow.Add(UITools.CreateConfigurationLabel("Apply to:"));
             var spacer = new VisualElement(); spacer.style.width = 8; btnRow.Add(spacer);
-            btnRow.Add(MakeApplyButton($"{blueName} team", preset, PresetTeam.Blue));
-            btnRow.Add(MakeApplyButton($"{redName} team", preset, PresetTeam.Red));
+            btnRow.Add(MakeApplyButton("Blue team", preset, PresetTeam.Blue, DefaultBlueTeamColor));
+            btnRow.Add(MakeApplyButton("Red team", preset, PresetTeam.Red, DefaultRedTeamColor));
         }
         else
         {
@@ -394,11 +390,34 @@ public static class PresetsSection
         _root.Add(btnRow);
     }
 
-    private static Button MakeApplyButton(string label, Preset preset, PresetTeam team)
+    // Default (vanilla) team colors, matching the reskin profile defaults.
+    private static readonly Color DefaultBlueTeamColor = new Color(0.231f, 0.510f, 0.965f, 1f);
+    private static readonly Color DefaultRedTeamColor = new Color(0.820f, 0.200f, 0.200f, 1f);
+
+    private static Button MakeApplyButton(string label, Preset preset, PresetTeam team, Color? color = null)
     {
         var btn = new Button { text = label };
-        UITools.StyleConfigButton(btn);
         btn.style.marginRight = 6;
+
+        if (color.HasValue)
+        {
+            var c = color.Value;
+            btn.style.unityTextAlign = TextAnchor.MiddleCenter;
+            btn.style.fontSize = 16;
+            btn.style.paddingTop = 6; btn.style.paddingBottom = 6;
+            btn.style.paddingLeft = 14; btn.style.paddingRight = 14;
+            btn.style.borderTopWidth = 0; btn.style.borderBottomWidth = 0;
+            btn.style.borderLeftWidth = 0; btn.style.borderRightWidth = 0;
+            btn.style.backgroundColor = c;
+            btn.style.color = Color.white;
+            btn.RegisterCallback<MouseEnterEvent>(_ => btn.style.backgroundColor = Color.Lerp(c, Color.white, 0.25f));
+            btn.RegisterCallback<MouseLeaveEvent>(_ => btn.style.backgroundColor = c);
+        }
+        else
+        {
+            UITools.StyleConfigButton(btn);
+        }
+
         btn.RegisterCallback<ClickEvent>(_ =>
         {
             var result = PresetApplier.Apply(preset, team);
@@ -742,6 +761,7 @@ public static class PresetsSection
             suppress = true;
             foreach (var c in children) c.value = evt.newValue;
             suppress = false;
+            ApplyTriState(parent, children);
         });
         foreach (var c in children)
         {
@@ -751,8 +771,35 @@ public static class PresetsSection
                 suppress = true;
                 parent.value = children.All(x => x.value);
                 suppress = false;
+                ApplyTriState(parent, children);
             });
         }
+    }
+
+    // Unity Toggle has no indeterminate state, so overlay a dash on the checkbox when some — but
+    // not all — descendants are selected.
+    private static void ApplyTriState(Toggle parent, List<Toggle> children)
+    {
+        bool all = children.Count > 0 && children.All(c => c.value);
+        bool partial = !all && children.Any(c => c.value);
+
+        var input = parent.Q(className: "unity-toggle__input");
+        if (input == null) return;
+
+        var dash = input.Q("partial-dash");
+        if (dash == null)
+        {
+            dash = new VisualElement { name = "partial-dash" };
+            dash.style.position = Position.Absolute;
+            dash.style.left = 4;
+            dash.style.right = 4;
+            dash.style.top = 7;
+            dash.style.height = 2;
+            dash.style.backgroundColor = Color.white;
+            dash.pickingMode = PickingMode.Ignore;
+            input.Add(dash);
+        }
+        dash.style.display = partial ? DisplayStyle.Flex : DisplayStyle.None;
     }
 
     private static int CategoryIndex(string category)
