@@ -24,7 +24,7 @@ public static class ReskinMenu
     
     // menu state
     public static string[] sections = new []{"Packs", "Presets", "Appearance", "Players", "Sticks", "Tapes", "Skaters", "Goalies", "Pucks", "Puck FX", "Arena",
-        "Skybox", "Shadows", "User Interface", "Quality of Life", "Glossiness", "Extras", "About" };
+        "Skybox", "Shadows", "HUD", "Quality of Life", "Glossiness", "Extras", "About" };
     public static int selectedSectionIndex = 0;
 
     // Visual sidebar layout. A null group renders top-level section button(s); a named group
@@ -35,10 +35,11 @@ public static class ReskinMenu
         (null, new[] { "Packs" }),
         (null, new[] { "Presets" }),
         ("Reskins", new[] { "Players", "Pucks" }),
-        ("Effects", new[] { "Puck FX", "Skybox", "Shadows", "Glossiness" }),
+        ("Effects", new[] { "Puck FX", "Skybox" }),
         (null, new[] { "Arena" }),
         (null, new[] { "Appearance" }),
-        (null, new[] { "User Interface" }),
+        // Personal display + performance settings (now stored in the QoL profile).
+        ("Display", new[] { "HUD", "Shadows", "Glossiness" }),
         (null, new[] { "Quality of Life" }),
         (null, new[] { "Extras" }),
         (null, new[] { "About" }),
@@ -84,7 +85,7 @@ public static class ReskinMenu
             MonoBehaviourSingleton<UIManager>.Instance?.GameState.Hide();
             // Keep minimap visible if on the User Interface tab (for previewing minimap settings)
             // but not in the main menu where the minimap doesn't exist
-            if (sections[selectedSectionIndex] != "User Interface" || ChangingRoomHelper.IsInMainMenu())
+            if (sections[selectedSectionIndex] != "HUD" || ChangingRoomHelper.IsInMainMenu())
                 MonoBehaviourSingleton<UIManager>.Instance?.Minimap.Hide();
         }
 
@@ -391,7 +392,7 @@ public static class ReskinMenu
             case "Appearance":
                 PlayerCustomizationSection.CreateSection(contentScrollViewContent);
                 break;
-            case "User Interface":
+            case "HUD":
                 UISection.CreateSection(contentScrollViewContent);
                 break;
             case "Quality of Life":
@@ -422,9 +423,9 @@ public static class ReskinMenu
             var minimap = MonoBehaviourSingleton<UIManager>.Instance?.Minimap;
             if (minimap != null)
             {
-                if (sections[sectionIndex] == "User Interface")
+                if (sections[sectionIndex] == "HUD")
                     minimap.Show();
-                else if (sections[oldSectionIndex] == "User Interface")
+                else if (sections[oldSectionIndex] == "HUD")
                     minimap.Hide();
             }
         }
