@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
+using ToasterReskinLoader.presets;
 using ToasterReskinLoader.swappers;
 using UnityEngine;
 
@@ -1138,180 +1139,316 @@ public static class ReskinProfileManager
     public class Profile
     {
         // Sticks section
+        [PresetField("Sticks", "Attacker (team)", ReskinType = "stick_attacker")]
         public ReskinRegistry.ReskinEntry stickAttackerBlue;
+        [PresetField("Sticks", "Attacker (personal)", ReskinType = "stick_attacker")]
         public ReskinRegistry.ReskinEntry stickAttackerBluePersonal;
+        [PresetField("Sticks", "Attacker (team)", ReskinType = "stick_attacker")]
         public ReskinRegistry.ReskinEntry stickAttackerRed;
+        [PresetField("Sticks", "Attacker (personal)", ReskinType = "stick_attacker")]
         public ReskinRegistry.ReskinEntry stickAttackerRedPersonal;
+        [PresetField("Sticks", "Goalie (team)", ReskinType = "stick_goalie")]
         public ReskinRegistry.ReskinEntry stickGoalieBlue;
+        [PresetField("Sticks", "Goalie (personal)", ReskinType = "stick_goalie")]
         public ReskinRegistry.ReskinEntry stickGoalieBluePersonal;
+        [PresetField("Sticks", "Goalie (team)", ReskinType = "stick_goalie")]
         public ReskinRegistry.ReskinEntry stickGoalieRed;
+        [PresetField("Sticks", "Goalie (personal)", ReskinType = "stick_goalie")]
         public ReskinRegistry.ReskinEntry stickGoalieRedPersonal;
         
         // Jerseys
+        [PresetField("Jersey", "Skater torso", ReskinType = "jersey_torso")]
         public ReskinRegistry.ReskinEntry blueSkaterTorso;
+        [PresetField("Jersey", "Skater groin", ReskinType = "jersey_groin")]
         public ReskinRegistry.ReskinEntry blueSkaterGroin;
+        [PresetField("Jersey", "Goalie torso", ReskinType = "jersey_torso")]
         public ReskinRegistry.ReskinEntry blueGoalieTorso;
+        [PresetField("Jersey", "Goalie groin", ReskinType = "jersey_groin")]
         public ReskinRegistry.ReskinEntry blueGoalieGroin;
+        [PresetField("Jersey", "Skater torso", ReskinType = "jersey_torso")]
         public ReskinRegistry.ReskinEntry  redSkaterTorso;
+        [PresetField("Jersey", "Skater groin", ReskinType = "jersey_groin")]
         public ReskinRegistry.ReskinEntry  redSkaterGroin;
+        [PresetField("Jersey", "Goalie torso", ReskinType = "jersey_torso")]
         public ReskinRegistry.ReskinEntry  redGoalieTorso;
+        [PresetField("Jersey", "Goalie groin", ReskinType = "jersey_groin")]
         public ReskinRegistry.ReskinEntry  redGoalieGroin;
+        [PresetField("Goalies", "Left pad", ReskinType = "legpad")]
         public ReskinRegistry.ReskinEntry blueLegPadLeft;
+        [PresetField("Goalies", "Right pad", ReskinType = "legpad")]
         public ReskinRegistry.ReskinEntry blueLegPadRight;
+        [PresetField("Goalies", "Left pad", ReskinType = "legpad")]
         public ReskinRegistry.ReskinEntry redLegPadLeft;
+        [PresetField("Goalies", "Right pad", ReskinType = "legpad")]
         public ReskinRegistry.ReskinEntry redLegPadRight;
+        [PresetField("Goalies", "Pad default color")]
         public Color blueLegPadDefaultColor = new Color(0.151f, 0.151f, 0.151f, 1f);
+        [PresetField("Goalies", "Pad default color")]
         public Color redLegPadDefaultColor = new Color(0.151f, 0.151f, 0.151f, 1f);
+        [PresetField("Goalies", "Helmet", ReskinType = "helmet")]
         public ReskinRegistry.ReskinEntry blueGoalieHelmet;
+        [PresetField("Goalies", "Helmet", ReskinType = "helmet")]
         public ReskinRegistry.ReskinEntry redGoalieHelmet;
+        [PresetField("Goalies", "Helmet color")]
         public Color blueGoalieHelmetColor = Color.black;
+        [PresetField("Goalies", "Helmet color")]
         public Color redGoalieHelmetColor = Color.black;
 
+        [PresetField("Goalies", "Mask", ReskinType = "goalie_mask")]
         public ReskinRegistry.ReskinEntry blueGoalieMask;
+        [PresetField("Goalies", "Mask", ReskinType = "goalie_mask")]
         public ReskinRegistry.ReskinEntry redGoalieMask;
+        [PresetField("Goalies", "Mask color")]
         public Color blueGoalieMaskColor = Color.black;
+        [PresetField("Goalies", "Mask color")]
         public Color redGoalieMaskColor = Color.black;
 
+        [PresetField("Goalies", "Cage color")]
         public Color blueGoalieCageColor = new Color(0.708f, 0.708f, 0.708f, 1f);
+        [PresetField("Goalies", "Cage color")]
         public Color redGoalieCageColor = new Color(0.708f, 0.708f, 0.708f, 1f);
 
+        [PresetField("Skaters", "Helmet", ReskinType = "helmet")]
         public ReskinRegistry.ReskinEntry blueSkaterHelmet;
+        [PresetField("Skaters", "Helmet", ReskinType = "helmet")]
         public ReskinRegistry.ReskinEntry redSkaterHelmet;
+        [PresetField("Skaters", "Helmet color")]
         public Color blueSkaterHelmetColor = Color.black;
+        [PresetField("Skaters", "Helmet color")]
         public Color redSkaterHelmetColor = Color.black;
 
         // Lettering colors (default: white)
+        [PresetField("Skaters", "Lettering color")]
         public Color blueSkaterLetteringColor = new Color(1f, 1f, 1f, 1f);
+        [PresetField("Skaters", "Lettering color")]
         public Color redSkaterLetteringColor = new Color(1f, 1f, 1f, 1f);
+        [PresetField("Goalies", "Lettering color")]
         public Color blueGoalieLetteringColor = new Color(1f, 1f, 1f, 1f);
+        [PresetField("Goalies", "Lettering color")]
         public Color redGoalieLetteringColor = new Color(1f, 1f, 1f, 1f);
 
         // Jersey number outline (default: width 0 = off, color black)
+        [PresetField("Skaters", "Number outline color")]
         public Color blueSkaterNumberOutlineColor = new Color(0f, 0f, 0f, 1f);
+        [PresetField("Skaters", "Number outline color")]
         public Color redSkaterNumberOutlineColor = new Color(0f, 0f, 0f, 1f);
+        [PresetField("Goalies", "Number outline color")]
         public Color blueGoalieNumberOutlineColor = new Color(0f, 0f, 0f, 1f);
+        [PresetField("Goalies", "Number outline color")]
         public Color redGoalieNumberOutlineColor = new Color(0f, 0f, 0f, 1f);
+        [PresetField("Skaters", "Number outline width")]
         public float blueSkaterNumberOutlineWidth = 0f;
+        [PresetField("Skaters", "Number outline width")]
         public float redSkaterNumberOutlineWidth = 0f;
+        [PresetField("Goalies", "Number outline width")]
         public float blueGoalieNumberOutlineWidth = 0f;
+        [PresetField("Goalies", "Number outline width")]
         public float redGoalieNumberOutlineWidth = 0f;
 
         // Puck section
         public ReskinRegistry.ReskinEntry puck; // Kept for backwards compatibility
+        [PresetField("Puck", "Randomizer pucks", ReskinType = "puck")]
         public List<ReskinRegistry.ReskinEntry> puckList = new List<ReskinRegistry.ReskinEntry>();
 
         // Arena section
+        [PresetField("Arena", "Full arena enabled")]
         public bool fullArenaEnabled = false;
+        [PresetField("Arena", "Full arena bundle")]
         public string fullArenaBundle = "";
+        [PresetField("Arena", "Full arena prefab")]
         public string fullArenaPrefab = "Arena";
-        public string fullArenaWorkshopId = ""; 
+        [PresetField("Arena", "Full arena workshop id")]
+        public string fullArenaWorkshopId = "";
+        [PresetField("Arena", "Crowd enabled")]
         public bool crowdEnabled = true;
+        [PresetField("Arena", "Hangar enabled")]
         public bool hangarEnabled = true;
+        [PresetField("Arena", "Glass enabled")]
         public bool glassEnabled = true;
+        [PresetField("Arena", "Scoreboard enabled")]
         public bool scoreboardEnabled = true;
+        [PresetField("Arena", "Ice", ReskinType = "rink_ice")]
         public ReskinRegistry.ReskinEntry ice;
+        [PresetField("Arena", "Ice smoothness")]
         public float                      iceSmoothness = 0.8f;
+        [PresetField("Arena", "Boards border top")]
         public Color boardsBorderTopColor    = new Color(0, 0.260123f, 1, 1);
+        [PresetField("Arena", "Boards middle")]
         public Color boardsMiddleColor       = new Color(1, 1, 1, 1);
+        [PresetField("Arena", "Boards border bottom")]
         public Color boardsBorderBottomColor = new Color(1, 0.868332f, 0, 1);
+        [PresetField("Arena", "Pillars color")]
         public Color pillarsColor = new Color(0.7830189f, 0.7830189f, 0.7830189f, 1);
+        [PresetField("Arena", "Glass smoothness")]
         public float glassSmoothness = 1f;
+        [PresetField("Arena", "Spectator density")]
         public float spectatorDensity = 0.25f;
+        [PresetField("Arena", "Net", ReskinType = "net")]
         public ReskinRegistry.ReskinEntry net;
 
         // Stick Tape Customization
         // Blue Team Skater
+        [PresetField("Tape", "Skater blade mode")]
         public string blueSkaterBladeTapeMode = "Unchanged";
+        [PresetField("Tape", "Skater blade", ReskinType = "tape_attacker_blade")]
         public ReskinRegistry.ReskinEntry blueSkaterBladeTape;
+        [PresetField("Tape", "Skater blade color")]
         public Color blueSkaterBladeTapeColor = Color.white;
 
+        [PresetField("Tape", "Skater shaft mode")]
         public string blueSkaterShaftTapeMode = "Unchanged";
+        [PresetField("Tape", "Skater shaft", ReskinType = "tape_attacker_shaft")]
         public ReskinRegistry.ReskinEntry blueSkaterShaftTape;
+        [PresetField("Tape", "Skater shaft color")]
         public Color blueSkaterShaftTapeColor = Color.white;
 
         // Blue Team Goalie
+        [PresetField("Tape", "Goalie blade mode")]
         public string blueGoalieBladeTapeMode = "Unchanged";
+        [PresetField("Tape", "Goalie blade", ReskinType = "tape_goalie_blade")]
         public ReskinRegistry.ReskinEntry blueGoalieBladeTape;
+        [PresetField("Tape", "Goalie blade color")]
         public Color blueGoalieBladeTapeColor = Color.white;
 
+        [PresetField("Tape", "Goalie shaft mode")]
         public string blueGoalieShaftTapeMode = "Unchanged";
+        [PresetField("Tape", "Goalie shaft", ReskinType = "tape_goalie_shaft")]
         public ReskinRegistry.ReskinEntry blueGoalieShaftTape;
+        [PresetField("Tape", "Goalie shaft color")]
         public Color blueGoalieShaftTapeColor = Color.white;
 
         // Red Team Skater
+        [PresetField("Tape", "Skater blade mode")]
         public string redSkaterBladeTapeMode = "Unchanged";
+        [PresetField("Tape", "Skater blade", ReskinType = "tape_attacker_blade")]
         public ReskinRegistry.ReskinEntry redSkaterBladeTape;
+        [PresetField("Tape", "Skater blade color")]
         public Color redSkaterBladeTapeColor = Color.white;
 
+        [PresetField("Tape", "Skater shaft mode")]
         public string redSkaterShaftTapeMode = "Unchanged";
+        [PresetField("Tape", "Skater shaft", ReskinType = "tape_attacker_shaft")]
         public ReskinRegistry.ReskinEntry redSkaterShaftTape;
+        [PresetField("Tape", "Skater shaft color")]
         public Color redSkaterShaftTapeColor = Color.white;
 
         // Red Team Goalie
+        [PresetField("Tape", "Goalie blade mode")]
         public string redGoalieBladeTapeMode = "Unchanged";
+        [PresetField("Tape", "Goalie blade", ReskinType = "tape_goalie_blade")]
         public ReskinRegistry.ReskinEntry redGoalieBladeTape;
+        [PresetField("Tape", "Goalie blade color")]
         public Color redGoalieBladeTapeColor = Color.white;
 
+        [PresetField("Tape", "Goalie shaft mode")]
         public string redGoalieShaftTapeMode = "Unchanged";
+        [PresetField("Tape", "Goalie shaft", ReskinType = "tape_goalie_shaft")]
         public ReskinRegistry.ReskinEntry redGoalieShaftTape;
+        [PresetField("Tape", "Goalie shaft color")]
         public Color redGoalieShaftTapeColor = Color.white;
 
         // UI section
+        [PresetField("Team Colors", "Enabled")]
         public bool teamColorsEnabled = false;
+        [PresetField("Team Colors", "Color")]
         public Color blueTeamColor = new Color(0.231f, 0.510f, 0.965f, 1f); // #3b82f6
+        [PresetField("Team Colors", "Color")]
         public Color redTeamColor = new Color(0.820f, 0.200f, 0.200f, 1f);  // #d13333
+        [PresetField("Team Colors", "Indicator enabled")]
         public bool teamIndicatorEnabled = false;
+        [PresetField("Team Colors", "Name")]
         public string blueTeamName = "";
+        [PresetField("Team Colors", "Name")]
         public string redTeamName = "";
 
         // Minimap section
+        [PresetField("Minimap", "Number color")]
         public Color blueMinimapNumberColor = Color.white;
+        [PresetField("Minimap", "Number color")]
         public Color redMinimapNumberColor = Color.white;
+        [PresetField("Minimap", "Puck color")]
         public Color minimapPuckColor = new Color(0f, 0f, 0f, 1f);
+        [PresetField("Minimap", "Player scale")]
         public float minimapPlayerScale = 1f;
+        [PresetField("Minimap", "Puck scale")]
         public float minimapPuckScale = 1f;
+        [PresetField("Minimap", "Refresh rate")]
         public int minimapRefreshRate = 60;
+        [PresetField("Minimap", "Local player icon enabled")]
         public bool localPlayerMinimapIconEnabled = false;
+        [PresetField("Minimap", "Local player icon color")]
         public Color blueLocalPlayerMinimapIconColor = new Color(0f, 1f, 0f, 1f);
+        [PresetField("Minimap", "Local player icon color")]
         public Color redLocalPlayerMinimapIconColor = new Color(0f, 1f, 0f, 1f);
 
         // Chat section
+        [PresetField("Chat", "Height")]
         public float chatHeight = 300f; // game default
+        [PresetField("Chat", "Background")]
         public bool chatBackground = false;
+        [PresetField("Chat", "Quick chat X")]
         public float quickChatX = 0f;
+        [PresetField("Chat", "Quick chat Y")]
         public float quickChatY = 50f;
+        [PresetField("Chat", "Render all emojis")]
         public bool chatRenderAllEmojis = true;
 
         // Shadows section (CrispyShadows)
+        [PresetField("Shadows", "Enabled")]
         public bool crispyShadowsEnabled = true;
+        [PresetField("Shadows", "Resolution")]
         public int shadowResolution = 8192;
+        [PresetField("Shadows", "Distance")]
         public float shadowDistance = 50f;
+        [PresetField("Shadows", "Cascade count")]
         public int shadowCascadeCount = 4;
+        [PresetField("Shadows", "Soft shadows")]
         public bool shadowSoftShadows = true;
 
         // Skybox section
+        [PresetField("Skybox", "Atmosphere thickness")]
         public float skyboxAtmosphereThickness = 1;
+        [PresetField("Skybox", "Exposure")]
         public float skyboxExposure = 1.3f;
+        [PresetField("Skybox", "Sun disk")]
         public float skyboxSunDisk = 1;
+        [PresetField("Skybox", "Sun size")]
         public float skyboxSunSize = 0.04f;
+        [PresetField("Skybox", "Sun size convergence")]
         public float skyboxSunSizeConvergence = 5;
+        [PresetField("Skybox", "Ground color")]
         public Color skyboxGroundColor = new Color(0.369f, 0.349f, 0.341f, 1f);
+        [PresetField("Skybox", "Sky tint")]
         public Color skyboxSkyTint = new Color(0.5f, 0.5f, 0.5f, 1f);
 
         // Puck FX section
+        [PresetField("Puck FX", "Outline color")]
         public Color puckFXOutlineColor = Color.white;
+        [PresetField("Puck FX", "Outline kernel size")]
         public int puckFXOutlineKernelSize = 1;
+        [PresetField("Puck FX", "Elevation indicator color")]
         public Color puckFXElevationIndicatorColor = new Color(0f, 0f, 0f, 1f);
+        [PresetField("Puck FX", "Verticality line color")]
         public Color puckFXVerticalityLineColor = new Color(0f, 0f, 0f, 0.8f);
+        [PresetField("Puck FX", "Verticality line start alpha")]
         public float puckFXVerticalityLineStartAlpha = 0.5f;
+        [PresetField("Puck FX", "Verticality line end alpha")]
         public float puckFXVerticalityLineEndAlpha = 1f;
+        [PresetField("Puck FX", "Trail enabled")]
         public bool puckFXTrailEnabled = false;
+        [PresetField("Puck FX", "Trail color")]
         public Color puckFXTrailColor = Color.black;
+        [PresetField("Puck FX", "Trail start width")]
         public float puckFXTrailStartWidth = 0.1f;
+        [PresetField("Puck FX", "Trail end width")]
         public float puckFXTrailEndWidth = 0f;
+        [PresetField("Puck FX", "Trail lifetime")]
         public float puckFXTrailLifetime = 0.6f;
+        [PresetField("Puck FX", "Trail start alpha")]
         public float puckFXTrailStartAlpha = 0f;
+        [PresetField("Puck FX", "Trail end alpha")]
         public float puckFXTrailEndAlpha = 1f;
+        [PresetField("Puck FX", "Silhouette color")]
         public Color puckFXSilhouetteColor = new Color(1f, 1f, 1f, 0.502f);
 
         // QoL config lives in its own side-car files now (reskinprofiles/
@@ -1319,10 +1456,15 @@ public static class ReskinProfileManager
         // without leaking toggles or per-server credentials. See QoLStorage.
 
         // Gloss Remover section
+        [PresetField("Gloss", "Enabled")]
         public bool glossRemoverEnabled = false;
+        [PresetField("Gloss", "Smoothness")]
         public float glossSmoothness = 0.5f;
+        [PresetField("Gloss", "Affect sticks")]
         public bool glossAffectSticks = true;
+        [PresetField("Gloss", "Affect players")]
         public bool glossAffectPlayers = true;
+        [PresetField("Gloss", "Affect pucks")]
         public bool glossAffectPucks = true;
     }
     
