@@ -294,14 +294,38 @@ public static class ChangingRoomHelper
         if (playerMesh.PlayerTorso == null) return;
 
         Color textColor;
+        Color outlineColor;
+        float outlineWidth;
         if (team == PlayerTeam.Blue)
-            textColor = role == PlayerRole.Goalie
-                ? ReskinProfileManager.currentProfile.blueGoalieLetteringColor
-                : ReskinProfileManager.currentProfile.blueSkaterLetteringColor;
+        {
+            if (role == PlayerRole.Goalie)
+            {
+                textColor = ReskinProfileManager.currentProfile.blueGoalieLetteringColor;
+                outlineColor = ReskinProfileManager.currentProfile.blueGoalieNumberOutlineColor;
+                outlineWidth = ReskinProfileManager.currentProfile.blueGoalieNumberOutlineWidth;
+            }
+            else
+            {
+                textColor = ReskinProfileManager.currentProfile.blueSkaterLetteringColor;
+                outlineColor = ReskinProfileManager.currentProfile.blueSkaterNumberOutlineColor;
+                outlineWidth = ReskinProfileManager.currentProfile.blueSkaterNumberOutlineWidth;
+            }
+        }
         else if (team == PlayerTeam.Red)
-            textColor = role == PlayerRole.Goalie
-                ? ReskinProfileManager.currentProfile.redGoalieLetteringColor
-                : ReskinProfileManager.currentProfile.redSkaterLetteringColor;
+        {
+            if (role == PlayerRole.Goalie)
+            {
+                textColor = ReskinProfileManager.currentProfile.redGoalieLetteringColor;
+                outlineColor = ReskinProfileManager.currentProfile.redGoalieNumberOutlineColor;
+                outlineWidth = ReskinProfileManager.currentProfile.redGoalieNumberOutlineWidth;
+            }
+            else
+            {
+                textColor = ReskinProfileManager.currentProfile.redSkaterLetteringColor;
+                outlineColor = ReskinProfileManager.currentProfile.redSkaterNumberOutlineColor;
+                outlineWidth = ReskinProfileManager.currentProfile.redSkaterNumberOutlineWidth;
+            }
+        }
         else return;
 
         try
@@ -309,7 +333,11 @@ public static class ChangingRoomHelper
             var usernameText = (TMPro.TMP_Text)_usernameTextField?.GetValue(playerMesh.PlayerTorso);
             var numberText = (TMPro.TMP_Text)_numberTextField?.GetValue(playerMesh.PlayerTorso);
             if (usernameText != null) usernameText.color = textColor;
-            if (numberText != null) numberText.color = textColor;
+            if (numberText != null)
+            {
+                numberText.color = textColor;
+                PlayerTextSwapper.ApplyNumberOutline(numberText, outlineColor, outlineWidth);
+            }
         }
         catch (Exception e)
         {

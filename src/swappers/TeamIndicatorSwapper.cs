@@ -9,9 +9,8 @@ public static class TeamIndicatorSwapper
 {
     private static VisualElement _teamColorBar;
 
-    private static readonly Color DefaultBlue = new Color(23f / 255, 92f / 255, 230f / 255);
-    private static readonly Color DefaultRed = new Color(229f / 255, 23f / 255, 23f / 255);
-    private static readonly Color DefaultSpectator = new Color(128f / 255, 128f / 255, 128f / 255);
+    private static readonly Color DefaultSpectator =
+        TeamColorSwapper.GetDefaultTeamColor(PlayerTeam.Spectator);
 
     public static void Setup()
     {
@@ -91,18 +90,13 @@ public static class TeamIndicatorSwapper
             return;
         }
 
-        bool useCustomColors = profile.teamColorsEnabled;
-
         switch (team)
         {
             case PlayerTeam.Blue:
-                _teamColorBar.style.backgroundColor = new StyleColor(
-                    useCustomColors ? profile.blueTeamColor : DefaultBlue);
-                _teamColorBar.style.display = DisplayStyle.Flex;
-                break;
             case PlayerTeam.Red:
+                // Custom color when enabled, otherwise the game's vanilla team color.
                 _teamColorBar.style.backgroundColor = new StyleColor(
-                    useCustomColors ? profile.redTeamColor : DefaultRed);
+                    TeamColorSwapper.GetOverrideColor(team) ?? TeamColorSwapper.GetDefaultTeamColor(team));
                 _teamColorBar.style.display = DisplayStyle.Flex;
                 break;
             default:

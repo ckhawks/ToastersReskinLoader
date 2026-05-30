@@ -108,7 +108,7 @@ public static class SwapperManager
             // Hat + body type + skin/hair color are handled by AppearanceAPI based on server data
             AppearanceAPI.OnPlayerSpawned(__instance.Player);
             // Pick up any newly spawned renderers on this player for gloss removal
-            GlossSwapper.Scan();
+            GlossSwapper.RequestScan();
         }
     }
 
@@ -125,14 +125,21 @@ public static class SwapperManager
         }
     }
 
-    // Track player input for XP heartbeats (time is tracked by AppearanceAPI coroutine)
+    // Track player input for XP heartbeats (time is tracked by AppearanceAPI coroutine).
+    // input_count feeds an "active vs idle" signal on a 5-minute window, so a 1-in-N
+    // stride is plenty of resolution — no need to sample every frame for every
+    // PlayerInput in the scene.
     [HarmonyPatch(typeof(PlayerInput), "Update")]
     public static class PlayerInputUpdatePatch
     {
+        private const int SampleStride = 10;
+        private static int _frameCounter;
+
         [HarmonyPostfix]
         public static void Postfix(PlayerInput __instance)
         {
             if (__instance.Player == null || !__instance.Player.IsLocalPlayer) return;
+            if ((++_frameCounter % SampleStride) != 0) return;
 
             if (__instance.MoveInput.ClientValue.sqrMagnitude > 0.01f ||
                 __instance.StickRaycastOriginAngleInput.ClientValue.sqrMagnitude > 0.01f)
@@ -160,7 +167,7 @@ public static class SwapperManager
             // Attach stick-based apparel (e.g. Deltapoint) now that the stick exists
             AppearanceAPI.OnStickReady(__instance.Player);
             // Pick up the new stick renderer for gloss removal
-            GlossSwapper.Scan();
+            GlossSwapper.RequestScan();
         }
     }
 
@@ -184,6 +191,8 @@ public static class SwapperManager
     public static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         Plugin.Log($"OnSceneLoaded: {scene.name}");
+        ToasterReskinLoader.qol.ArenaVisuals.InvalidateCache();
+        GlossSwapper.ResetScanScheduled();
         if (scene.name.Equals("locker_room"))
         {
             StickTapeSwapper.ClearTapeCache();
@@ -284,7 +293,7 @@ public static class SwapperManager
         TeamIndicatorSwapper.UpdateVisibility();
         PuckFXSwapper.ApplyAll();
         MinimapSwapper.RefreshAll();
-        GlossSwapper.Scan();
+        GlossSwapper.RequestScan();
     }
 
     // ── Matchmaking queue info overlay ──────────────────────────────
@@ -297,6 +306,10 @@ public static class SwapperManager
     [HarmonyPatch(typeof(UIMatchmaking), nameof(UIMatchmaking.SetMatchingPhaseText))]
     public static class UIMatchmakingPhasePatch
     {
+        private static readonly System.Reflection.FieldInfo MatchingPhaseLabelField =
+            typeof(UIMatchmaking).GetField("matchingPhaseLabel",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
         [HarmonyPostfix]
         public static void Postfix(UIMatchmaking __instance, string text)
         {
@@ -313,9 +326,7 @@ public static class SwapperManager
 
                 if (total <= 0) return;
 
-                var labelField = typeof(UIMatchmaking).GetField("matchingPhaseLabel",
-                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-                var label = labelField?.GetValue(__instance) as Label;
+                var label = MatchingPhaseLabelField?.GetValue(__instance) as Label;
                 if (label != null)
                     label.text = $"LOOKING FOR A MATCH...  ({total} in queue)";
             }

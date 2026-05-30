@@ -47,7 +47,7 @@ public static class PatchClientChat
 
         using (StreamWriter writer = new StreamWriter(filePath, false))
         {
-            Object[] allObjects = UnityEngine.Object.FindObjectsOfType(typeof(GameObject));
+            Object[] allObjects = UnityEngine.Object.FindObjectsByType(typeof(GameObject), FindObjectsSortMode.None);
 
             foreach (var obj in allObjects)
             {

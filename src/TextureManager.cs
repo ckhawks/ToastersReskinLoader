@@ -53,6 +53,11 @@ public static class TextureManager
 
     public static void ClearTextureCache()
     {
+        foreach (var texture in _loadedTextures.Values)
+        {
+            if (texture != null)
+                Object.Destroy(texture);
+        }
         _loadedTextures.Clear();
     }
     
@@ -109,16 +114,23 @@ public static class TextureManager
     /// <param name="activeEntries">An enumerable of all currently active ReskinEntry objects.</param>
     public static void UnloadUnusedTextures(IEnumerable<ReskinRegistry.ReskinEntry> activeEntries)
     {
-        // Create a HashSet of active file paths for efficient O(1) lookups.
-        var activePaths = new HashSet<string>(activeEntries
-            .Where(entry => entry != null && !string.IsNullOrEmpty(entry.Path))
-            .Select(entry => entry.Path));
+        // Build the active-path set in one pass without intermediate LINQ allocations.
+        var activePaths = new HashSet<string>();
+        foreach (var entry in activeEntries)
+        {
+            if (entry != null && !string.IsNullOrEmpty(entry.Path))
+                activePaths.Add(entry.Path);
+        }
 
         // Find all cached texture paths that are NOT in the active list.
         // We collect keys to a new list to avoid modifying the dictionary while iterating over it.
-        var pathsToUnload = _loadedTextures.Keys.Where(path => !activePaths.Contains(path)).ToList();
-
-        if (pathsToUnload.Count == 0) return;
+        List<string> pathsToUnload = null;
+        foreach (var path in _loadedTextures.Keys)
+        {
+            if (!activePaths.Contains(path))
+                (pathsToUnload ??= new List<string>()).Add(path);
+        }
+        if (pathsToUnload == null) return;
 
         Plugin.LogDebug($"Unloading {pathsToUnload.Count} unused textures...");
 

@@ -8,9 +8,9 @@ namespace ToasterReskinLoader.swappers
     // Caches original textures per player to allow resetting.
     public static class GoalieHelmetSwapper
     {
-        // Cache of original textures: key is (team, playerId, part)
-        private static Dictionary<(PlayerTeam, ulong, string), Texture> originalTextures =
-            new Dictionary<(PlayerTeam, ulong, string), Texture>();
+        // Cache of original material snapshots: key is (team, playerId, part)
+        private static Dictionary<(PlayerTeam, ulong, string), SwapperUtils.MaterialSnapshot> originalTextures =
+            new Dictionary<(PlayerTeam, ulong, string), SwapperUtils.MaterialSnapshot>();
 
         public static void ClearHelmetCache() => originalTextures.Clear();
         
@@ -84,7 +84,7 @@ namespace ToasterReskinLoader.swappers
             // Store original if not cached yet
             if (!originalTextures.ContainsKey(cacheKey))
             {
-                originalTextures[cacheKey] = renderer.material.mainTexture;
+                originalTextures[cacheKey] = SwapperUtils.MaterialSnapshot.Capture(renderer.material);
             }
 
             // Apply custom texture or revert to original

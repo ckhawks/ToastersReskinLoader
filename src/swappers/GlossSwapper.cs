@@ -45,11 +45,47 @@ public static class GlossSwapper
     {
         if (!ReskinProfileManager.currentProfile.glossRemoverEnabled) return;
 
-        var meshes = Object.FindObjectsOfType<MeshRenderer>();
+        var meshes = Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None);
         foreach (var r in meshes) ProcessRenderer(r);
 
-        var skinned = Object.FindObjectsOfType<SkinnedMeshRenderer>();
+        var skinned = Object.FindObjectsByType<SkinnedMeshRenderer>(FindObjectsSortMode.None);
         foreach (var r in skinned) ProcessRenderer(r);
+    }
+
+    private static bool _scanScheduled;
+    private const float ScanDebounceSeconds = 0.15f;
+
+    /// <summary>
+    /// Reset on scene change. If the coroutine host (UIManager) is destroyed
+    /// mid-wait, ScanAfterDelay never resumes and _scanScheduled would stay
+    /// latched, silently dropping all future scan requests.
+    /// </summary>
+    public static void ResetScanScheduled() => _scanScheduled = false;
+
+    /// <summary>
+    /// Coalesces multiple scan requests fired in the same short window into a single
+    /// scene-wide scan. Per-player spawn postfixes (PlayerBody.Server_Spawn,
+    /// Stick.ApplyCustomizations) burst-fire at round start — calling Scan() directly
+    /// each time triggers ~2N FindObjectsOfType passes for N players. Use this from
+    /// hot paths; use Scan() directly when the caller is already user-paced.
+    /// </summary>
+    public static void RequestScan()
+    {
+        if (!ReskinProfileManager.currentProfile.glossRemoverEnabled) return;
+        if (_scanScheduled) return;
+
+        var runner = MonoBehaviourSingleton<UIManager>.Instance;
+        if (runner == null) { Scan(); return; }
+
+        _scanScheduled = true;
+        runner.StartCoroutine(ScanAfterDelay());
+    }
+
+    private static System.Collections.IEnumerator ScanAfterDelay()
+    {
+        yield return new WaitForSeconds(ScanDebounceSeconds);
+        _scanScheduled = false;
+        Scan();
     }
 
     /// <summary>
@@ -150,35 +186,40 @@ public static class GlossSwapper
             || mat.HasProperty("roughnessFactor");
     }
 
+    private static bool ContainsCI(string s, string needle) =>
+        s.IndexOf(needle, System.StringComparison.OrdinalIgnoreCase) >= 0;
+
     private static ObjectCategory Categorize(Renderer r, Material[] mats)
     {
         // Walk up to 8 parents; most categorization wins are within 2–3 levels.
         Transform t = r.transform;
         for (int d = 0; d < 8 && t != null; d++, t = t.parent)
         {
-            var n = t.gameObject != null ? t.gameObject.name.ToLowerInvariant() : "";
-            if (n.Length == 0) continue;
+            var n = t.gameObject != null ? t.gameObject.name : null;
+            if (string.IsNullOrEmpty(n)) continue;
 
-            if (n.Contains("stick") || n.Contains("blade")) return ObjectCategory.Stick;
-            if (n == "puck" || n.StartsWith("puck_") || n.EndsWith("_puck") ||
-                n.Contains("puckmesh") || n.Contains("puck ("))
+            if (ContainsCI(n, "stick") || ContainsCI(n, "blade")) return ObjectCategory.Stick;
+            if (n.Equals("puck", System.StringComparison.OrdinalIgnoreCase) ||
+                n.StartsWith("puck_", System.StringComparison.OrdinalIgnoreCase) ||
+                n.EndsWith("_puck", System.StringComparison.OrdinalIgnoreCase) ||
+                ContainsCI(n, "puckmesh") || ContainsCI(n, "puck ("))
                 return ObjectCategory.Puck;
-            if (n.Contains("body") || n.Contains("head") || n.Contains("hair") ||
-                n.Contains("jersey") || n.Contains("helmet") || n.Contains("pant") ||
-                n.Contains("skate") || n.Contains("glove") || n.Contains("legpad") ||
-                n.Contains("mustache") || n.Contains("beard") || n.Contains("face") ||
-                n.Contains("visor") || n.Contains("chestpad") || n.Contains("shoulder") ||
-                n.Contains("strap"))
+            if (ContainsCI(n, "body") || ContainsCI(n, "head") || ContainsCI(n, "hair") ||
+                ContainsCI(n, "jersey") || ContainsCI(n, "helmet") || ContainsCI(n, "pant") ||
+                ContainsCI(n, "skate") || ContainsCI(n, "glove") || ContainsCI(n, "legpad") ||
+                ContainsCI(n, "mustache") || ContainsCI(n, "beard") || ContainsCI(n, "face") ||
+                ContainsCI(n, "visor") || ContainsCI(n, "chestpad") || ContainsCI(n, "shoulder") ||
+                ContainsCI(n, "strap"))
                 return ObjectCategory.Player;
         }
 
         // Fallback to material name (cheap, only first material)
         if (mats.Length > 0 && mats[0] != null && !string.IsNullOrEmpty(mats[0].name))
         {
-            var n = mats[0].name.ToLowerInvariant();
-            if (n.Contains("stick") || n.Contains("blade")) return ObjectCategory.Stick;
-            if (n.Contains("puck")) return ObjectCategory.Puck;
-            if (n.Contains("helmet") || n.Contains("jersey") || n.Contains("body") || n.Contains("pad"))
+            var n = mats[0].name;
+            if (ContainsCI(n, "stick") || ContainsCI(n, "blade")) return ObjectCategory.Stick;
+            if (ContainsCI(n, "puck")) return ObjectCategory.Puck;
+            if (ContainsCI(n, "helmet") || ContainsCI(n, "jersey") || ContainsCI(n, "body") || ContainsCI(n, "pad"))
                 return ObjectCategory.Player;
         }
 

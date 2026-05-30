@@ -1,8 +1,8 @@
-// QoLProfile — persistence shape for QoL toggles + filters. Written to
-// reskinprofiles/QoL.json by QoLStorage. Does NOT include per-server
-// credentials (saved passwords, trusted mod sets); those live in
-// reskinprofiles/ServerPrefs.json so reskin profiles can be shared
-// without leaking them.
+// QoLProfile — persistence shape for QoL toggles + filters. Written by
+// QoLStorage to <gameRoot>/config/ToastersReskinLoaderQoL.json. Does NOT
+// include per-server credentials (saved passwords, trusted mod sets);
+// those live in ToastersReskinLoaderServerPrefs.json (see ServerPrefsProfile
+// below) so reskin profiles can be shared without leaking them.
 
 using Newtonsoft.Json;
 
@@ -39,16 +39,22 @@ public class QoLProfile
     public bool EnableHideInactiveChat { get; set; } = false;
     [JsonProperty("enableSpectatorMinimap")]
     public bool EnableSpectatorMinimap { get; set; } = true;
+    [JsonProperty("minimapRotationMode")]
+    public string MinimapRotationMode { get; set; } = "off";
+    [JsonProperty("enablePlayerUsernameTeamColors")]
+    public bool EnablePlayerUsernameTeamColors { get; set; } = false;
     [JsonProperty("enableBrowserFilterPersistence")]
     public bool EnableBrowserFilterPersistence { get; set; } = true;
     [JsonProperty("enableNumberedNames")]
-    public bool EnableNumberedNames { get; set; } = true;
+    public bool EnableNumberedNames { get; set; } = false;
     [JsonProperty("enableTeamButtonPlayerCount")]
     public bool EnableTeamButtonPlayerCount { get; set; } = true;
     [JsonProperty("enablePartyLineup")]
     public bool EnablePartyLineup { get; set; } = true;
     [JsonProperty("enableSavedServerPasswords")]
-    public bool EnableSavedServerPasswords { get; set; } = false;
+    public bool EnableSavedServerPasswords { get; set; } = true;
+    [JsonProperty("enableServerBrowserSortTweaks")]
+    public bool EnableServerBrowserSortTweaks { get; set; } = true;
     [JsonProperty("enableServerFavorites")]
     public bool EnableServerFavorites { get; set; } = false;
     [JsonProperty("enableServerBlocks")]
@@ -63,8 +69,15 @@ public class QoLProfile
     public bool EnableBetterFriendsList { get; set; } = true;
     [JsonProperty("enableBeaconPing")]
     public bool EnableBeaconPing { get; set; } = true;
-    [JsonProperty("enableServerPreviewCache")]
-    public bool EnableServerPreviewCache { get; set; } = true;
+    // NOTE: JSON keys intentionally renamed (…V2) so existing users — who had
+    // the original default-on keys ("enableServerPreviewCache" /
+    // "enableFastServerBrowserScanning") saved as true — get the new
+    // default-off behavior instead of inheriting their old value. Newtonsoft
+    // ignores the now-orphaned old keys on load and drops them on next save.
+    [JsonProperty("enableServerPreviewCacheV2")]
+    public bool EnableServerPreviewCache { get; set; } = false;
+    [JsonProperty("enableFastServerBrowserScanningV2")]
+    public bool EnableFastServerBrowserScanning { get; set; } = false;
     [JsonProperty("enableVanillaUIRetheme")]
     public bool EnableVanillaUIRetheme { get; set; } = true;
     [JsonProperty("enableServerSlotQueue")]
@@ -83,6 +96,10 @@ public class QoLProfile
     public bool EnableChatNoFade { get; set; } = true;
     [JsonProperty("enableChatTransparentContainer")]
     public bool EnableChatTransparentContainer { get; set; } = true;
+    [JsonProperty("enableEnhancedModMenu")]
+    public bool EnableEnhancedModMenu { get; set; } = true;
+    [JsonProperty("enableAutoConnectMatchmaking")]
+    public bool EnableAutoConnectMatchmaking { get; set; } = false;
 
     // Persisted server browser filter values
     [JsonProperty("browserSearch")]
@@ -105,6 +122,10 @@ public class QoLProfile
     public bool EnableDebugLogging { get; set; } = false;
     [JsonProperty("enableDevConsole")]
     public bool EnableDevConsole { get; set; } = false;
+    [JsonProperty("enableFrameProfiler")]
+    public bool EnableFrameProfiler { get; set; } = false;
+    [JsonProperty("enableFrameProfilerModInstrumentation")]
+    public bool EnableFrameProfilerModInstrumentation { get; set; } = false;
     [JsonProperty("devConsoleX")]
     public float DevConsoleX { get; set; } = 40f;
     [JsonProperty("devConsoleY")]
@@ -131,11 +152,14 @@ public class QoLProfile
             enableInlineServerBrowserFilters = EnableInlineServerBrowserFilters,
             enableHideInactiveChat = EnableHideInactiveChat,
             enableSpectatorMinimap = EnableSpectatorMinimap,
+            minimapRotationMode = MinimapRotationMode,
+            enablePlayerUsernameTeamColors = EnablePlayerUsernameTeamColors,
             enableBrowserFilterPersistence = EnableBrowserFilterPersistence,
             enableNumberedNames = EnableNumberedNames,
             enableTeamButtonPlayerCount = EnableTeamButtonPlayerCount,
             enablePartyLineup = EnablePartyLineup,
             enableSavedServerPasswords = EnableSavedServerPasswords,
+            enableServerBrowserSortTweaks = EnableServerBrowserSortTweaks,
             enableServerFavorites  = EnableServerFavorites,
             enableServerBlocks     = EnableServerBlocks,
             enableTrustedModLists  = EnableTrustedModLists,
@@ -143,6 +167,7 @@ public class QoLProfile
             enableBetterFriendsList = EnableBetterFriendsList,
             enableBeaconPing = EnableBeaconPing,
             enableServerPreviewCache = EnableServerPreviewCache,
+            enableFastServerBrowserScanning = EnableFastServerBrowserScanning,
             enableVanillaUIRetheme = EnableVanillaUIRetheme,
             enableServerSlotQueue = EnableServerSlotQueue,
             enableMainMenuQuickJoin = EnableMainMenuQuickJoin,
@@ -152,6 +177,8 @@ public class QoLProfile
             enableScoreboardClockColor   = EnableScoreboardClockColor,
             enableChatNoFade               = EnableChatNoFade,
             enableChatTransparentContainer = EnableChatTransparentContainer,
+            enableEnhancedModMenu = EnableEnhancedModMenu,
+            enableAutoConnectMatchmaking = EnableAutoConnectMatchmaking,
             browserSearch = BrowserSearch,
             browserMaxPing = BrowserMaxPing,
             browserShowFull = BrowserShowFull,
@@ -161,6 +188,8 @@ public class QoLProfile
             browserShowUnreachable = BrowserShowUnreachable,
             enableDebugLogging = EnableDebugLogging,
             enableDevConsole = EnableDevConsole,
+            enableFrameProfiler = EnableFrameProfiler,
+            enableFrameProfilerModInstrumentation = EnableFrameProfilerModInstrumentation,
             devConsoleX = DevConsoleX,
             devConsoleY = DevConsoleY,
             devConsoleW = DevConsoleW,
@@ -184,11 +213,14 @@ public class QoLProfile
         EnableInlineServerBrowserFilters = c.enableInlineServerBrowserFilters;
         EnableHideInactiveChat = c.enableHideInactiveChat;
         EnableSpectatorMinimap = c.enableSpectatorMinimap;
+        MinimapRotationMode = c.minimapRotationMode ?? "off";
+        EnablePlayerUsernameTeamColors = c.enablePlayerUsernameTeamColors;
         EnableBrowserFilterPersistence = c.enableBrowserFilterPersistence;
         EnableNumberedNames = c.enableNumberedNames;
         EnableTeamButtonPlayerCount = c.enableTeamButtonPlayerCount;
         EnablePartyLineup = c.enablePartyLineup;
         EnableSavedServerPasswords = c.enableSavedServerPasswords;
+        EnableServerBrowserSortTweaks = c.enableServerBrowserSortTweaks;
         EnableServerFavorites  = c.enableServerFavorites;
         EnableServerBlocks     = c.enableServerBlocks;
         EnableTrustedModLists  = c.enableTrustedModLists;
@@ -196,6 +228,7 @@ public class QoLProfile
         EnableBetterFriendsList = c.enableBetterFriendsList;
         EnableBeaconPing = c.enableBeaconPing;
         EnableServerPreviewCache = c.enableServerPreviewCache;
+        EnableFastServerBrowserScanning = c.enableFastServerBrowserScanning;
         EnableVanillaUIRetheme = c.enableVanillaUIRetheme;
         EnableServerSlotQueue = c.enableServerSlotQueue;
         EnableMainMenuQuickJoin = c.enableMainMenuQuickJoin;
@@ -205,6 +238,8 @@ public class QoLProfile
         EnableScoreboardClockColor   = c.enableScoreboardClockColor;
         EnableChatNoFade               = c.enableChatNoFade;
         EnableChatTransparentContainer = c.enableChatTransparentContainer;
+        EnableEnhancedModMenu = c.enableEnhancedModMenu;
+        EnableAutoConnectMatchmaking = c.enableAutoConnectMatchmaking;
         BrowserSearch = c.browserSearch;
         BrowserMaxPing = c.browserMaxPing;
         BrowserShowFull = c.browserShowFull;
@@ -214,6 +249,8 @@ public class QoLProfile
         BrowserShowUnreachable = c.browserShowUnreachable;
         EnableDebugLogging = c.enableDebugLogging;
         EnableDevConsole = c.enableDevConsole;
+        EnableFrameProfiler = c.enableFrameProfiler;
+        EnableFrameProfilerModInstrumentation = c.enableFrameProfilerModInstrumentation;
         DevConsoleX = c.devConsoleX;
         DevConsoleY = c.devConsoleY;
         DevConsoleW = c.devConsoleW;

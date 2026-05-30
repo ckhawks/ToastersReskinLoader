@@ -341,6 +341,26 @@ public static class ReskinProfileManager
                 redGoalieLetteringColor = serializableProfile.RedGoalieLetteringColor != null
                     ? (Color)serializableProfile.RedGoalieLetteringColor
                     : defaultProfile.redGoalieLetteringColor,
+                blueSkaterNumberOutlineColor = serializableProfile.BlueSkaterNumberOutlineColor != null
+                    ? (Color)serializableProfile.BlueSkaterNumberOutlineColor
+                    : defaultProfile.blueSkaterNumberOutlineColor,
+                redSkaterNumberOutlineColor = serializableProfile.RedSkaterNumberOutlineColor != null
+                    ? (Color)serializableProfile.RedSkaterNumberOutlineColor
+                    : defaultProfile.redSkaterNumberOutlineColor,
+                blueGoalieNumberOutlineColor = serializableProfile.BlueGoalieNumberOutlineColor != null
+                    ? (Color)serializableProfile.BlueGoalieNumberOutlineColor
+                    : defaultProfile.blueGoalieNumberOutlineColor,
+                redGoalieNumberOutlineColor = serializableProfile.RedGoalieNumberOutlineColor != null
+                    ? (Color)serializableProfile.RedGoalieNumberOutlineColor
+                    : defaultProfile.redGoalieNumberOutlineColor,
+                blueSkaterNumberOutlineWidth = serializableProfile.BlueSkaterNumberOutlineWidth
+                    ?? defaultProfile.blueSkaterNumberOutlineWidth,
+                redSkaterNumberOutlineWidth = serializableProfile.RedSkaterNumberOutlineWidth
+                    ?? defaultProfile.redSkaterNumberOutlineWidth,
+                blueGoalieNumberOutlineWidth = serializableProfile.BlueGoalieNumberOutlineWidth
+                    ?? defaultProfile.blueGoalieNumberOutlineWidth,
+                redGoalieNumberOutlineWidth = serializableProfile.RedGoalieNumberOutlineWidth
+                    ?? defaultProfile.redGoalieNumberOutlineWidth,
                 // Puck
                 puck = FindEntryFromReference(serializableProfile?.PuckRef, "puck"),
                 puckList = LoadPuckList(serializableProfile),
@@ -681,6 +701,14 @@ public static class ReskinProfileManager
                 RedSkaterLetteringColor = new SerializableColor(currentProfile.redSkaterLetteringColor),
                 BlueGoalieLetteringColor = new SerializableColor(currentProfile.blueGoalieLetteringColor),
                 RedGoalieLetteringColor = new SerializableColor(currentProfile.redGoalieLetteringColor),
+                BlueSkaterNumberOutlineColor = new SerializableColor(currentProfile.blueSkaterNumberOutlineColor),
+                RedSkaterNumberOutlineColor = new SerializableColor(currentProfile.redSkaterNumberOutlineColor),
+                BlueGoalieNumberOutlineColor = new SerializableColor(currentProfile.blueGoalieNumberOutlineColor),
+                RedGoalieNumberOutlineColor = new SerializableColor(currentProfile.redGoalieNumberOutlineColor),
+                BlueSkaterNumberOutlineWidth = currentProfile.blueSkaterNumberOutlineWidth,
+                RedSkaterNumberOutlineWidth = currentProfile.redSkaterNumberOutlineWidth,
+                BlueGoalieNumberOutlineWidth = currentProfile.blueGoalieNumberOutlineWidth,
+                RedGoalieNumberOutlineWidth = currentProfile.redGoalieNumberOutlineWidth,
 
                 // Puck
                 PuckRef = CreateReferenceFromEntry(currentProfile.puck),
@@ -1158,6 +1186,16 @@ public static class ReskinProfileManager
         public Color blueGoalieLetteringColor = new Color(1f, 1f, 1f, 1f);
         public Color redGoalieLetteringColor = new Color(1f, 1f, 1f, 1f);
 
+        // Jersey number outline (default: width 0 = off, color black)
+        public Color blueSkaterNumberOutlineColor = new Color(0f, 0f, 0f, 1f);
+        public Color redSkaterNumberOutlineColor = new Color(0f, 0f, 0f, 1f);
+        public Color blueGoalieNumberOutlineColor = new Color(0f, 0f, 0f, 1f);
+        public Color redGoalieNumberOutlineColor = new Color(0f, 0f, 0f, 1f);
+        public float blueSkaterNumberOutlineWidth = 0f;
+        public float redSkaterNumberOutlineWidth = 0f;
+        public float blueGoalieNumberOutlineWidth = 0f;
+        public float redGoalieNumberOutlineWidth = 0f;
+
         // Puck section
         public ReskinRegistry.ReskinEntry puck; // Kept for backwards compatibility
         public List<ReskinRegistry.ReskinEntry> puckList = new List<ReskinRegistry.ReskinEntry>();
@@ -1401,6 +1439,23 @@ public static class ReskinProfileManager
         public SerializableColor BlueGoalieLetteringColor { get; set; }
         [JsonProperty("redGoalieLetteringColor")]
         public SerializableColor RedGoalieLetteringColor { get; set; }
+
+        [JsonProperty("blueSkaterNumberOutlineColor")]
+        public SerializableColor BlueSkaterNumberOutlineColor { get; set; }
+        [JsonProperty("redSkaterNumberOutlineColor")]
+        public SerializableColor RedSkaterNumberOutlineColor { get; set; }
+        [JsonProperty("blueGoalieNumberOutlineColor")]
+        public SerializableColor BlueGoalieNumberOutlineColor { get; set; }
+        [JsonProperty("redGoalieNumberOutlineColor")]
+        public SerializableColor RedGoalieNumberOutlineColor { get; set; }
+        [JsonProperty("blueSkaterNumberOutlineWidth")]
+        public float? BlueSkaterNumberOutlineWidth { get; set; }
+        [JsonProperty("redSkaterNumberOutlineWidth")]
+        public float? RedSkaterNumberOutlineWidth { get; set; }
+        [JsonProperty("blueGoalieNumberOutlineWidth")]
+        public float? BlueGoalieNumberOutlineWidth { get; set; }
+        [JsonProperty("redGoalieNumberOutlineWidth")]
+        public float? RedGoalieNumberOutlineWidth { get; set; }
 
         // ARENA
         [JsonProperty("fullArenaEnabled")]

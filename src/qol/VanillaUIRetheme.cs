@@ -111,6 +111,13 @@ public static class VanillaUIRetheme
         }
     }
 
+    // Public so other callers (e.g. controls we inject after the panel's geometry
+    // change already fired) can re-apply the dark background on demand.
+    public static void RecolorTree(VisualElement root)
+    {
+        if (root != null) Recolor(root, DarkBg);
+    }
+
     private static void Recolor(VisualElement root, Color color)
     {
         var sc = new StyleColor(color);

@@ -7,6 +7,13 @@
     <Authors>ToasterReskinLoader</Authors>
     <Company>ToasterReskinLoader</Company>
     <Product>ToasterReskinLoader</Product>
+    <!-- We deliberately compile against the game's bundled assemblies in libs\
+         (System.Net.Http, System.Text.Json, System.IO.Compression, etc.) since
+         those are exactly what the game loads at runtime. The net4.8 targeting
+         pack ships newer versions, so MSBuild reports unification conflicts
+         (MSB3277). The libs copies are correctly chosen as primary, so demote
+         this benign warning to a message. -->
+    <MSBuildWarningsAsMessages>MSB3277</MSBuildWarningsAsMessages>
   </PropertyGroup>
 
   <ItemGroup>

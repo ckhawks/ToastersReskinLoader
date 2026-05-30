@@ -33,11 +33,20 @@ public class QoLConfig
     public bool enableInlineServerBrowserFilters = true;
     public bool enableHideInactiveChat = false;
     public bool enableSpectatorMinimap = true;
+    // Minimap rotation mode. Mutually exclusive — only one applies at a time.
+    // Values: "off" (vanilla), "rotate90" (fixed 90° turn), "followPlayer"
+    // (continuously yaw the minimap so the local player's facing is "up").
+    public string minimapRotationMode = "off";
+    // Re-color floating world-space player username labels by team. Uses
+    // TeamColorSwapper.GetOverrideColor first, falling back to the
+    // profile's default blue/red.
+    public bool enablePlayerUsernameTeamColors = false;
     public bool enableBrowserFilterPersistence = true;
-    public bool enableNumberedNames = true;
+    public bool enableNumberedNames = false;
     public bool enableTeamButtonPlayerCount = true;
     public bool enablePartyLineup = true;
-    public bool enableSavedServerPasswords = false;
+    public bool enableSavedServerPasswords = true;
+    public bool enableServerBrowserSortTweaks = true;
     // Per-store toggles for the four server-browser-side memory stores.
     // Each is independently enable-able from the QoL UI's "Server
     // Browser" section.
@@ -56,7 +65,22 @@ public class QoLConfig
     // Additions — opt-in QoL enhancements layered on top of vanilla
     public bool enableBetterFriendsList = true;
     public bool enableBeaconPing = true;
-    public bool enableServerPreviewCache = true;
+    // Default off. Persisted under a renamed JSON key (see QoLProfile) so that
+    // users who already had the original default-on key saved start fresh at
+    // off rather than inheriting their old "true".
+    public bool enableServerPreviewCache = false;
+    // Fast server browser scanning. Vanilla pings servers one at a time on a
+    // single worker; with N servers and ~1s timeout per dead one, a refresh
+    // stalls for tens of seconds. When on, we fan the pings out across
+    // multiple workers using a semaphore so the wave finishes in roughly
+    // (N / concurrency) × timeout — a 50-server refresh drops from ~50s to
+    // ~3-4s. Off falls back to vanilla's sequential wave; cache seeding
+    // still works either way. Default off, persisted under a renamed JSON
+    // key (see QoLProfile) for the same migration reason as the cache toggle.
+    public bool enableFastServerBrowserScanning = false;
+    public int  serverBrowserPingConcurrency = 16;
+    public int  serverBrowserPingConnectTimeoutMs = 1000;
+    public int  serverBrowserPingResponseTimeoutMs = 1000;
     public bool enableVanillaUIRetheme = true;
     // Auto-retry into a full server: on ServerFull rejection, poll the
     // target every 5s and rejoin the moment a slot opens. Reuses the
@@ -89,6 +113,8 @@ public class QoLConfig
     //     panel USS).
     public bool enableChatNoFade               = true;
     public bool enableChatTransparentContainer = true;
+    public bool enableEnhancedModMenu = true;
+    public bool enableAutoConnectMatchmaking = false;
 
     // Per-server "trust this mod list" memory. Keyed by "ip:port"; value
     // is the sorted, comma-joined list of mod IDs the user previously
@@ -130,6 +156,14 @@ public class QoLConfig
     // Debug + dev console
     public bool enableDebugLogging = false;
     public bool enableDevConsole = false;
+    // Frame timing / stutter profiler (overlay + Harmony instrumentation).
+    // Off by default — only useful for diagnosing perf issues.
+    public bool enableFrameProfiler = false;
+    // Heavyweight option: when the profiler is enabled, also Harmony-patch
+    // every Update/LateUpdate/FixedUpdate/OnGUI method in every other
+    // loaded mod assembly. Gives per-mod cost rows in the Top Calls table
+    // but adds 100s of patches at load time.
+    public bool enableFrameProfilerModInstrumentation = false;
     // Persisted dev console window position/size
     public float devConsoleX = 40f;
     public float devConsoleY = 40f;

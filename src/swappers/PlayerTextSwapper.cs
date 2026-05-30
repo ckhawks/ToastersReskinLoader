@@ -28,21 +28,43 @@ public static class PlayerTextSwapper
             PlayerTorso playerTorso = player.PlayerBody.PlayerMesh.PlayerTorso;
 
             Color textColor;
+            Color outlineColor;
+            float outlineWidth;
             if (player.Team == PlayerTeam.Blue)
             {
-                textColor = player.Role == PlayerRole.Goalie
-                    ? ReskinProfileManager.currentProfile.blueGoalieLetteringColor
-                    : ReskinProfileManager.currentProfile.blueSkaterLetteringColor;
+                if (player.Role == PlayerRole.Goalie)
+                {
+                    textColor = ReskinProfileManager.currentProfile.blueGoalieLetteringColor;
+                    outlineColor = ReskinProfileManager.currentProfile.blueGoalieNumberOutlineColor;
+                    outlineWidth = ReskinProfileManager.currentProfile.blueGoalieNumberOutlineWidth;
+                }
+                else
+                {
+                    textColor = ReskinProfileManager.currentProfile.blueSkaterLetteringColor;
+                    outlineColor = ReskinProfileManager.currentProfile.blueSkaterNumberOutlineColor;
+                    outlineWidth = ReskinProfileManager.currentProfile.blueSkaterNumberOutlineWidth;
+                }
             }
             else if (player.Team == PlayerTeam.Red)
             {
-                textColor = player.Role == PlayerRole.Goalie
-                    ? ReskinProfileManager.currentProfile.redGoalieLetteringColor
-                    : ReskinProfileManager.currentProfile.redSkaterLetteringColor;
+                if (player.Role == PlayerRole.Goalie)
+                {
+                    textColor = ReskinProfileManager.currentProfile.redGoalieLetteringColor;
+                    outlineColor = ReskinProfileManager.currentProfile.redGoalieNumberOutlineColor;
+                    outlineWidth = ReskinProfileManager.currentProfile.redGoalieNumberOutlineWidth;
+                }
+                else
+                {
+                    textColor = ReskinProfileManager.currentProfile.redSkaterLetteringColor;
+                    outlineColor = ReskinProfileManager.currentProfile.redSkaterNumberOutlineColor;
+                    outlineWidth = ReskinProfileManager.currentProfile.redSkaterNumberOutlineWidth;
+                }
             }
             else
             {
                 textColor = Color.white;
+                outlineColor = Color.black;
+                outlineWidth = 0f;
             }
 
             var usernameText = (TMP_Text)_usernameTextField.GetValue(playerTorso);
@@ -56,13 +78,34 @@ public static class PlayerTextSwapper
             if (numberText != null)
             {
                 numberText.color = textColor;
+                ApplyNumberOutline(numberText, outlineColor, outlineWidth);
             }
 
-            Plugin.LogDebug($"Set {player.Username.Value} lettering color to {textColor}");
+            Plugin.LogDebug($"Set {player.Username.Value} lettering color to {textColor}, outline {outlineColor} width {outlineWidth}");
         }
         catch (Exception ex)
         {
             Plugin.LogError($"Error setting player text colors: {ex.Message}");
+        }
+    }
+
+    // Applies an outline to a TMP_Text by getting a unique material instance via
+    // fontMaterial (TMP creates a per-component instance on access) so the change
+    // doesn't bleed onto other text using the same shared material.
+    public static void ApplyNumberOutline(TMP_Text text, Color color, float width)
+    {
+        try
+        {
+            var mat = text.fontMaterial;
+            if (mat == null) return;
+            if (mat.HasProperty(ShaderUtilities.ID_OutlineColor))
+                mat.SetColor(ShaderUtilities.ID_OutlineColor, color);
+            if (mat.HasProperty(ShaderUtilities.ID_OutlineWidth))
+                mat.SetFloat(ShaderUtilities.ID_OutlineWidth, Mathf.Clamp01(width));
+        }
+        catch (Exception ex)
+        {
+            Plugin.LogError($"Error applying number outline: {ex.Message}");
         }
     }
 
@@ -85,4 +128,9 @@ public static class PlayerTextSwapper
     public static void OnRedSkaterLetteringColorChanged() => UpdateTeamLettering(PlayerTeam.Red, PlayerRole.Attacker);
     public static void OnBlueGoalieLetteringColorChanged() => UpdateTeamLettering(PlayerTeam.Blue, PlayerRole.Goalie);
     public static void OnRedGoalieLetteringColorChanged() => UpdateTeamLettering(PlayerTeam.Red, PlayerRole.Goalie);
+
+    public static void OnBlueSkaterNumberOutlineChanged() => UpdateTeamLettering(PlayerTeam.Blue, PlayerRole.Attacker);
+    public static void OnRedSkaterNumberOutlineChanged() => UpdateTeamLettering(PlayerTeam.Red, PlayerRole.Attacker);
+    public static void OnBlueGoalieNumberOutlineChanged() => UpdateTeamLettering(PlayerTeam.Blue, PlayerRole.Goalie);
+    public static void OnRedGoalieNumberOutlineChanged() => UpdateTeamLettering(PlayerTeam.Red, PlayerRole.Goalie);
 }

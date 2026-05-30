@@ -21,7 +21,11 @@ public static class TeamColorSwapper
         return $"#{ColorUtility.ToHtmlStringRGB(color)}";
     }
 
-    private static Color? GetOverrideColor(PlayerTeam team)
+    /// <summary>
+    /// The user's custom color for a team, or null when custom team colors are
+    /// disabled / the team isn't Blue/Red.
+    /// </summary>
+    public static Color? GetOverrideColor(PlayerTeam team)
     {
         var profile = ReskinProfileManager.currentProfile;
         if (profile == null || !profile.teamColorsEnabled) return null;
@@ -32,6 +36,21 @@ public static class TeamColorSwapper
             PlayerTeam.Red => profile.redTeamColor,
             _ => null
         };
+    }
+
+    /// <summary>
+    /// The game's vanilla team color, parsed from <see cref="Constants"/>. Use as a
+    /// fallback wherever team coloring is wanted but the user's custom colors are off.
+    /// </summary>
+    public static Color GetDefaultTeamColor(PlayerTeam team)
+    {
+        string hex = team switch
+        {
+            PlayerTeam.Blue => Constants.TEAM_BLUE_COLOR,
+            PlayerTeam.Red => Constants.TEAM_RED_COLOR,
+            _ => Constants.TEAM_SPECTATOR_COLOR
+        };
+        return ColorUtility.TryParseHtmlString(hex, out var c) ? c : Color.white;
     }
 
     /// <summary>
@@ -410,14 +429,14 @@ public static class TeamColorSwapper
     public static class WrapInTeamColorPatch
     {
         [HarmonyPostfix]
-        public static void Postfix(ref string __result, string username, PlayerTeam team)
+        public static void Postfix(ref string __result, string text, PlayerTeam team)
         {
             try
             {
                 Color? overrideColor = GetOverrideColor(team);
                 if (overrideColor == null) return;
 
-                __result = $"<color={ColorToHex(overrideColor.Value)}>{username}</color>";
+                __result = $"<color={ColorToHex(overrideColor.Value)}>{text}</color>";
             }
             catch (Exception e)
             {
@@ -430,8 +449,8 @@ public static class TeamColorSwapper
     // These arrive with color tags already baked in using the default hex
     // values. Replace them with the custom team colors.
 
-    private const string DEFAULT_BLUE_HEX = "#3b82f6";
-    private const string DEFAULT_RED_HEX = "#d13333";
+    private const string DEFAULT_BLUE_HEX = Constants.TEAM_BLUE_COLOR;
+    private const string DEFAULT_RED_HEX = Constants.TEAM_RED_COLOR;
 
     [HarmonyPatch(typeof(ChatManager), nameof(ChatManager.AddChatMessage))]
     public static class ChatManagerAddMessagePatch

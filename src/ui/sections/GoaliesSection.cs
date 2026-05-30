@@ -449,6 +449,49 @@ public static class GoaliesSection
                 () => { ReskinProfileManager.SaveProfile(); }
             );
             headgearColorsContainer.Add(letteringColorSection);
+
+            // NUMBER OUTLINE SECTION
+            var numberOutlineSection = UITools.CreateNumberOutlineConfigurationRow(
+                "Number Outline",
+                team == "blue"
+                    ? ReskinProfileManager.currentProfile.blueGoalieNumberOutlineColor
+                    : ReskinProfileManager.currentProfile.redGoalieNumberOutlineColor,
+                team == "blue"
+                    ? ReskinProfileManager.currentProfile.blueGoalieNumberOutlineWidth
+                    : ReskinProfileManager.currentProfile.redGoalieNumberOutlineWidth,
+                newColor =>
+                {
+                    if (team == "blue")
+                    {
+                        ReskinProfileManager.currentProfile.blueGoalieNumberOutlineColor = newColor;
+                        PlayerTextSwapper.OnBlueGoalieNumberOutlineChanged();
+                    }
+                    else
+                    {
+                        ReskinProfileManager.currentProfile.redGoalieNumberOutlineColor = newColor;
+                        PlayerTextSwapper.OnRedGoalieNumberOutlineChanged();
+                    }
+                    ChangingRoomHelper.SetPreviewContext(team == "blue" ? PlayerTeam.Blue : PlayerTeam.Red, PlayerRole.Goalie);
+                    ChangingRoomHelper.RefreshPreview();
+                },
+                newWidth =>
+                {
+                    if (team == "blue")
+                    {
+                        ReskinProfileManager.currentProfile.blueGoalieNumberOutlineWidth = newWidth;
+                        PlayerTextSwapper.OnBlueGoalieNumberOutlineChanged();
+                    }
+                    else
+                    {
+                        ReskinProfileManager.currentProfile.redGoalieNumberOutlineWidth = newWidth;
+                        PlayerTextSwapper.OnRedGoalieNumberOutlineChanged();
+                    }
+                    ChangingRoomHelper.SetPreviewContext(team == "blue" ? PlayerTeam.Blue : PlayerTeam.Red, PlayerRole.Goalie);
+                    ChangingRoomHelper.RefreshPreview();
+                },
+                () => { ReskinProfileManager.SaveProfile(); }
+            );
+            headgearColorsContainer.Add(numberOutlineSection);
         }
 
         // Create color sections for the first time

@@ -14,7 +14,7 @@ namespace ToasterReskinLoader;
 public class Plugin : IPuckPlugin
 {
     public static string MOD_NAME = "ToasterReskinLoader";
-    public static string MOD_VERSION = "2.1.0";
+    public static string MOD_VERSION = "2.1.7";
     public static string MOD_GUID = "pw.stellaric.toaster.reskinloader";
 
     static readonly Harmony harmony = new Harmony(MOD_GUID);
@@ -78,7 +78,7 @@ public class Plugin : IPuckPlugin
                 UISection.ApplyChatHeight(ReskinProfileManager.currentProfile.chatHeight);
                 UISection.ApplyQuickChatPosition();
                 MinimapSwapper.ApplyRefreshRate();
-                // ModMenuEnhancer.RegisterEvents(); // disabled pending b323 UIMods rework
+                ToasterReskinLoader.qol.WorkshopUpdateChecker.Initialize();
                 SwapperManager.SetupMatchmakingListeners();
                 PartyLineup.Initialize();
                 ToothbrushFilter.ResetIfActive();
@@ -86,9 +86,12 @@ public class Plugin : IPuckPlugin
                 // Player QoL runtime (ported from PoncePlayerInput)
                 ToasterReskinLoader.qol.QoLRunner.Bootstrap();
 
-                // Restore Unicode glyph coverage lost in b323 (sort arrows,
-                // ▶/▼, ★/☆, etc.). Runs after QoLRunner.Bootstrap so the
-                // toggle is readable. Defaults on.
+                if (ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.enableEnhancedModMenu ?? true)
+                    ModMenuEnhancer.RegisterEvents();
+
+                // Restore Unicode glyph coverage lost in b323 (sort arrows, etc.).
+                // Gated on the QoL toggle; defaults on. Must run after QoLRunner.Bootstrap
+                // so Instance/Config are populated.
                 if (ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.enableUnicodeFontFallback ?? true)
                     ToasterReskinLoader.qol.UnicodeFontFallback.Apply();
 
@@ -100,6 +103,12 @@ public class Plugin : IPuckPlugin
 
                 if (ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.enableVanillaUIRetheme ?? true)
                     ToasterReskinLoader.qol.VanillaUIRetheme.Enable();
+
+                if (ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.enableAutoConnectMatchmaking ?? false)
+                    ToasterReskinLoader.qol.AutoConnectMatchmaking.Enable();
+
+                if (ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.enableFrameProfiler ?? false)
+                    ToasterReskinLoader.qol.FrameProfiler.Enable();
 
                 ToasterReskinLoader.qol.serverbrowser.ServerPreviewCache.Initialize();
 
@@ -130,6 +139,8 @@ public class Plugin : IPuckPlugin
             BetterFriendsList.Disable();
             ToasterReskinLoader.qol.beacon.BeaconPing.Disable();
             ToasterReskinLoader.qol.VanillaUIRetheme.Disable();
+            ToasterReskinLoader.qol.AutoConnectMatchmaking.Disable();
+            ToasterReskinLoader.qol.FrameProfiler.Disable();
             harmony.UnpatchSelf();
             AppearanceAPI.Cleanup();
             PartyLineup.Cleanup();

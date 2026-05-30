@@ -50,6 +50,30 @@ public static class PlayerQoLSection
             v => { cfg.enableScoreboardAnyInGamePhase = v; runner.SaveAndRefresh(); });
         ToggleRow(contentScrollViewContent, "Show minimap for spectators", cfg.enableSpectatorMinimap,
             v => { cfg.enableSpectatorMinimap = v; runner.SaveAndRefresh(); });
+
+        // Minimap rotation mode — mutually exclusive dropdown.
+        {
+            var row = UITools.CreateConfigurationRow();
+            row.Add(UITools.CreateConfigurationLabel("Minimap rotation"));
+
+            var labels = new List<string> { "Off (vanilla)", "Rotated 90°", "Follow player orientation" };
+            var values = new List<string> { "off", "rotate90", "followPlayer" };
+            var currentIdx = Math.Max(0, values.IndexOf(cfg.minimapRotationMode ?? "off"));
+
+            var dd = UITools.CreateStringDropdownField(labels, labels[currentIdx]);
+            dd.RegisterCallback<ChangeEvent<string>>(evt =>
+            {
+                var idx = labels.IndexOf(evt.newValue);
+                if (idx < 0) idx = 0;
+                cfg.minimapRotationMode = values[idx];
+                runner.SaveAndRefresh();
+            });
+            row.Add(dd);
+            contentScrollViewContent.Add(row);
+        }
+
+        ToggleRow(contentScrollViewContent, "Color floating player names by team", cfg.enablePlayerUsernameTeamColors,
+            v => { cfg.enablePlayerUsernameTeamColors = v; runner.SaveAndRefresh(); });
         ToggleRow(contentScrollViewContent, "Show jersey number in player name", cfg.enableNumberedNames,
             v => { cfg.enableNumberedNames = v; runner.SaveAndRefresh(); });
         ToggleRow(contentScrollViewContent, "Show player count on team select buttons", cfg.enableTeamButtonPlayerCount,
@@ -136,6 +160,8 @@ public static class PlayerQoLSection
             });
         ToggleRow(contentScrollViewContent, "Cache server browser between opens", cfg.enableServerPreviewCache,
             v => { cfg.enableServerPreviewCache = v; runner.SaveAndRefresh(); });
+        ToggleRow(contentScrollViewContent, "Fast server browser scanning (parallel pings)", cfg.enableFastServerBrowserScanning,
+            v => { cfg.enableFastServerBrowserScanning = v; runner.SaveAndRefresh(); });
 
         // ── Server browser stores (compact rows) ──────────────────────────
         // Each store has its own enable toggle + expandable entry list.
@@ -273,6 +299,20 @@ public static class PlayerQoLSection
                 else   BeaconPing.Disable();
             });
 
+        ToggleRow(contentScrollViewContent, "Auto-connect to matchmaking matches", cfg.enableAutoConnectMatchmaking,
+            v =>
+            {
+                cfg.enableAutoConnectMatchmaking = v;
+                runner.SaveAndRefresh();
+                if (v) AutoConnectMatchmaking.Enable();
+                else   AutoConnectMatchmaking.Disable();
+            });
+
+        ToggleRow(contentScrollViewContent, "Use enhanced mod menu (search, sort, badges, update checker)", cfg.enableEnhancedModMenu,
+            v => { cfg.enableEnhancedModMenu = v; runner.SaveAndRefresh(); });
+        Note(contentScrollViewContent,
+            "Restart the game for an off→on toggle to take full effect; changes apply to the next mod menu open.");
+
         ToggleRow(contentScrollViewContent, "Darken vanilla checkbox/input backgrounds", cfg.enableVanillaUIRetheme,
             v =>
             {
@@ -290,6 +330,33 @@ public static class PlayerQoLSection
 
         ToggleRow(contentScrollViewContent, "Enable in-game dev console", cfg.enableDevConsole,
             v => { cfg.enableDevConsole = v; runner.SaveAndRefresh(); });
+
+        ToggleRow(contentScrollViewContent,
+            "Enable frame profiler overlay (F4 cycles mode, F5 toggles CSV log)",
+            cfg.enableFrameProfiler,
+            v =>
+            {
+                cfg.enableFrameProfiler = v;
+                runner.SaveAndRefresh();
+                if (v) FrameProfiler.Enable(); else FrameProfiler.Disable();
+            });
+
+        ToggleRow(contentScrollViewContent,
+            "  └ Also instrument other mods (per-mod cost rows; adds many Harmony patches)",
+            cfg.enableFrameProfilerModInstrumentation,
+            v =>
+            {
+                cfg.enableFrameProfilerModInstrumentation = v;
+                runner.SaveAndRefresh();
+                // If the profiler is currently running, cycle it so the
+                // per-mod patches get applied (or removed) immediately
+                // instead of waiting for next startup.
+                if (cfg.enableFrameProfiler)
+                {
+                    FrameProfiler.Disable();
+                    FrameProfiler.Enable();
+                }
+            });
 
         var devButtonsRow = UITools.CreateConfigurationRow();
         devButtonsRow.style.justifyContent = Justify.FlexStart;

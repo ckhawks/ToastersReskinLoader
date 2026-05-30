@@ -80,6 +80,26 @@ public static class ServerPreviewCache
         }
     }
 
+    /// Drop any cached entry whose key is not present in <paramref name="keepKeys"/>.
+    /// Used after each master-list refresh wave to garbage-collect servers
+    /// that the master server is no longer advertising. Returns the number
+    /// of entries removed.
+    public static int RetainOnly(HashSet<string> keepKeys)
+    {
+        if (keepKeys == null) return 0;
+        lock (_lock)
+        {
+            var toRemove = new List<string>();
+            foreach (var k in _entries.Keys)
+            {
+                if (!keepKeys.Contains(k)) toRemove.Add(k);
+            }
+            foreach (var k in toRemove) _entries.Remove(k);
+            if (toRemove.Count > 0) _dirty = true;
+            return toRemove.Count;
+        }
+    }
+
     /// Write to disk if anything has changed since the last flush. Intended
     /// to be called once after a refresh wave settles, not per-server.
     public static void FlushIfDirty()

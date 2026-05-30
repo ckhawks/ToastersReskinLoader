@@ -5,10 +5,10 @@ namespace ToasterReskinLoader;
 
 // Vanilla bug (b323): UIManager.ShowPhaseViews() calls HideAllViews() on every
 // phase transition, then only re-Shows a hard-coded subset (Chat, GameState,
-// Announcements). PlayerUsernames isn't in that subset, so it stays hidden until
+// Announcements). Usernames isn't in that subset, so it stays hidden until
 // the user toggles "Show Player Usernames" off and on. This postfix re-shows it
 // whenever the setting is enabled.
-public static class PatchPlayerUsernamesInit
+public static class PatchUsernamesInit
 {
     [HarmonyPatch(typeof(UIManager), "ShowPhaseViews")]
     class PatchShowPhaseViews
@@ -19,13 +19,13 @@ public static class PatchPlayerUsernamesInit
             try
             {
                 if (!SettingsManager.ShowPlayerUsernames) return;
-                if (__instance?.PlayerUsernames == null) return;
+                if (__instance?.Usernames == null) return;
 
-                __instance.PlayerUsernames.Show();
+                __instance.Usernames.Show();
             }
             catch (Exception e)
             {
-                Plugin.LogError($"PatchPlayerUsernamesInit failed: {e}");
+                Plugin.LogError($"PatchUsernamesInit failed: {e}");
             }
         }
     }

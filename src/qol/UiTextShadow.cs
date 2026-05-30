@@ -12,7 +12,7 @@
 //     UIManager.Hud              — speed indicator + stamina
 //     UIManager.Announcements    — goal / assist banner
 //     UIManager.Minimap          — any labels overlaid on the minimap
-//     UIManager.PlayerUsernames  — floating nameplate text
+//     UIManager.Usernames        — floating nameplate text
 //
 // Each is found via reflection against the named UIManager field, then
 // we walk that view's root once for all current TextElements and
@@ -52,7 +52,7 @@ internal static class UiTextShadow
         "Hud",
         "Announcements",
         "Minimap",
-        "PlayerUsernames",
+        "Usernames",
     };
 
     private static bool Enabled => QoLRunner.Instance?.Config?.enableUiTextShadow ?? true;
@@ -129,7 +129,7 @@ internal static class UiTextShadow
             case "UIHUD":
             case "UIAnnouncements":
             case "UIMinimap":
-            case "UIPlayerUsernames":
+            case "UIUsernames":
                 return true;
             default:
                 return false;

@@ -173,6 +173,28 @@ public static class SkaterSection
         );
         contentScrollViewContent.Add(blueLetteringColorSection);
 
+        var blueNumberOutlineSection = UITools.CreateNumberOutlineConfigurationRow(
+            "Blue Number Outline",
+            ReskinProfileManager.currentProfile.blueSkaterNumberOutlineColor,
+            ReskinProfileManager.currentProfile.blueSkaterNumberOutlineWidth,
+            newColor =>
+            {
+                ReskinProfileManager.currentProfile.blueSkaterNumberOutlineColor = newColor;
+                PlayerTextSwapper.OnBlueSkaterNumberOutlineChanged();
+                ChangingRoomHelper.SetPreviewContext(PlayerTeam.Blue, PlayerRole.Attacker);
+                ChangingRoomHelper.RefreshPreview();
+            },
+            newWidth =>
+            {
+                ReskinProfileManager.currentProfile.blueSkaterNumberOutlineWidth = newWidth;
+                PlayerTextSwapper.OnBlueSkaterNumberOutlineChanged();
+                ChangingRoomHelper.SetPreviewContext(PlayerTeam.Blue, PlayerRole.Attacker);
+                ChangingRoomHelper.RefreshPreview();
+            },
+            () => { ReskinProfileManager.SaveProfile(); }
+        );
+        contentScrollViewContent.Add(blueNumberOutlineSection);
+
         // RED TEAM
         Label redTeamTitle = new Label("Red");
         redTeamTitle.style.fontSize = 24;
@@ -285,5 +307,27 @@ public static class SkaterSection
             () => { ReskinProfileManager.SaveProfile(); }
         );
         contentScrollViewContent.Add(redLetteringColorSection);
+
+        var redNumberOutlineSection = UITools.CreateNumberOutlineConfigurationRow(
+            "Red Number Outline",
+            ReskinProfileManager.currentProfile.redSkaterNumberOutlineColor,
+            ReskinProfileManager.currentProfile.redSkaterNumberOutlineWidth,
+            newColor =>
+            {
+                ReskinProfileManager.currentProfile.redSkaterNumberOutlineColor = newColor;
+                PlayerTextSwapper.OnRedSkaterNumberOutlineChanged();
+                ChangingRoomHelper.SetPreviewContext(PlayerTeam.Red, PlayerRole.Attacker);
+                ChangingRoomHelper.RefreshPreview();
+            },
+            newWidth =>
+            {
+                ReskinProfileManager.currentProfile.redSkaterNumberOutlineWidth = newWidth;
+                PlayerTextSwapper.OnRedSkaterNumberOutlineChanged();
+                ChangingRoomHelper.SetPreviewContext(PlayerTeam.Red, PlayerRole.Attacker);
+                ChangingRoomHelper.RefreshPreview();
+            },
+            () => { ReskinProfileManager.SaveProfile(); }
+        );
+        contentScrollViewContent.Add(redNumberOutlineSection);
     }
 }
