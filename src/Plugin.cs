@@ -71,6 +71,7 @@ public class Plugin : IPuckPlugin
                 
                 SwapperManager.Setup();
                 PuckFXSwapper.ApplyAll();
+                PuckIndicatorSwapper.ApplyAll();
                 ChangingRoomHelper.Scan();
                 ReskinMenuAccessButtons.Setup();
                 AppearanceAPI.Initialize(MonoBehaviourSingleton<UIManager>.Instance);
