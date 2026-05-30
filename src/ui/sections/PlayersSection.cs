@@ -21,6 +21,19 @@ public static class PlayersSection
     private static PresetRole _role = PresetRole.Skater;
     private static VisualElement _root;
 
+    // Profile defaults, for the team colors used when custom team colors are turned off.
+    private static readonly ReskinProfileManager.Profile Defaults = new ReskinProfileManager.Profile();
+
+    // The team color actually in effect: the custom one only when team colors are enabled,
+    // otherwise the default. (Reusing the custom value while disabled is a recurring trap.)
+    private static Color EffectiveTeamColor(PresetTeam team)
+    {
+        var p = ReskinProfileManager.currentProfile;
+        if (p.teamColorsEnabled)
+            return team == PresetTeam.Blue ? p.blueTeamColor : p.redTeamColor;
+        return team == PresetTeam.Blue ? Defaults.blueTeamColor : Defaults.redTeamColor;
+    }
+
     public static void CreateSection(VisualElement contentScrollViewContent)
     {
         _root = contentScrollViewContent;
@@ -39,7 +52,6 @@ public static class PlayersSection
         _root.Add(title);
 
         // Team + role toggles in one row
-        var profile = ReskinProfileManager.currentProfile;
         var toggles = UITools.CreateRow();
         toggles.style.flexWrap = Wrap.Wrap;
 
@@ -47,9 +59,9 @@ public static class PlayersSection
         teamLabel.style.width = 55;
         toggles.Add(teamLabel);
         toggles.Add(MakeToggleButton(TeamName(PresetTeam.Blue), _team == PresetTeam.Blue,
-            profile.blueTeamColor, () => { _team = PresetTeam.Blue; Render(); }));
+            EffectiveTeamColor(PresetTeam.Blue), () => { _team = PresetTeam.Blue; Render(); }));
         toggles.Add(MakeToggleButton(TeamName(PresetTeam.Red), _team == PresetTeam.Red,
-            profile.redTeamColor, () => { _team = PresetTeam.Red; Render(); }));
+            EffectiveTeamColor(PresetTeam.Red), () => { _team = PresetTeam.Red; Render(); }));
 
         var roleLabel = UITools.CreateConfigurationLabel("Role:");
         roleLabel.style.width = 55;
@@ -78,25 +90,41 @@ public static class PlayersSection
         _root.Add(heading);
 
         var cellFields = CellFields(_team, _role);
-
-        // Team look: everything except the personal stick and tape (which only you see).
         var appearance = cellFields.Where(f => f.Group != "Sticks" && f.Group != "Tape").ToList();
         var teamStick = cellFields.FirstOrDefault(f => f.Group == "Sticks" && !f.Id.Contains("Personal"));
         var personalStick = cellFields.FirstOrDefault(f => f.Group == "Sticks" && f.Id.Contains("Personal"));
 
-        foreach (var field in appearance)
-            RenderField(field);
-        if (teamStick != null)
-            RenderField(teamStick);
+        // Appearance, grouped into categories with sub-headings.
+        foreach (var category in new[] { "Jersey", "Helmet", "Goalie gear", "Name & number" })
+        {
+            var catFields = appearance.Where(f => CategoryOf(f) == category).ToList();
+            if (catFields.Count == 0) continue;
+            _root.Add(SubHeading(category, null));
+            foreach (var f in catFields) RenderField(f);
+        }
 
-        // Personal equipment — applies to your own stick only, not how the team looks.
-        _root.Add(SubHeading("Your stick", "Only you see this — your own stick skin and tape."));
-        if (personalStick != null)
-            RenderField(personalStick);
+        // Stick + tape are team-wide — everyone on this team/role gets them.
+        _root.Add(SubHeading("Stick & tape", "Applies to the whole team."));
+        if (teamStick != null) RenderField(teamStick, "Team stick");
         RenderTapeControl(_team, _role, "Blade");
         RenderTapeControl(_team, _role, "Shaft");
 
+        // Personal — only the local player sees their own stick skin.
+        _root.Add(SubHeading("Your stick (personal)", "Only you see this — your own stick skin."));
+        if (personalStick != null) RenderField(personalStick, "Your stick skin");
+
         Preview();
+    }
+
+    // Coarse category for a cell field, used for the in-editor sub-headings.
+    private static string CategoryOf(PresetField f)
+    {
+        string id = f.Id;
+        if (id.Contains("Torso") || id.Contains("Groin")) return "Jersey";
+        if (id.Contains("Mask") || id.Contains("Cage") || id.Contains("LegPad")) return "Goalie gear";
+        if (id.Contains("Helmet")) return "Helmet";
+        if (id.Contains("Lettering") || id.Contains("NumberOutline")) return "Name & number";
+        return "Jersey";
     }
 
     // ───────────────────────── field rendering ─────────────────────────
@@ -190,19 +218,20 @@ public static class PlayersSection
         UpdateVisibility(modeDropdown.value);
     }
 
-    private static void RenderField(PresetField field)
+    private static void RenderField(PresetField field, string labelOverride = null)
     {
         var profile = ReskinProfileManager.currentProfile;
+        string label = labelOverride ?? field.DisplayName;
 
         switch (field.Kind)
         {
             case PresetValueKind.ReskinRef:
-                RenderRefDropdown(field, profile);
+                RenderRefDropdown(field, profile, label);
                 break;
 
             case PresetValueKind.Color:
                 var colorRow = UITools.CreateColorConfigurationRow(
-                    field.DisplayName,
+                    label,
                     (Color)field.GetValue(profile),
                     false,
                     c => { field.SetValue(profile, c); Preview(); },
@@ -212,7 +241,7 @@ public static class PlayersSection
 
             case PresetValueKind.Float:
                 var row = UITools.CreateConfigurationRow();
-                row.Add(UITools.CreateConfigurationLabel(field.DisplayName));
+                row.Add(UITools.CreateConfigurationLabel(label));
                 var slider = UITools.CreateConfigurationSlider(0f, 1f, (float)field.GetValue(profile), 300);
                 slider.RegisterCallback<ChangeEvent<float>>(evt =>
                 {
@@ -226,10 +255,10 @@ public static class PlayersSection
         }
     }
 
-    private static void RenderRefDropdown(PresetField field, ReskinProfileManager.Profile profile)
+    private static void RenderRefDropdown(PresetField field, ReskinProfileManager.Profile profile, string label)
     {
         var row = UITools.CreateConfigurationRow();
-        row.Add(UITools.CreateConfigurationLabel(field.DisplayName));
+        row.Add(UITools.CreateConfigurationLabel(label));
 
         var unchanged = new ReskinRegistry.ReskinEntry { Name = "Unchanged", Path = null, Type = field.ReskinType };
         var choices = ReskinRegistry.GetReskinEntriesByType(field.ReskinType);
