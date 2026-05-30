@@ -7,6 +7,10 @@ namespace ToasterReskinLoader.ui.sections;
 
 public static class PucksSection
 {
+    // Held so the Remove handler (in RefreshRandomizerList) can put the removed puck
+    // back into the dropdown.
+    private static PopupField<ReskinRegistry.ReskinEntry> _puckDropdown;
+
     public static void CreateSection(VisualElement contentScrollViewContent)
     {
         List<ReskinRegistry.ReskinEntry> allPuckReskins = ReskinRegistry.GetReskinEntriesByType("puck");
@@ -63,6 +67,7 @@ public static class PucksSection
         PopupField<ReskinRegistry.ReskinEntry> puckDropdown = UITools.CreateConfigurationDropdownField();
         puckDropdown.choices = dropdownPuckReskins;
         puckDropdown.value = dropdownPuckReskins.Count > 0 ? dropdownPuckReskins[0] : defaultEntry;
+        _puckDropdown = puckDropdown;
         puckSelectionRow.Add(puckDropdown);
         contentScrollViewContent.Add(puckSelectionRow);
 
@@ -229,8 +234,11 @@ public static class PucksSection
         {
             VisualElement puckItemRow = new VisualElement();
             puckItemRow.style.flexDirection = FlexDirection.Row;
+            puckItemRow.style.justifyContent = Justify.SpaceBetween;
+            puckItemRow.style.alignItems = Align.Center;
             puckItemRow.style.marginBottom = 8;
             puckItemRow.style.marginLeft = 15;
+            puckItemRow.style.marginRight = 15;
 
             Label puckLabel = new Label(puck.Name);
             puckLabel.style.marginRight = 15;
@@ -256,8 +264,13 @@ public static class PucksSection
             removeButton.RegisterCallback<ClickEvent>(evt =>
             {
                 ReskinProfileManager.RemovePuckFromRandomizer(puck);
-                // Note: RefreshPuckDropdown would need access to the dropdown from here
-                // For now, the UI will update on next section refresh
+                // Put the removed puck back into the dropdown.
+                if (_puckDropdown != null)
+                {
+                    RefreshPuckDropdown(_puckDropdown);
+                    if (!_puckDropdown.choices.Contains(_puckDropdown.value))
+                        _puckDropdown.value = _puckDropdown.choices.Count > 0 ? _puckDropdown.choices[0] : null;
+                }
                 RefreshRandomizerList(contentScrollViewContent, puckReskins);
                 PuckPreview.Refresh();
             });

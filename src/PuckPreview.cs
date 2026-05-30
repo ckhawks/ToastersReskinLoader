@@ -30,6 +30,7 @@ public static class PuckPreview
     // ── Live preview state ──────────────────────────────────────────
     private static GameObject _root;
     private static PuckPreviewDriver _driver;
+    private static Camera _camera;
     private static readonly List<Material> _ownedMaterials = new();
 
     public static PuckPreviewMode Mode { get; private set; } = PuckPreviewMode.Row;
@@ -67,8 +68,16 @@ public static class PuckPreview
 
             _root = new GameObject("TRL_PuckPreview");
             _root.transform.SetParent(anchor, false);
-            _root.transform.localPosition = new Vector3(0f, PreviewYOffset, PreviewForward);
             _root.transform.localRotation = Quaternion.identity;
+
+            // Place the rig in the visible right portion of the screen (the reskin menu
+            // overlays the left ~45%). Viewport-based so it's correct regardless of FOV.
+            if (_camera != null)
+                _root.transform.position = _camera.ViewportToWorldPoint(
+                    new Vector3(PreviewViewportX, PreviewViewportY, PreviewDepth));
+            else
+                _root.transform.localPosition = new Vector3(0.3f, -0.1f, PreviewDepth);
+
             _driver = _root.AddComponent<PuckPreviewDriver>();
         }
 
@@ -146,8 +155,8 @@ public static class PuckPreview
     {
         var cam = Object.FindObjectsByType<LockerRoomCamera>(FindObjectsSortMode.None).FirstOrDefault();
         if (cam == null) return null;
-        var realCamera = cam.GetComponentInChildren<Camera>(true);
-        return realCamera != null ? realCamera.transform : cam.transform;
+        _camera = cam.GetComponentInChildren<Camera>(true);
+        return _camera != null ? _camera.transform : cam.transform;
     }
 
     // ── Display puck construction ───────────────────────────────────
@@ -202,9 +211,11 @@ public static class PuckPreview
     }
 
     // ── Tunable framing/layout constants ────────────────────────────
-    internal const float PreviewForward = 1.0f;   // metres in front of the camera
-    internal const float PreviewYOffset = -0.10f; // drop slightly below eye line
-    internal const float DisplayDiameter = 0.26f; // apparent puck diameter
+    // Viewport placement: the reskin menu overlays the left ~45%, so bias right.
+    internal const float PreviewViewportX = 0.72f; // 0 = left edge, 1 = right edge
+    internal const float PreviewViewportY = 0.46f; // 0 = bottom, 1 = top
+    internal const float PreviewDepth = 1.1f;      // metres in front of the camera
+    internal const float DisplayDiameter = 0.26f;  // apparent puck diameter
     internal const float RowSpacing = 0.34f;
 }
 
@@ -225,6 +236,10 @@ public class PuckPreviewDriver : MonoBehaviour
     private PuckPreviewMode _mode = PuckPreviewMode.Row;
     private float _time;
 
+    // Layout bounds (keep big lists framed on screen)
+    private const float MaxRowWidth = 1.5f;
+    private const float MinCarouselRadius = 0.42f;
+    private const float MaxCarouselRadius = 0.8f;
     // Carousel
     private const float CarouselDegPerSec = 28f;
     // Tumble (Row / Carousel / Drop spin)
@@ -258,6 +273,10 @@ public class PuckPreviewDriver : MonoBehaviour
         if (mode == PuckPreviewMode.Drop) ResetDropState();
     }
 
+    // Row/Drop spacing, compressed so a long list still fits the framed width.
+    private static float EffectiveSpacing(int n) =>
+        n > 1 ? Mathf.Min(PuckPreview.RowSpacing, MaxRowWidth / (n - 1)) : 0f;
+
     private void ResetDropState()
     {
         for (int i = 0; i < _items.Count; i++)
@@ -281,12 +300,13 @@ public class PuckPreviewDriver : MonoBehaviour
         {
             case PuckPreviewMode.Row:
             {
-                float totalWidth = (n - 1) * PuckPreview.RowSpacing;
+                float spacing = EffectiveSpacing(n);
+                float totalWidth = (n - 1) * spacing;
                 for (int i = 0; i < n; i++)
                 {
                     var it = _items[i];
                     if (it.Transform == null) continue;
-                    float x = i * PuckPreview.RowSpacing - totalWidth / 2f;
+                    float x = i * spacing - totalWidth / 2f;
                     it.Transform.localPosition = new Vector3(x, 0f, 0f);
                     it.Transform.Rotate(it.TumbleAxis, TumbleDegPerSec * dt, Space.Self);
                 }
@@ -294,7 +314,9 @@ public class PuckPreviewDriver : MonoBehaviour
             }
             case PuckPreviewMode.Carousel:
             {
-                float radius = Mathf.Max(0.42f, n * PuckPreview.RowSpacing / (2f * Mathf.PI));
+                // Clamp so a big list doesn't balloon the circle into the camera.
+                float radius = Mathf.Clamp(n * PuckPreview.RowSpacing / (2f * Mathf.PI),
+                    MinCarouselRadius, MaxCarouselRadius);
                 float baseAngle = _time * CarouselDegPerSec * Mathf.Deg2Rad;
                 for (int i = 0; i < n; i++)
                 {
@@ -309,12 +331,13 @@ public class PuckPreviewDriver : MonoBehaviour
             }
             case PuckPreviewMode.Drop:
             {
-                float totalWidth = (n - 1) * PuckPreview.RowSpacing;
+                float spacing = EffectiveSpacing(n);
+                float totalWidth = (n - 1) * spacing;
                 for (int i = 0; i < n; i++)
                 {
                     var it = _items[i];
                     if (it.Transform == null) continue;
-                    float x = i * PuckPreview.RowSpacing - totalWidth / 2f;
+                    float x = i * spacing - totalWidth / 2f;
 
                     if (_time >= it.StartDelay)
                     {
