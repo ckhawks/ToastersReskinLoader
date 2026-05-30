@@ -8,7 +8,6 @@ namespace ToasterReskinLoader.swappers;
 /// <summary>
 /// Screen-space puck direction indicator.
 /// When the puck is off-screen, a diamond arrow appears on the nearest screen edge
-/// pointing toward the puck's world position — just like the side-of-screen indicators in NHL EA.
 ///
 /// Creates a VisualElement overlay parented under the UIManager root panel
 /// so the arrow renders on top of the normal game HUD. A tiny helper
