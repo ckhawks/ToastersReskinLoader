@@ -574,7 +574,11 @@ internal static class MainMenuButtons
             {
                 try { a(); }
                 catch (Exception e) { Plugin.LogWarning("[QoL] quick-join marshal-sync inner: " + e.Message); }
-                finally { done.Set(); }
+                // Guard the Set: if our Wait already timed out (e.g. main
+                // thread stalled on a loading screen) the `using` below has
+                // disposed `done`, and a late Set() would throw
+                // ObjectDisposedException onto the main-thread pump.
+                finally { try { done.Set(); } catch { } }
             });
             // Reasonable hard cap so a hung main thread doesn't pin our
             // background task forever.

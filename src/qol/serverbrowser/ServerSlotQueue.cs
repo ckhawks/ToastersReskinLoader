@@ -346,11 +346,12 @@ internal static class ServerSlotQueue
     private static (int players, int maxPlayers)? PingTargetServer(EndPoint endPoint)
     {
         TCPClient tcp = null;
+        ManualResetEventSlim responseEvent = null;
         try
         {
             tcp = new TCPClient(endPoint, PingConnectTimeoutMs, PingResponseTimeoutMs);
             (int p, int m)? captured = null;
-            var responseEvent = new ManualResetEventSlim(false);
+            responseEvent = new ManualResetEventSlim(false);
 
             tcp.OnConnected += () =>
             {
@@ -386,12 +387,23 @@ internal static class ServerSlotQueue
         }
         catch (Exception e)
         {
-            Plugin.Log($"[QoL] slot-queue ping exception: {e.Message}");
+            // An unreachable / connection-refused host throws here on every
+            // ping. RunOnePing already reports the reachable→unreachable
+            // transition (and the throttled status line), so keep this at
+            // debug level — otherwise it spams once per ping and defeats
+            // the LogEveryNPings throttle.
+            Plugin.LogDebug($"[QoL] slot-queue ping exception: {e.Message}");
             return null;
         }
         finally
         {
             try { tcp?.Disconnect(); } catch { }
+            // Dispose the wait handle now that the socket is down and no
+            // further OnMessageReceived can arrive. A buffered packet that
+            // races in after disposal calls responseEvent.Set() inside the
+            // handler's own try/catch, so the ObjectDisposedException is
+            // swallowed there rather than surfacing on the socket thread.
+            try { responseEvent?.Dispose(); } catch { }
         }
     }
 

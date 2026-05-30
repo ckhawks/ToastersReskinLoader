@@ -67,6 +67,11 @@ internal static class ServerBrowserSort
         QoLRunner.Instance?.Config?.enableServerFavorites ?? false;
     private static bool BlocksEnabled =>
         QoLRunner.Instance?.Config?.enableServerBlocks ?? false;
+    // The saved-password 🔓 badge rides on its own independent toggle —
+    // it must be able to render even when favorites and blocks are both
+    // off (which is the default config, where savedServerPasswords is on).
+    private static bool SavedPasswordsEnabled =>
+        QoLRunner.Instance?.Config?.enableSavedServerPasswords ?? false;
     // Any browser-side scaffolding (sort patches, row context-menu hook,
     // row tooltip) activates when EITHER favorites or blocks is on. The
     // finer-grained gates inside (star button visibility, block-row
@@ -324,8 +329,11 @@ internal static class ServerBrowserSort
             // Strip the ★ button + 🔓 badge and any open context menu
             // when disabled — vanilla StyleServer doesn't know about any
             // of these so without an explicit clear they'd persist on
-            // every row. Also drop the row marker class so re-enabling
-            // re-attaches the right-click handler.
+            // every row. We deliberately do NOT drop the row/tooltip
+            // marker classes: the registered MouseMove / right-click
+            // handlers self-gate on Enabled, so leaving the markers in
+            // place keeps each handler attached exactly once. Clearing
+            // them re-stacked a fresh handler on every re-enable.
             if (!Enabled)
             {
                 CloseContextMenu();
@@ -340,8 +348,6 @@ internal static class ServerBrowserSort
                         row.Q<Label>(UnlockBadgeName)?.RemoveFromHierarchy();
                         var nameLbl = row.Q<Label>("NameLabel");
                         if (nameLbl != null) nameLbl.style.marginLeft = StyleKeyword.Null;
-                        row.RemoveFromClassList(RowMarkerClass);
-                        row.RemoveFromClassList(TooltipMarkerCls);
                     }
                 }
                 _hoverTooltip?.RemoveFromHierarchy();
@@ -586,7 +592,12 @@ internal static class ServerBrowserSort
     {
         private static void Postfix(UIServerBrowser __instance, EndPoint endPoint)
         {
-            if (!Enabled) return;
+            // Run when favorites/blocks are on (★ + context menu + tooltip)
+            // OR when saved passwords are on (🔓 badge only). The favorites
+            // star, context-menu hook, and hover tooltip below each check
+            // Enabled/FavoritesEnabled independently, so a saved-passwords-
+            // only pass falls through to just the 🔓 badge.
+            if (!Enabled && !SavedPasswordsEnabled) return;
             if (__instance == null || endPoint == null) return;
             try
             {
@@ -680,6 +691,12 @@ internal static class ServerBrowserSort
                     var browserRef = __instance;
                     serverRow.RegisterCallback<PointerDownEvent>(evt =>
                     {
+                        // Self-gate: the marker class persists across
+                        // favorites/blocks toggles (so the handler isn't
+                        // re-stacked), which means this can fire while the
+                        // feature is off — e.g. when the row was only hooked
+                        // for the saved-password badge.
+                        if (!Enabled) return;
                         if (evt.button != 1) return; // right mouse only
                         evt.StopPropagation();
                         ShowContextMenu(browserRef, endPoint, rowRef, evt.position);

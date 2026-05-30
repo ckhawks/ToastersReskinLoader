@@ -180,6 +180,10 @@ public static class PlayerQoLSection
             {
                 cfg.enableSavedServerPasswords = v;
                 runner.SaveAndRefresh();
+                // Re-style open browser rows so the 🔓 auto-fill badge
+                // appears/disappears live (the badge rides this toggle,
+                // independent of favorites/blocks).
+                ServerBrowserSort.RefreshForCurrentBrowser();
                 RebuildSavedPasswordsList(passwordsList);
             },
             passwordsList,

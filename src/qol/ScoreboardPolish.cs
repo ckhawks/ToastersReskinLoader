@@ -79,7 +79,10 @@ internal static class ScoreboardPolish
     // rolls between server ticks and the color/flash animate smoothly.
     public static void Tick()
     {
-        if (!_haveTick || _timeLabel == null) return;
+        // Bail if we have no label yet, or the cached one has been
+        // detached from its panel (scene reload). The next SetTick on the
+        // rebuilt UIGameState re-caches a live label via EnsureLabels.
+        if (!_haveTick || _timeLabel == null || _timeLabel.panel == null) return;
         try { Render(); }
         catch (Exception e) { Plugin.LogWarning("[QoL] ScoreboardPolish Tick failed: " + e.Message); }
     }
@@ -88,7 +91,13 @@ internal static class ScoreboardPolish
 
     private static void EnsureLabels(UIGameState gs)
     {
-        if (_timeLabel != null) return;
+        // Re-resolve when we have no label yet OR the cached one has been
+        // detached (panel == null). A scene reload rebuilds UIGameState and
+        // leaves our cached references pointing at dead VisualElements —
+        // without the panel check, EnsureLabels would early-out and every
+        // ms/color write would silently target the orphaned label for the
+        // rest of the session.
+        if (_timeLabel != null && _timeLabel.panel != null) return;
         _timeLabel      = AccessTools.Field(typeof(UIGameState), "timeLabel")?.GetValue(gs) as Label;
         _blueScoreLabel = AccessTools.Field(typeof(UIGameState), "blueScoreLabel")?.GetValue(gs) as Label;
         _redScoreLabel  = AccessTools.Field(typeof(UIGameState), "redScoreLabel")?.GetValue(gs) as Label;
