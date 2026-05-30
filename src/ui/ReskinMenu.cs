@@ -27,6 +27,26 @@ public static class ReskinMenu
         "Skybox", "Shadows", "User Interface", "Quality of Life", "Glossiness", "Extras", "About" };
     public static int selectedSectionIndex = 0;
 
+    // Visual sidebar layout. A null group renders top-level section button(s); a named group
+    // renders a collapsible header with indented child section buttons. Every name here must
+    // exist in `sections` above.
+    private static readonly (string Group, string[] Items)[] sidebarLayout =
+    {
+        (null, new[] { "Packs" }),
+        (null, new[] { "Presets" }),
+        ("Reskins", new[] { "Skaters", "Goalies", "Sticks", "Tapes", "Pucks" }),
+        ("Effects", new[] { "Puck FX", "Skybox", "Shadows", "Glossiness" }),
+        (null, new[] { "Arena" }),
+        (null, new[] { "Appearance" }),
+        (null, new[] { "User Interface" }),
+        (null, new[] { "Quality of Life" }),
+        (null, new[] { "Extras" }),
+        (null, new[] { "About" }),
+    };
+
+    // Section name -> its sidebar button, so selection restyling works regardless of grouping.
+    private static readonly Dictionary<string, Button> sectionButtons = new();
+
     public static void Show()
     {
         // If we're in main menu, hide main menu
@@ -218,52 +238,24 @@ public static class ReskinMenu
         sidebarScrollView = new ScrollView();
         sidebarScrollView.style.backgroundColor = new StyleColor(new Color(64f / 255f, 64f / 255f, 64f / 255f, 1));
         sidebarContainer.Add(sidebarScrollView);
-        for (int i = 0; i < sections.Length; i++)
+        sectionButtons.Clear();
+        foreach (var (group, items) in sidebarLayout)
         {
-            Button button = new Button();
-            button.name = $"{sections[i]}SidebarButton";
-            button.text = sections[i];
-            button.style.width = new StyleLength(new Length(100, LengthUnit.Percent));
-            button.style.minWidth = new StyleLength(new Length(100, LengthUnit.Percent));
-            button.style.maxWidth = new StyleLength(new Length(100, LengthUnit.Percent));
-            button.style.minHeight = 50;
-            button.style.maxHeight = 50;
-            button.style.height = 50;
-            button.style.unityTextAlign = TextAnchor.MiddleLeft;
-            button.style.paddingLeft = 15;
-            button.RegisterCallback<MouseEnterEvent>(new EventCallback<MouseEnterEvent>((evt) =>
+            if (group == null)
             {
-                button.style.backgroundColor = Color.white;
-                button.style.color = Color.black;
-            }));
-            var i1 = i;
-            button.RegisterCallback<MouseLeaveEvent>(new EventCallback<MouseLeaveEvent>((evt) =>
-            {
-                if (i1 == selectedSectionIndex)
-                {
-                    button.style.backgroundColor = new StyleColor(new Color(0.7f, 0.7f, 0.7f));
-                    button.style.color = Color.black;
-                }
-                else
-                {
-                    button.style.backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f));
-                    button.style.color = Color.white;
-                }
-            }));
-            
-            button.RegisterCallback<ClickEvent>(new EventCallback<ClickEvent>(SidebarSectionClickHandler));
-            void SidebarSectionClickHandler(ClickEvent evt)
-            {
-                UpdateToSection(i1);
+                foreach (var name in items)
+                    sidebarScrollView.Add(MakeSectionButton(name, 15));
             }
+            else
+            {
+                var body = new VisualElement();
+                body.style.flexDirection = FlexDirection.Column;
 
-            // Start with the first section selected
-            if (i == selectedSectionIndex)
-            {
-                button.style.backgroundColor = new StyleColor(new Color(0.7f, 0.7f, 0.7f));
-                button.style.color = Color.black;
+                sidebarScrollView.Add(MakeGroupHeader(group, body));
+                foreach (var name in items)
+                    body.Add(MakeSectionButton(name, 30));
+                sidebarScrollView.Add(body);
             }
-            sidebarScrollView.Add(button);
         }
         
         VisualElement contentContainer = new VisualElement();
@@ -426,15 +418,78 @@ public static class ReskinMenu
 
         CreateContentForSection(sectionIndex);
 
-        List<VisualElement> sidebarSectionButtons =
-            sidebarScrollView.Children().ToList();
+        if (sectionButtons.TryGetValue(sections[oldSectionIndex], out var oldSectionButton))
+            ApplySidebarButtonStyle(oldSectionButton, false);
+        if (sectionButtons.TryGetValue(sections[sectionIndex], out var newSectionButton))
+            ApplySidebarButtonStyle(newSectionButton, true);
+    }
 
-        Button oldSectionButton = sidebarSectionButtons[oldSectionIndex] as Button;
-        oldSectionButton.style.backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f));
-        oldSectionButton.style.color = Color.white;
-        Button newSectionButton = sidebarSectionButtons[sectionIndex] as Button;
-        newSectionButton.style.backgroundColor = new StyleColor(new Color(0.7f, 0.7f, 0.7f));
-        newSectionButton.style.color = Color.black;
+    public static void UpdateToSectionByName(string name)
+    {
+        int idx = Array.IndexOf(sections, name);
+        if (idx >= 0) UpdateToSection(idx);
+    }
+
+    private static void ApplySidebarButtonStyle(Button button, bool selected)
+    {
+        button.style.backgroundColor = new StyleColor(selected
+            ? new Color(0.7f, 0.7f, 0.7f)
+            : new Color(0.25f, 0.25f, 0.25f));
+        button.style.color = selected ? Color.black : Color.white;
+    }
+
+    private static Button MakeSectionButton(string name, int paddingLeft)
+    {
+        var button = new Button { name = $"{name}SidebarButton", text = name };
+        button.style.width = new StyleLength(new Length(100, LengthUnit.Percent));
+        button.style.minWidth = new StyleLength(new Length(100, LengthUnit.Percent));
+        button.style.maxWidth = new StyleLength(new Length(100, LengthUnit.Percent));
+        button.style.minHeight = 50;
+        button.style.maxHeight = 50;
+        button.style.height = 50;
+        button.style.unityTextAlign = TextAnchor.MiddleLeft;
+        button.style.paddingLeft = paddingLeft;
+
+        ApplySidebarButtonStyle(button, name == sections[selectedSectionIndex]);
+
+        button.RegisterCallback<MouseEnterEvent>(_ =>
+        {
+            button.style.backgroundColor = Color.white;
+            button.style.color = Color.black;
+        });
+        button.RegisterCallback<MouseLeaveEvent>(_ =>
+            ApplySidebarButtonStyle(button, name == sections[selectedSectionIndex]));
+        button.RegisterCallback<ClickEvent>(_ => UpdateToSectionByName(name));
+
+        sectionButtons[name] = button;
+        return button;
+    }
+
+    // Collapsible group header. Clicking toggles the body container's visibility.
+    private static Button MakeGroupHeader(string group, VisualElement body)
+    {
+        var header = new Button { text = $"▾  {group}" };
+        header.style.width = new StyleLength(new Length(100, LengthUnit.Percent));
+        header.style.minWidth = new StyleLength(new Length(100, LengthUnit.Percent));
+        header.style.maxWidth = new StyleLength(new Length(100, LengthUnit.Percent));
+        header.style.minHeight = 40;
+        header.style.maxHeight = 40;
+        header.style.height = 40;
+        header.style.unityTextAlign = TextAnchor.MiddleLeft;
+        header.style.unityFontStyleAndWeight = FontStyle.Bold;
+        header.style.paddingLeft = 12;
+        header.style.backgroundColor = new StyleColor(new Color(0.16f, 0.16f, 0.16f));
+        header.style.color = new Color(0.8f, 0.8f, 0.8f);
+
+        bool expanded = true;
+        header.RegisterCallback<ClickEvent>(_ =>
+        {
+            expanded = !expanded;
+            body.style.display = expanded ? DisplayStyle.Flex : DisplayStyle.None;
+            header.text = (expanded ? "▾  " : "▸  ") + group;
+        });
+
+        return header;
     }
     
     // Make it so that if Reskin menu is open, pressing Escape closes it
