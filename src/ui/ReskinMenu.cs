@@ -188,6 +188,11 @@ public static class ReskinMenu
                     ReskinProfileManager.LoadTexturesForActiveReskins();
                     Plugin.LogDebug($"Setting all swappers...");
                     SwapperManager.SetAll();
+                    // In the locker room SetAll doesn't touch the preview mannequin, whose
+                    // materials still reference the textures ClearTextureCache just destroyed
+                    // (black player / invisible stick). Re-drive the preview so it re-binds the
+                    // freshly reloaded textures. No-op outside the main menu.
+                    ChangingRoomHelper.RefreshPreview();
                     Plugin.LogDebug($"Recreating content for selecting section...");
                     CreateContentForSection(selectedSectionIndex);
                     Plugin.Log($"Reload complete!");
