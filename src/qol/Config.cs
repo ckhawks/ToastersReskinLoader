@@ -144,6 +144,9 @@ public class QoLConfig
     public Color blueLocalPlayerMinimapIconColor = new Color(0f, 1f, 0f, 1f);
     public Color redLocalPlayerMinimapIconColor = new Color(0f, 1f, 0f, 1f);
 
+    // Team indicator (on-ice colored bar showing your team).
+    public bool teamIndicatorEnabled = false;
+
     // Chat (HUD).
     public float chatHeight = 300f;
     public bool  chatBackground = false;

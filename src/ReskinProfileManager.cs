@@ -466,8 +466,7 @@ public static class ReskinProfileManager
                 redTeamColor = serializableProfile.RedTeamColor != null
                     ? (Color)serializableProfile.RedTeamColor
                     : defaultProfile.redTeamColor,
-                teamIndicatorEnabled = serializableProfile.TeamIndicatorEnabled
-                    ?? defaultProfile.teamIndicatorEnabled,
+                // teamIndicatorEnabled moved to the QoL profile — see QoLConfig.
                 blueTeamName = serializableProfile.BlueTeamName
                     ?? defaultProfile.blueTeamName,
                 redTeamName = serializableProfile.RedTeamName
@@ -723,7 +722,6 @@ public static class ReskinProfileManager
                 TeamColorsEnabled = currentProfile.teamColorsEnabled,
                 BlueTeamColor = new SerializableColor(currentProfile.blueTeamColor),
                 RedTeamColor = new SerializableColor(currentProfile.redTeamColor),
-                TeamIndicatorEnabled = currentProfile.teamIndicatorEnabled,
                 BlueTeamName = currentProfile.blueTeamName,
                 RedTeamName = currentProfile.redTeamName,
 
@@ -1252,8 +1250,7 @@ public static class ReskinProfileManager
         public Color blueTeamColor = new Color(0.231f, 0.510f, 0.965f, 1f); // #3b82f6
         [PresetField("Team Colors", "Color")]
         public Color redTeamColor = new Color(0.820f, 0.200f, 0.200f, 1f);  // #d13333
-        [PresetField("Team Colors", "Indicator enabled")]
-        public bool teamIndicatorEnabled = false;
+        // teamIndicatorEnabled moved to the QoL profile — see QoLConfig.
         [PresetField("Team Colors", "Name")]
         public string blueTeamName = "";
         [PresetField("Team Colors", "Name")]
@@ -1560,8 +1557,7 @@ public static class ReskinProfileManager
         public SerializableColor BlueTeamColor { get; set; }
         [JsonProperty("redTeamColor")]
         public SerializableColor RedTeamColor { get; set; }
-        [JsonProperty("teamIndicatorEnabled")]
-        public bool? TeamIndicatorEnabled { get; set; }
+        // teamIndicatorEnabled moved to the QoL profile — see QoLConfig.
         [JsonProperty("blueTeamName")]
         public string BlueTeamName { get; set; }
         [JsonProperty("redTeamName")]

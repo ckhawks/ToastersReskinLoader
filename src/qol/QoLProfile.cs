@@ -156,6 +156,8 @@ public class QoLProfile
     public SerializableColor BlueLocalPlayerMinimapIconColor { get; set; } = new SerializableColor(new Color(0f, 1f, 0f, 1f));
     [JsonProperty("redLocalPlayerMinimapIconColor")]
     public SerializableColor RedLocalPlayerMinimapIconColor { get; set; } = new SerializableColor(new Color(0f, 1f, 0f, 1f));
+    [JsonProperty("teamIndicatorEnabled")]
+    public bool TeamIndicatorEnabled { get; set; } = false;
     // Chat
     [JsonProperty("chatHeight")]
     public float ChatHeight { get; set; } = 300f;
@@ -238,6 +240,7 @@ public class QoLProfile
             localPlayerMinimapIconEnabled = LocalPlayerMinimapIconEnabled,
             blueLocalPlayerMinimapIconColor = BlueLocalPlayerMinimapIconColor != null ? (Color)BlueLocalPlayerMinimapIconColor : new Color(0f, 1f, 0f, 1f),
             redLocalPlayerMinimapIconColor = RedLocalPlayerMinimapIconColor != null ? (Color)RedLocalPlayerMinimapIconColor : new Color(0f, 1f, 0f, 1f),
+            teamIndicatorEnabled = TeamIndicatorEnabled,
             chatHeight = ChatHeight,
             chatBackground = ChatBackground,
             quickChatX = QuickChatX,
@@ -314,6 +317,7 @@ public class QoLProfile
         LocalPlayerMinimapIconEnabled = c.localPlayerMinimapIconEnabled;
         BlueLocalPlayerMinimapIconColor = new SerializableColor(c.blueLocalPlayerMinimapIconColor);
         RedLocalPlayerMinimapIconColor = new SerializableColor(c.redLocalPlayerMinimapIconColor);
+        TeamIndicatorEnabled = c.teamIndicatorEnabled;
         ChatHeight = c.chatHeight;
         ChatBackground = c.chatBackground;
         QuickChatX = c.quickChatX;

@@ -155,12 +155,12 @@ public static class UISection
         VisualElement indicatorRow = UITools.CreateConfigurationRow();
         indicatorRow.Add(UITools.CreateConfigurationLabel("Enable Team Indicator"));
 
-        Toggle indicatorToggle = UITools.CreateConfigurationCheckbox(ReskinProfileManager.currentProfile.teamIndicatorEnabled);
-        indicatorToggle.value = ReskinProfileManager.currentProfile.teamIndicatorEnabled;
+        Toggle indicatorToggle = UITools.CreateConfigurationCheckbox(Cfg.teamIndicatorEnabled);
+        indicatorToggle.value = Cfg.teamIndicatorEnabled;
         indicatorToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
         {
-            ReskinProfileManager.currentProfile.teamIndicatorEnabled = evt.newValue;
-            ReskinProfileManager.SaveProfile();
+            Cfg.teamIndicatorEnabled = evt.newValue;
+            SaveQoL();
             TeamIndicatorSwapper.UpdateVisibility();
         });
         indicatorRow.Add(indicatorToggle);

@@ -59,7 +59,8 @@ internal static class DisplaySettingsMigration
                 ReadFloat(j, "quickChatY", v => cfg.quickChatY = v);
                 ReadBool(j, "chatRenderAllEmojis", v => cfg.chatRenderAllEmojis = v);
 
-                // (later stages: team indicator keys go here)
+                // Team indicator
+                ReadBool(j, "teamIndicatorEnabled", v => cfg.teamIndicatorEnabled = v);
 
                 Plugin.Log("[QoL] Migrated display settings from the reskin profile.");
             }
