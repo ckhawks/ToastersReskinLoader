@@ -28,7 +28,7 @@ public static class TeamColorSwapper
     public static Color? GetOverrideColor(PlayerTeam team)
     {
         var profile = ReskinProfileManager.currentProfile;
-        if (profile == null || !profile.teamColorsEnabled) return null;
+        if (profile == null || !IsEnabled(team)) return null;
 
         return team switch
         {
@@ -36,6 +36,16 @@ public static class TeamColorSwapper
             PlayerTeam.Red => profile.redTeamColor,
             _ => null
         };
+    }
+
+    /// <summary>Whether the user's custom color is enabled for this team (per-team toggle).</summary>
+    public static bool IsEnabled(PlayerTeam team)
+    {
+        var p = ReskinProfileManager.currentProfile;
+        if (p == null) return false;
+        return team == PlayerTeam.Blue ? p.blueTeamColorEnabled
+             : team == PlayerTeam.Red ? p.redTeamColorEnabled
+             : false;
     }
 
     /// <summary>
@@ -79,7 +89,7 @@ public static class TeamColorSwapper
                         if (!kvp.Key || !kvp.Key.Player) continue;
 
                         // Local player icon color is handled by MinimapSwapper
-                        if (profile != null && profile.localPlayerMinimapIconEnabled && kvp.Key.Player.IsLocalPlayer)
+                        if (profile != null && (qol.QoLRunner.Instance?.Config?.localPlayerMinimapIconEnabled ?? false) && kvp.Key.Player.IsLocalPlayer)
                             continue;
 
                         Color? c = GetOverrideColor(kvp.Key.Player.Team);
@@ -166,7 +176,7 @@ public static class TeamColorSwapper
                 var profile = ReskinProfileManager.currentProfile;
 
                 // Local player icon color takes priority over team color
-                if (profile != null && profile.localPlayerMinimapIconEnabled && playerBody.Player.IsLocalPlayer)
+                if (profile != null && (qol.QoLRunner.Instance?.Config?.localPlayerMinimapIconEnabled ?? false) && playerBody.Player.IsLocalPlayer)
                     return;
 
                 Color? c = GetOverrideColor(playerBody.Player.Team);
@@ -312,7 +322,7 @@ public static class TeamColorSwapper
 
                 if (blueBtn != null)
                 {
-                    if (profile.teamColorsEnabled)
+                    if (IsEnabled(PlayerTeam.Blue))
                     {
                         var bc = profile.blueTeamColor;
                         blueBtn.schedule.Execute(() => { blueBtn.style.backgroundColor = bc; });
@@ -321,7 +331,7 @@ public static class TeamColorSwapper
                 }
                 if (redBtn != null)
                 {
-                    if (profile.teamColorsEnabled)
+                    if (IsEnabled(PlayerTeam.Red))
                     {
                         var rc = profile.redTeamColor;
                         redBtn.schedule.Execute(() => { redBtn.style.backgroundColor = rc; });
@@ -355,7 +365,7 @@ public static class TeamColorSwapper
                 if (profile == null) return;
 
                 // Custom team colors on the announcement header text
-                if (profile.teamColorsEnabled)
+                if (IsEnabled(team))
                 {
                     Color? c = GetOverrideColor(team);
                     if (c != null)
@@ -403,7 +413,7 @@ public static class TeamColorSwapper
             try
             {
                 var profile = ReskinProfileManager.currentProfile;
-                if (profile == null || !profile.teamColorsEnabled) return;
+                if (profile == null || !IsEnabled(team)) return;
 
                 if (team == PlayerTeam.Blue)
                 {
@@ -463,7 +473,7 @@ public static class TeamColorSwapper
                 if (!chatMessage.IsSystem) return;
 
                 var profile = ReskinProfileManager.currentProfile;
-                if (profile == null || !profile.teamColorsEnabled) return;
+                if (profile == null || (!IsEnabled(PlayerTeam.Blue) && !IsEnabled(PlayerTeam.Red))) return;
 
                 string content = chatMessage.Content.ToString();
                 bool changed = false;
@@ -471,12 +481,12 @@ public static class TeamColorSwapper
                 string blueHex = ColorToHex(profile.blueTeamColor);
                 string redHex = ColorToHex(profile.redTeamColor);
 
-                if (content.Contains(DEFAULT_BLUE_HEX, StringComparison.OrdinalIgnoreCase) && blueHex != DEFAULT_BLUE_HEX)
+                if (IsEnabled(PlayerTeam.Blue) && content.Contains(DEFAULT_BLUE_HEX, StringComparison.OrdinalIgnoreCase) && blueHex != DEFAULT_BLUE_HEX)
                 {
                     content = content.Replace(DEFAULT_BLUE_HEX, blueHex, StringComparison.OrdinalIgnoreCase);
                     changed = true;
                 }
-                if (content.Contains(DEFAULT_RED_HEX, StringComparison.OrdinalIgnoreCase) && redHex != DEFAULT_RED_HEX)
+                if (IsEnabled(PlayerTeam.Red) && content.Contains(DEFAULT_RED_HEX, StringComparison.OrdinalIgnoreCase) && redHex != DEFAULT_RED_HEX)
                 {
                     content = content.Replace(DEFAULT_RED_HEX, redHex, StringComparison.OrdinalIgnoreCase);
                     changed = true;
@@ -502,7 +512,7 @@ public static class TeamColorSwapper
         [HarmonyPrefix]
         public static bool Prefix(ref string __result, string content, bool isSystem, Units units, bool filterProfanity)
         {
-            if (!ReskinProfileManager.currentProfile.chatRenderAllEmojis) return true;
+            if (!(qol.QoLRunner.Instance?.Config?.chatRenderAllEmojis ?? true)) return true;
             if (isSystem) return true;
 
             // Non-system: filter rich text and profanity, but skip

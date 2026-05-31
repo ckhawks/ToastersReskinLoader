@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using ToasterReskinLoader.qol;
 using ToasterReskinLoader.swappers;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -8,6 +9,24 @@ namespace ToasterReskinLoader.ui.sections;
 
 public static class ShadowsSection
 {
+    // Shadows live in the QoL profile now (personal/perf), not the reskin profile.
+    private static QoLConfig Cfg => QoLRunner.Instance?.Config;
+    private static void Save() => QoLRunner.Instance?.SaveAndRefresh();
+
+    private static void ResetShadowsToDefault()
+    {
+        var d = new QoLConfig();
+        var c = Cfg;
+        if (c == null) return;
+        c.crispyShadowsEnabled = d.crispyShadowsEnabled;
+        c.shadowResolution = d.shadowResolution;
+        c.shadowDistance = d.shadowDistance;
+        c.shadowCascadeCount = d.shadowCascadeCount;
+        c.shadowSoftShadows = d.shadowSoftShadows;
+        Save();
+        CrispyShadowsSwapper.Apply();
+    }
+
     private static readonly Dictionary<string, int> ResolutionOptions = new Dictionary<string, int>
     {
         { "256 (Very Low)", 256 },
@@ -39,16 +58,16 @@ public static class ShadowsSection
         VisualElement enableRow = UITools.CreateConfigurationRow();
         enableRow.Add(UITools.CreateConfigurationLabel("Enable Crispy Shadows"));
 
-        Toggle enableToggle = UITools.CreateConfigurationCheckbox(ReskinProfileManager.currentProfile.crispyShadowsEnabled);
-        enableToggle.value = ReskinProfileManager.currentProfile.crispyShadowsEnabled;
+        Toggle enableToggle = UITools.CreateConfigurationCheckbox(Cfg.crispyShadowsEnabled);
+        enableToggle.value = Cfg.crispyShadowsEnabled;
 
         // We'll collect all the controls that should be grayed out when disabled
         var dependentControls = new List<VisualElement>();
 
         enableToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
         {
-            ReskinProfileManager.currentProfile.crispyShadowsEnabled = evt.newValue;
-            ReskinProfileManager.SaveProfile();
+            Cfg.crispyShadowsEnabled = evt.newValue;
+            Save();
             CrispyShadowsSwapper.Apply();
             UITools.UpdateDependentControlsState(dependentControls, evt.newValue);
         });
@@ -61,14 +80,14 @@ public static class ShadowsSection
 
         var resolutionChoices = ResolutionOptions.Keys.ToList();
         string currentResolution = ResolutionOptions
-            .FirstOrDefault(kv => kv.Value == ReskinProfileManager.currentProfile.shadowResolution).Key
+            .FirstOrDefault(kv => kv.Value == Cfg.shadowResolution).Key
             ?? "4096 (Very High)";
 
         PopupField<string> resolutionDropdown = UITools.CreateStringDropdownField(resolutionChoices, currentResolution);
 
         // VRAM label
         Label vramLabel = UITools.CreateConfigurationLabel(
-            $"Estimated VRAM: {CrispyShadowsSwapper.EstimateVRAM(ReskinProfileManager.currentProfile.shadowResolution)}");
+            $"Estimated VRAM: {CrispyShadowsSwapper.EstimateVRAM(Cfg.shadowResolution)}");
         vramLabel.style.marginTop = 2;
         vramLabel.style.marginBottom = 8;
         vramLabel.style.fontSize = 13;
@@ -78,8 +97,8 @@ public static class ShadowsSection
         {
             if (ResolutionOptions.TryGetValue(evt.newValue, out int resolution))
             {
-                ReskinProfileManager.currentProfile.shadowResolution = resolution;
-                ReskinProfileManager.SaveProfile();
+                Cfg.shadowResolution = resolution;
+                Save();
                 CrispyShadowsSwapper.Apply();
                 vramLabel.text = $"Estimated VRAM: {CrispyShadowsSwapper.EstimateVRAM(resolution)}";
             }
@@ -97,16 +116,16 @@ public static class ShadowsSection
         VisualElement distanceRow = UITools.CreateConfigurationRow();
         distanceRow.Add(UITools.CreateConfigurationLabel("Shadow Distance"));
         Slider distanceSlider = UITools.CreateConfigurationSlider(10, 300,
-            ReskinProfileManager.currentProfile.shadowDistance, 300);
+            Cfg.shadowDistance, 300);
 
         distanceSlider.RegisterCallback<ChangeEvent<float>>(evt =>
         {
-            ReskinProfileManager.currentProfile.shadowDistance = evt.newValue;
+            Cfg.shadowDistance = evt.newValue;
             CrispyShadowsSwapper.Apply();
         });
         distanceSlider.RegisterCallback<PointerUpEvent>(evt =>
         {
-            ReskinProfileManager.SaveProfile();
+            Save();
         });
 
         distanceRow.Add(distanceSlider);
@@ -119,7 +138,7 @@ public static class ShadowsSection
 
         var cascadeChoices = CascadeOptions.Keys.ToList();
         string currentCascade = CascadeOptions
-            .FirstOrDefault(kv => kv.Value == ReskinProfileManager.currentProfile.shadowCascadeCount).Key
+            .FirstOrDefault(kv => kv.Value == Cfg.shadowCascadeCount).Key
             ?? "4 Cascades";
 
         PopupField<string> cascadeDropdown = UITools.CreateStringDropdownField(cascadeChoices, currentCascade);
@@ -127,8 +146,8 @@ public static class ShadowsSection
         {
             if (CascadeOptions.TryGetValue(evt.newValue, out int cascades))
             {
-                ReskinProfileManager.currentProfile.shadowCascadeCount = cascades;
-                ReskinProfileManager.SaveProfile();
+                Cfg.shadowCascadeCount = cascades;
+                Save();
                 CrispyShadowsSwapper.Apply();
             }
         });
@@ -141,12 +160,12 @@ public static class ShadowsSection
         VisualElement softRow = UITools.CreateConfigurationRow();
         softRow.Add(UITools.CreateConfigurationLabel("Soft Shadows"));
 
-        Toggle softToggle = UITools.CreateConfigurationCheckbox(ReskinProfileManager.currentProfile.shadowSoftShadows);
-        softToggle.value = ReskinProfileManager.currentProfile.shadowSoftShadows;
+        Toggle softToggle = UITools.CreateConfigurationCheckbox(Cfg.shadowSoftShadows);
+        softToggle.value = Cfg.shadowSoftShadows;
         softToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
         {
-            ReskinProfileManager.currentProfile.shadowSoftShadows = evt.newValue;
-            ReskinProfileManager.SaveProfile();
+            Cfg.shadowSoftShadows = evt.newValue;
+            Save();
             CrispyShadowsSwapper.Apply();
         });
 
@@ -172,7 +191,7 @@ public static class ShadowsSection
         UITools.AddHoverEffectsForButton(resetButton);
         resetButton.RegisterCallback<ClickEvent>(evt =>
         {
-            ReskinProfileManager.ResetShadowsToDefault();
+            ResetShadowsToDefault();
 
             Label title = (Label)contentScrollViewContent.Children().ToArray()[0];
             contentScrollViewContent.Clear();
@@ -182,7 +201,7 @@ public static class ShadowsSection
         contentScrollViewContent.Add(resetButton);
 
         // Set initial state of dependent controls
-        UITools.UpdateDependentControlsState(dependentControls, ReskinProfileManager.currentProfile.crispyShadowsEnabled);
+        UITools.UpdateDependentControlsState(dependentControls, Cfg.crispyShadowsEnabled);
     }
 
 }

@@ -116,6 +116,7 @@ public static class ReskinRegistry
             {
                 // Assign the captured ID to the pack object
                 pack.WorkshopId = workshopId;
+                pack.FolderPath = dir;
                 
                 // make paths absolute
                 foreach (var skin in pack.Reskins)
@@ -170,6 +171,11 @@ public static class ReskinRegistry
         // This is not part of the JSON file, it's derived from the folder structure at runtime.
         [JsonIgnore]
         public ulong WorkshopId { get; set; }
+
+        // Absolute path to the pack's folder on disk (set at load). Used to discover
+        // bundled presets in <folder>/presets/. Not serialized.
+        [JsonIgnore]
+        public string FolderPath { get; set; }
 
         [JsonProperty("reskins")]
         public List<ReskinEntry> Reskins { get; set; } = new List<ReskinEntry>();

@@ -11,6 +11,10 @@ namespace ToasterReskinLoader;
 /// </summary>
 public static class PathManager
 {
+    // Steam Workshop app id for Puck. Subscribed workshop items install under
+    // <Steam library>\steamapps\workshop\content\<APP_ID>\<itemId>\.
+    public const string WorkshopAppId = "2994020";
+
     // Cached paths (calculated once at startup)
     private static string _workshopRoot;
     private static string _localReskinFolder;
@@ -62,33 +66,26 @@ public static class PathManager
     }
 
     /// <summary>
-    /// Resolves the workshop root folder by examining the mod DLL's location.
-    /// Follows the path: DLL location → parent → parent → workshop\content\2994020
+    /// Resolves the workshop root folder for this game's subscribed items.
     ///
-    /// Example path resolution:
-    /// DLL: C:\Program Files (x86)\Steam\steamapps\workshop\content\2994020\3493628417\ToasterReskinLoader.dll
-    /// Returns: C:\Program Files (x86)\Steam\steamapps\workshop\content\2994020
+    /// Steam stores a game's workshop content in the SAME library as the game, so we can
+    /// derive it from the game install regardless of which drive/library Steam used and
+    /// regardless of whether this mod is running from the workshop or a local Plugins folder:
+    ///   &lt;library&gt;\steamapps\common\Puck      (GameRootFolder)
+    ///   &lt;library&gt;\steamapps\workshop\content\2994020   (workshop root)
+    ///
+    /// This avoids any hardcoded machine-specific path and works identically for:
+    ///  - Workshop install: DLL at ...\workshop\content\2994020\&lt;workshopId&gt;\ToasterReskinLoader.dll
+    ///  - Local/dev install: DLL at ...\common\Puck\Plugins\ToasterReskinLoader\ToasterReskinLoader.dll
     /// </summary>
     private static string ResolveWorkshopRoot()
     {
-        string execPath = Assembly.GetExecutingAssembly().Location;
-        Plugin.Log($"[PathManager] Mod DLL path: {execPath}");
+        Plugin.LogDebug($"[PathManager] Mod DLL path: {Assembly.GetExecutingAssembly().Location}");
 
-        // Development override: if DLL is in the game's Plugins folder instead of workshop,
-        // point to the workshop location for testing. Ignore if the workshop path doesn't exist.
-        if (execPath.Contains(@"steamapps\common"))
-        {
-            string devOverridePath = @"C:\Program Files (x86)\Steam\steamapps\workshop\content\2994020";
-            if (Directory.Exists(devOverridePath))
-            {
-                Plugin.Log($"[PathManager] Using development override: {devOverridePath}");
-                return devOverridePath;
-            }
-        }
-
-        // Standard path: workshop mods are at steamapps\workshop\content\2994020\<workshopId>\<files>
-        // So we go up two levels from the DLL to get the game ID folder
-        string workshopRoot = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(execPath), @".."));
+        // GameRootFolder is ...\steamapps\common\Puck; go up two levels to ...\steamapps,
+        // then down into workshop\content\<appId>.
+        string workshopRoot = Path.GetFullPath(
+            Path.Combine(GameRootFolder, "..", "..", "workshop", "content", WorkshopAppId));
 
         Plugin.Log($"[PathManager] Resolved workshop root: {workshopRoot}");
         return workshopRoot;

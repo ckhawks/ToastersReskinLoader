@@ -60,7 +60,7 @@ public static class PacksSection
         
         void FindPacksButtonClickHandler(ClickEvent evt)
         {
-            SteamFriends.ActivateGameOverlayToWebPage("https://steamcommunity.com/workshop/browse/?appid=2994020&requiredtags[]=Resource+Pack", EActivateGameOverlayToWebPageMode.k_EActivateGameOverlayToWebPageMode_Default);
+            SteamFriends.ActivateGameOverlayToWebPage($"https://steamcommunity.com/workshop/browse/?appid={PathManager.WorkshopAppId}&requiredtags[]=Resource+Pack", EActivateGameOverlayToWebPageMode.k_EActivateGameOverlayToWebPageMode_Default);
         }
         titleRow.Add(sectionTitleGroup);
         titleRow.Add(findPacksButton);
@@ -114,10 +114,7 @@ public static class PacksSection
 
             contentScrollViewContent.Add(banner);
         }
-        
-        // https://steamcommunity.com/workshop/browse/?appid=2994020&requiredtags[]=Resource+Pack
-        
-            
+
         // For each loaded pack,
         foreach (var pack in ReskinRegistry.reskinPacks)
         {

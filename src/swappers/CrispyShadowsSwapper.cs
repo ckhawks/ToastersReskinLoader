@@ -1,5 +1,6 @@
 using System;
 using System.Reflection;
+using ToasterReskinLoader.qol;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
 
@@ -15,9 +16,14 @@ public static class CrispyShadowsSwapper
     {
         try
         {
-            var profile = ReskinProfileManager.currentProfile;
+            var cfg = QoLRunner.Instance?.Config;
+            if (cfg == null)
+            {
+                Plugin.LogDebug("CrispyShadows: QoL config not ready, skipping.");
+                return;
+            }
 
-            if (!profile.crispyShadowsEnabled)
+            if (!cfg.crispyShadowsEnabled)
             {
                 Plugin.LogDebug("CrispyShadows: Disabled, skipping.");
                 return;
@@ -43,15 +49,15 @@ public static class CrispyShadowsSwapper
                 return;
             }
 
-            rpAsset.shadowCascadeCount = profile.shadowCascadeCount;
-            rpAsset.shadowDistance = profile.shadowDistance;
-            rpAsset.mainLightShadowmapResolution = profile.shadowResolution;
+            rpAsset.shadowCascadeCount = cfg.shadowCascadeCount;
+            rpAsset.shadowDistance = cfg.shadowDistance;
+            rpAsset.mainLightShadowmapResolution = cfg.shadowResolution;
 
             var softShadowField = typeof(UniversalRenderPipelineAsset)
                 .GetField("m_SoftShadowsSupported", BindingFlags.Instance | BindingFlags.NonPublic);
-            softShadowField?.SetValue(rpAsset, profile.shadowSoftShadows);
+            softShadowField?.SetValue(rpAsset, cfg.shadowSoftShadows);
 
-            Plugin.LogDebug($"CrispyShadows: Applied (res={profile.shadowResolution}, dist={profile.shadowDistance}, cascades={profile.shadowCascadeCount}).");
+            Plugin.LogDebug($"CrispyShadows: Applied (res={cfg.shadowResolution}, dist={cfg.shadowDistance}, cascades={cfg.shadowCascadeCount}).");
         }
         catch (Exception e)
         {
