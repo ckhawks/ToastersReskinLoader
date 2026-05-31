@@ -254,14 +254,7 @@ public static class PresetsSection
         metaLabel.style.color = new Color(0.65f, 0.65f, 0.65f);
         left.Add(metaLabel);
         if (missing.Count > 0)
-        {
-            var warn = UITools.CreateConfigurationLabel(
-                $"⚠ missing {Plural(missing.Count, "pack")}: {string.Join(", ", missing.Select(m => m.Name))}");
-            warn.style.fontSize = 12;
-            warn.style.color = new Color(0.95f, 0.75f, 0.4f);
-            warn.style.whiteSpace = WhiteSpace.Normal;
-            left.Add(warn);
-        }
+            left.Add(BuildMissingWarning(missing, $"⚠ missing {Plural(missing.Count, "pack")}:", 12));
         topRow.Add(left);
 
         // right: actions
@@ -358,11 +351,8 @@ public static class PresetsSection
         var missing = PresetStore.GetMissingDependencies(preset);
         if (missing.Count > 0)
         {
-            var warn = UITools.CreateConfigurationLabel(
-                $"⚠ {Plural(missing.Count, "pack")} not installed — those reskins will be skipped: "
-                + string.Join(", ", missing.Select(m => m.Name)));
-            warn.style.color = new Color(0.95f, 0.75f, 0.4f);
-            warn.style.whiteSpace = WhiteSpace.Normal;
+            var warn = BuildMissingWarning(missing,
+                $"⚠ {Plural(missing.Count, "pack")} not installed — those reskins will apply as default:", 16);
             warn.style.marginTop = 8;
             _root.Add(warn);
         }
@@ -850,6 +840,52 @@ public static class PresetsSection
     }
 
     // ───────────────────────── helpers ─────────────────────────
+
+    private const string WorkshopUrlBase = "https://steamcommunity.com/sharedfiles/filedetails/?id=";
+
+    // "<prefix> PackA, PackB" warning where workshop packs render as clickable links to their
+    // Steam Workshop page so the user can go install the missing one. Local packs (workshopId 0)
+    // stay plain text — there's no page to link to.
+    private static VisualElement BuildMissingWarning(List<PresetDependency> missing, string prefix, int fontSize)
+    {
+        var warnColor = new Color(0.95f, 0.75f, 0.4f);
+        var linkColor = new Color(0.45f, 0.7f, 1f);
+
+        var row = new VisualElement();
+        row.style.flexDirection = FlexDirection.Row;
+        row.style.flexWrap = Wrap.Wrap;
+        row.style.alignItems = Align.Center;
+
+        var lead = UITools.CreateConfigurationLabel(prefix);
+        lead.style.fontSize = fontSize;
+        lead.style.color = warnColor;
+        lead.style.whiteSpace = WhiteSpace.Normal;
+        row.Add(lead);
+
+        for (int i = 0; i < missing.Count; i++)
+        {
+            var dep = missing[i];
+            var label = UITools.CreateConfigurationLabel(dep.Name + (i < missing.Count - 1 ? "," : ""));
+            label.style.fontSize = fontSize;
+            label.style.marginLeft = 4;
+
+            if (dep.WorkshopId != 0)
+            {
+                string url = WorkshopUrlBase + dep.WorkshopId;
+                label.style.color = linkColor;
+                label.tooltip = "Open in Steam Workshop";
+                label.RegisterCallback<ClickEvent>(_ => Application.OpenURL(url));
+                label.RegisterCallback<MouseEnterEvent>(_ => label.style.color = Color.Lerp(linkColor, Color.white, 0.4f));
+                label.RegisterCallback<MouseLeaveEvent>(_ => label.style.color = linkColor);
+            }
+            else
+            {
+                label.style.color = warnColor;
+            }
+            row.Add(label);
+        }
+        return row;
+    }
 
     private static void ToastApplied(Preset preset, PresetApplyResult result)
     {
