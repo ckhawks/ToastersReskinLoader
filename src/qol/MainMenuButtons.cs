@@ -6,8 +6,8 @@
 //                                  saved browser filters, and auto-join
 //                                  the best match. "Best" = highest
 //                                  player ratio that isn't full, ping
-//                                  tiebreaker, mild bump for servers
-//                                  whose name contains a "[TR]" tag.
+//                                  tiebreaker, mild bump for official
+//                                  "Toaster's Rink" servers (by name).
 //   * SERVER BROWSER (default off) — opens the vanilla UIServerBrowser
 //                                  from the title screen so the user
 //                                  doesn't have to step through Play.
@@ -48,11 +48,14 @@ internal static class MainMenuButtons
     private static Button _quickJoinButton;
     private static Button _browserButton;
 
-    // Quick-join scoring config.
+    // Quick-join scoring config. The name bonus nudges official Toaster's
+    // Rink servers up the ranking; they're named "Toaster's Rink …", not
+    // tagged "[TR]", so match the name (apostrophe optional, straight or
+    // curly).
     private const int  QuickJoinTimeoutMs = 5000;
     private const int  QuickJoinPollMs    = 250;
     private const float TrBonus           = 0.05f;
-    private static readonly Regex TrTagPattern = new(@"\[\s*tr\s*\]", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex TrTagPattern = new(@"toaster['’]?s\s+rink", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private static bool QuickJoinInFlight;
     private static CancellationTokenSource _qjCts;

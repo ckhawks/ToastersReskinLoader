@@ -221,12 +221,12 @@ internal static class HideInactiveChat
     {
         var messages = GetUIChatMessages(chat);
         if (messages == null) return;
-        bool on = WantNoFade;
+        var opacity = WantNoFade ? new StyleFloat(1f) : new StyleFloat(StyleKeyword.Null);
         for (int i = 0; i < messages.Count; i++)
         {
             var lbl = messages[i]?.VisualElement?.Q<Label>();
             if (lbl == null) continue;
-            try { lbl.style.opacity = on ? new StyleFloat(1f) : new StyleFloat(StyleKeyword.Null); }
+            try { lbl.style.opacity = opacity; }
             catch { }
         }
     }
