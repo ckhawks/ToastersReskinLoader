@@ -153,7 +153,29 @@ public static class ReskinRegistry
                 StringComparison.OrdinalIgnoreCase))
             .ToList();
     }
-    
+
+    /// <summary>
+    /// The "Unchanged" sentinel entry for a reskin type (no pack, null path). Used as the
+    /// first dropdown choice and the fallback value when no reskin is selected. Centralizes
+    /// what was a hand-built ReskinEntry repeated across every section.
+    /// </summary>
+    public static ReskinEntry UnchangedEntry(string reskinType) =>
+        new ReskinEntry { Name = "Unchanged", Path = null, Type = reskinType };
+
+    /// <summary>
+    /// Convenience for dropdowns: the reskins of a type with the "Unchanged" sentinel
+    /// prepended at index 0. Returns the sentinel via <paramref name="unchanged"/> so callers
+    /// can reuse it as the fallback selection.
+    /// </summary>
+    public static List<ReskinEntry> GetReskinChoices(string reskinType, out ReskinEntry unchanged)
+    {
+        unchanged = UnchangedEntry(reskinType);
+        var choices = GetReskinEntriesByType(reskinType);
+        choices.Insert(0, unchanged);
+        return choices;
+    }
+
+
     public class ReskinPack
     {
         [JsonProperty("name")]

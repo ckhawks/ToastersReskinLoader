@@ -23,8 +23,11 @@ public static class ProfileTeamTools
 
     /// Copy every role-specific setting from the source cell to the matching setting in the
     /// target cell. Only settings present in BOTH cells are copied (e.g. goalie pads/mask have
-    /// no skater equivalent, so a skater->goalie copy leaves them untouched). Returns the count
-    /// copied. Mutates the live profile in memory; the caller saves + refreshes.
+    /// no skater equivalent, so a skater->goalie copy leaves them untouched). Reskin fields are
+    /// also skipped when source and target use different reskin models — skater and goalie
+    /// sticks share a base key ("stick") but use distinct models (stick_attacker vs
+    /// stick_goalie), so a skater stick skin must not bleed onto a goalie stick. Returns the
+    /// count copied. Mutates the live profile in memory; the caller saves + refreshes.
     public static int CopyCell(PresetTeam fromTeam, PresetRole fromRole, PresetTeam toTeam, PresetRole toRole)
     {
         if (fromTeam == toTeam && fromRole == toRole) return 0;
@@ -41,6 +44,10 @@ public static class ProfileTeamTools
         {
             if (targets.TryGetValue(BaseKey(src), out var dst))
             {
+                // Reskin refs only fit fields of the same reskin model. Sticks collide on base
+                // key across roles but use different models, so skip the mismatch.
+                if (src.ReskinType != dst.ReskinType) continue;
+
                 dst.SetValue(profile, src.GetValue(profile));
                 copied++;
             }

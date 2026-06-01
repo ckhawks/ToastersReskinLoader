@@ -121,32 +121,9 @@ public static class ArenaSection
         scoreboardRow.Add(scoreboardToggle);
         contentScrollViewContent.Add(scoreboardRow);
         
-        List<ReskinRegistry.ReskinEntry> iceReskins = ReskinRegistry.GetReskinEntriesByType("rink_ice");
-        ReskinRegistry.ReskinEntry unchangedEntry = new ReskinRegistry.ReskinEntry();
-        unchangedEntry.Name = "Unchanged";
-        unchangedEntry.Path = null;
-        unchangedEntry.Type = "rink_ice";
-        iceReskins.Insert(0, unchangedEntry);
-        
-        VisualElement iceRow = UITools.CreateConfigurationRow();
-        iceRow.Add(UITools.CreateConfigurationLabel("Ice"));
-            
-        PopupField<ReskinRegistry.ReskinEntry> iceDropdown = UITools.CreateConfigurationDropdownField();
-        iceDropdown.RegisterCallback<ChangeEvent<ReskinRegistry.ReskinEntry>>(
-            new EventCallback<ChangeEvent<ReskinRegistry.ReskinEntry>>(evt =>
-            {
-                ReskinRegistry.ReskinEntry chosen = evt.newValue;
-                Plugin.Log($"User picked ID={chosen.Path}, Name={chosen.Name}");
-                ReskinProfileManager.SetSelectedReskinInCurrentProfile(chosen, "rink_ice", null);
-            })
-        );
-        // attackerPersonalStickDropdown.index = 0;
-        iceDropdown.choices = iceReskins;
-        iceDropdown.value = ReskinProfileManager.currentProfile.ice != null
-            ? ReskinProfileManager.currentProfile.ice
-            : unchangedEntry;
-        iceRow.Add(iceDropdown);
-        contentScrollViewContent.Add(iceRow);
+        var iceReskins = ReskinRegistry.GetReskinChoices("rink_ice", out var unchangedIce);
+        UITools.AddReskinDropdownRow(contentScrollViewContent, "Ice", iceReskins,
+            ReskinProfileManager.currentProfile.ice, unchangedIce, "rink_ice", null);
         
         var iceSmoothnessRow = UITools.CreateConfigurationRow();
         iceSmoothnessRow.Add(UITools.CreateConfigurationLabel("Ice Smoothness"));
@@ -247,33 +224,9 @@ public static class ArenaSection
         contentScrollViewContent.Add(glassSmoothnessRow);
         
         // GOAL NET
-        List<ReskinRegistry.ReskinEntry> netReskins = ReskinRegistry.GetReskinEntriesByType("net");
-        ReskinRegistry.ReskinEntry unchangedNetEntry = new ReskinRegistry.ReskinEntry
-        {
-            Name = "Unchanged",
-            Path = null,
-            Type = "net"
-        };
-        netReskins.Insert(0, unchangedNetEntry);
-        
-        VisualElement netRow = UITools.CreateConfigurationRow();
-        netRow.Add(UITools.CreateConfigurationLabel("Goal Net"));
-            
-        PopupField<ReskinRegistry.ReskinEntry> netDropdown = UITools.CreateConfigurationDropdownField();
-        netDropdown.RegisterCallback<ChangeEvent<ReskinRegistry.ReskinEntry>>(
-            new EventCallback<ChangeEvent<ReskinRegistry.ReskinEntry>>(evt =>
-            {
-                ReskinRegistry.ReskinEntry chosen = evt.newValue;
-                Plugin.Log($"User picked ID={chosen.Path}, Name={chosen.Name}");
-                ReskinProfileManager.SetSelectedReskinInCurrentProfile(chosen, "net", null);
-            })
-        );
-        netDropdown.choices = netReskins;
-        netDropdown.value = ReskinProfileManager.currentProfile.net != null
-            ? ReskinProfileManager.currentProfile.net
-            : unchangedNetEntry;
-        netRow.Add(netDropdown);
-        contentScrollViewContent.Add(netRow);
+        var netReskins = ReskinRegistry.GetReskinChoices("net", out var unchangedNet);
+        UITools.AddReskinDropdownRow(contentScrollViewContent, "Goal Net", netReskins,
+            ReskinProfileManager.currentProfile.net, unchangedNet, "net", null);
         return;
 
         void UpdateSliderState()

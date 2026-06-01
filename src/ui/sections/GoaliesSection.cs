@@ -98,51 +98,16 @@ public static class GoaliesSection
         List<ReskinRegistry.ReskinEntry> jerseyTorsos, List<ReskinRegistry.ReskinEntry> jerseyGroins,
         ReskinRegistry.ReskinEntry unchangedTorsoEntry, ReskinRegistry.ReskinEntry unchangedGroinEntry)
     {
-        // Torso
-        VisualElement torsoRow = UITools.CreateConfigurationRow();
-        torsoRow.Add(UITools.CreateConfigurationLabel("Goalie Torso"));
+        var team = teamSlot == "blue" ? PlayerTeam.Blue : PlayerTeam.Red;
+        var profile = ReskinProfileManager.currentProfile;
 
-        PopupField<ReskinRegistry.ReskinEntry> torsoDropdown = UITools.CreateConfigurationDropdownField();
-        torsoDropdown.RegisterCallback<ChangeEvent<ReskinRegistry.ReskinEntry>>(
-            new EventCallback<ChangeEvent<ReskinRegistry.ReskinEntry>>(evt =>
-            {
-                ReskinRegistry.ReskinEntry chosen = evt.newValue;
-                Plugin.Log($"User picked ID={chosen.Path}, Name={chosen.Name}");
-                ReskinProfileManager.SetSelectedReskinInCurrentProfile(chosen, "jersey_torso", $"{teamSlot}_goalie");
-                ChangingRoomHelper.SetPreviewContext(teamSlot == "blue" ? PlayerTeam.Blue : PlayerTeam.Red, PlayerRole.Goalie);
-                ChangingRoomHelper.RefreshPreview();
-            })
-        );
-        torsoDropdown.choices = jerseyTorsos;
-        torsoDropdown.value =
-            (teamSlot == "blue"
-                ? ReskinProfileManager.currentProfile.blueGoalieTorso
-                : ReskinProfileManager.currentProfile.redGoalieTorso) ?? unchangedTorsoEntry;
-        torsoRow.Add(torsoDropdown);
-        contentScrollViewContent.Add(torsoRow);
+        UITools.AddReskinDropdownRow(contentScrollViewContent, "Goalie Torso", jerseyTorsos,
+            teamSlot == "blue" ? profile.blueGoalieTorso : profile.redGoalieTorso, unchangedTorsoEntry,
+            "jersey_torso", $"{teamSlot}_goalie", team, PlayerRole.Goalie);
 
-        // Groin
-        VisualElement groinRow = UITools.CreateConfigurationRow();
-        groinRow.Add(UITools.CreateConfigurationLabel("Goalie Groin"));
-
-        PopupField<ReskinRegistry.ReskinEntry> groinDropdown = UITools.CreateConfigurationDropdownField();
-        groinDropdown.RegisterCallback<ChangeEvent<ReskinRegistry.ReskinEntry>>(
-            new EventCallback<ChangeEvent<ReskinRegistry.ReskinEntry>>(evt =>
-            {
-                ReskinRegistry.ReskinEntry chosen = evt.newValue;
-                Plugin.Log($"User picked ID={chosen.Path}, Name={chosen.Name}");
-                ReskinProfileManager.SetSelectedReskinInCurrentProfile(chosen, "jersey_groin", $"{teamSlot}_goalie");
-                ChangingRoomHelper.SetPreviewContext(teamSlot == "blue" ? PlayerTeam.Blue : PlayerTeam.Red, PlayerRole.Goalie);
-                ChangingRoomHelper.RefreshPreview();
-            })
-        );
-        groinDropdown.choices = jerseyGroins;
-        groinDropdown.value =
-            (teamSlot == "blue"
-                ? ReskinProfileManager.currentProfile.blueGoalieGroin
-                : ReskinProfileManager.currentProfile.redGoalieGroin) ?? unchangedGroinEntry;
-        groinRow.Add(groinDropdown);
-        contentScrollViewContent.Add(groinRow);
+        UITools.AddReskinDropdownRow(contentScrollViewContent, "Goalie Groin", jerseyGroins,
+            teamSlot == "blue" ? profile.blueGoalieGroin : profile.redGoalieGroin, unchangedGroinEntry,
+            "jersey_groin", $"{teamSlot}_goalie", team, PlayerRole.Goalie);
     }
 
     // Creates leg pads UI for a team
@@ -246,27 +211,9 @@ public static class GoaliesSection
     private static PopupField<ReskinRegistry.ReskinEntry> CreateLegPadDropdownRowWithReference(
         VisualElement contentScrollViewContent, string labelText, string slot, List<ReskinRegistry.ReskinEntry> options)
     {
-        VisualElement row = UITools.CreateConfigurationRow();
-        row.Add(UITools.CreateConfigurationLabel(labelText));
-
-        PopupField<ReskinRegistry.ReskinEntry> dropdown = UITools.CreateConfigurationDropdownField();
-        dropdown.RegisterCallback<ChangeEvent<ReskinRegistry.ReskinEntry>>(
-            new EventCallback<ChangeEvent<ReskinRegistry.ReskinEntry>>(evt =>
-            {
-                ReskinRegistry.ReskinEntry chosen = evt.newValue;
-                Plugin.Log($"User picked leg pad: {chosen.Name}");
-                ReskinProfileManager.SetSelectedReskinInCurrentProfile(chosen, "legpad", slot);
-                ChangingRoomHelper.SetPreviewContext(slot.Contains("blue") ? PlayerTeam.Blue : PlayerTeam.Red, PlayerRole.Goalie);
-                ChangingRoomHelper.RefreshPreview();
-            })
-        );
-
-        dropdown.choices = options;
-        dropdown.value = GetCurrentLegPad(slot) ?? options[0];
-        row.Add(dropdown);
-        contentScrollViewContent.Add(row);
-
-        return dropdown;
+        return UITools.AddReskinDropdownRow(contentScrollViewContent, labelText, options,
+            GetCurrentLegPad(slot), options[0], "legpad", slot,
+            slot.Contains("blue") ? PlayerTeam.Blue : PlayerTeam.Red, PlayerRole.Goalie);
     }
 
     // Creates headgear UI for a team
@@ -527,26 +474,9 @@ public static class GoaliesSection
         VisualElement contentScrollViewContent, string labelText, string type, string team,
         List<ReskinRegistry.ReskinEntry> options)
     {
-        VisualElement row = UITools.CreateConfigurationRow();
-        row.Add(UITools.CreateConfigurationLabel(labelText));
+        // For helmet type, encode goalie context in slot.
+        string slot = (type == "helmet") ? $"goalie_{team}" : team;
 
-        PopupField<ReskinRegistry.ReskinEntry> dropdown = UITools.CreateConfigurationDropdownField();
-        dropdown.RegisterCallback<ChangeEvent<ReskinRegistry.ReskinEntry>>(
-            new EventCallback<ChangeEvent<ReskinRegistry.ReskinEntry>>(evt =>
-            {
-                ReskinRegistry.ReskinEntry chosen = evt.newValue;
-                Plugin.Log($"User picked {type} for {team}: {chosen.Name}");
-                // For helmet type, encode goalie context in slot
-                string slot = (type == "helmet") ? $"goalie_{team}" : team;
-                ReskinProfileManager.SetSelectedReskinInCurrentProfile(chosen, type, slot);
-                ChangingRoomHelper.SetPreviewContext(team == "blue" ? PlayerTeam.Blue : PlayerTeam.Red, PlayerRole.Goalie);
-                ChangingRoomHelper.RefreshPreview();
-            })
-        );
-
-        dropdown.choices = options;
-
-        // Get current selection based on type and team
         ReskinRegistry.ReskinEntry currentEntry = null;
         if (type == "helmet")
             currentEntry = team == "blue"
@@ -557,36 +487,9 @@ public static class GoaliesSection
                 ? ReskinProfileManager.currentProfile.blueGoalieMask
                 : ReskinProfileManager.currentProfile.redGoalieMask;
 
-        dropdown.value = currentEntry ?? options[0];
-        row.Add(dropdown);
-        contentScrollViewContent.Add(row);
-
-        return dropdown;
-    }
-
-    // Helper to create a single leg pad dropdown row
-    private static void CreateLegPadDropdownRow(VisualElement contentScrollViewContent, string labelText, string slot,
-        List<ReskinRegistry.ReskinEntry> options)
-    {
-        VisualElement row = UITools.CreateConfigurationRow();
-        row.Add(UITools.CreateConfigurationLabel(labelText));
-
-        PopupField<ReskinRegistry.ReskinEntry> dropdown = UITools.CreateConfigurationDropdownField();
-        dropdown.RegisterCallback<ChangeEvent<ReskinRegistry.ReskinEntry>>(
-            new EventCallback<ChangeEvent<ReskinRegistry.ReskinEntry>>(evt =>
-            {
-                ReskinRegistry.ReskinEntry chosen = evt.newValue;
-                Plugin.Log($"User picked leg pad: {chosen.Name}");
-                ReskinProfileManager.SetSelectedReskinInCurrentProfile(chosen, "legpad", slot);
-                ChangingRoomHelper.SetPreviewContext(slot.Contains("blue") ? PlayerTeam.Blue : PlayerTeam.Red, PlayerRole.Goalie);
-                ChangingRoomHelper.RefreshPreview();
-            })
-        );
-
-        dropdown.choices = options;
-        dropdown.value = GetCurrentLegPad(slot) ?? options[0];
-        row.Add(dropdown);
-        contentScrollViewContent.Add(row);
+        return UITools.AddReskinDropdownRow(contentScrollViewContent, labelText, options,
+            currentEntry, options[0], type, slot,
+            team == "blue" ? PlayerTeam.Blue : PlayerTeam.Red, PlayerRole.Goalie);
     }
 
     // Gets the current leg pad entry for a slot
