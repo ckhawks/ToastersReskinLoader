@@ -551,6 +551,18 @@ public static class ReskinProfileManager
                     ? (Color)serializableProfile.PuckFXSilhouetteColor
                     : defaultProfile.puckFXSilhouetteColor,
 
+                // Puck Indicator
+                puckIndicatorEnabled = serializableProfile.PuckIndicatorEnabled
+                    ?? defaultProfile.puckIndicatorEnabled,
+                puckIndicatorArrowColor = serializableProfile.PuckIndicatorArrowColor != null
+                    ? (Color)serializableProfile.PuckIndicatorArrowColor
+                    : defaultProfile.puckIndicatorArrowColor,
+                puckIndicatorArrowSize = serializableProfile.PuckIndicatorArrowSize
+                    ?? defaultProfile.puckIndicatorArrowSize,
+                puckIndicatorEdgeMargin = serializableProfile.PuckIndicatorEdgeMargin
+                    ?? defaultProfile.puckIndicatorEdgeMargin,
+                puckIndicatorOpacity = serializableProfile.PuckIndicatorOpacity
+                    ?? defaultProfile.puckIndicatorOpacity,
                 // QoL lives in side-car files now; nothing to copy here.
                 // Gloss moved to the QoL profile (personal/perf) — see QoLConfig.
             };
@@ -760,6 +772,12 @@ public static class ReskinProfileManager
                 PuckFXTrailEndAlpha = currentProfile.puckFXTrailEndAlpha,
                 PuckFXSilhouetteColor = new SerializableColor(currentProfile.puckFXSilhouetteColor),
 
+                // Puck Indicator
+                PuckIndicatorEnabled = currentProfile.puckIndicatorEnabled,
+                PuckIndicatorArrowColor = new SerializableColor(currentProfile.puckIndicatorArrowColor),
+                PuckIndicatorArrowSize = currentProfile.puckIndicatorArrowSize,
+                PuckIndicatorEdgeMargin = currentProfile.puckIndicatorEdgeMargin,
+                PuckIndicatorOpacity = currentProfile.puckIndicatorOpacity,
                 // QoL is persisted by QoLStorage; do not re-include it
                 // in the reskin profile so visual profiles stay shareable.
 
@@ -1002,6 +1020,26 @@ public static class ReskinProfileManager
         SaveProfile();
 
         swappers.PuckFXSwapper.ApplyAll();
+    }
+
+    /// <summary>
+    /// Resets only the Puck Indicator-related properties of the current profile
+    /// to their default values and saves the profile.
+    /// </summary>
+    public static void ResetPuckIndicatorToDefault()
+    {
+        Plugin.Log("Resetting Puck Indicator settings to their default values.");
+
+        var defaultValues = new Profile();
+
+        currentProfile.puckIndicatorEnabled = defaultValues.puckIndicatorEnabled;
+        currentProfile.puckIndicatorArrowColor = defaultValues.puckIndicatorArrowColor;
+        currentProfile.puckIndicatorArrowSize = defaultValues.puckIndicatorArrowSize;
+        currentProfile.puckIndicatorEdgeMargin = defaultValues.puckIndicatorEdgeMargin;
+        currentProfile.puckIndicatorOpacity = defaultValues.puckIndicatorOpacity;
+        SaveProfile();
+
+        swappers.PuckIndicatorSwapper.ApplyAll();
     }
 
     /// <summary>
@@ -1317,6 +1355,12 @@ public static class ReskinProfileManager
         [PresetField("Puck FX", "Silhouette color")]
         public Color puckFXSilhouetteColor = new Color(1f, 1f, 1f, 0.502f);
 
+        // Puck Indicator section
+        public bool puckIndicatorEnabled = false;
+        public Color puckIndicatorArrowColor = Color.white;
+        public float puckIndicatorArrowSize = 30f;
+        public float puckIndicatorEdgeMargin = 60f;
+        public float puckIndicatorOpacity = 0.8f;
         // QoL config lives in its own side-car files now (reskinprofiles/
         // QoL.json + ServerPrefs.json) so visual profiles stay shareable
         // without leaking toggles or per-server credentials. See QoLStorage.
@@ -1627,6 +1671,17 @@ public static class ReskinProfileManager
         [JsonProperty("puckFXSilhouetteColor")]
         public SerializableColor PuckFXSilhouetteColor { get; set; }
 
+        // Puck Indicator
+        [JsonProperty("puckIndicatorEnabled")]
+        public bool? PuckIndicatorEnabled { get; set; }
+        [JsonProperty("puckIndicatorArrowColor")]
+        public SerializableColor PuckIndicatorArrowColor { get; set; }
+        [JsonProperty("puckIndicatorArrowSize")]
+        public float? PuckIndicatorArrowSize { get; set; }
+        [JsonProperty("puckIndicatorEdgeMargin")]
+        public float? PuckIndicatorEdgeMargin { get; set; }
+        [JsonProperty("puckIndicatorOpacity")]
+        public float? PuckIndicatorOpacity { get; set; }
         // QoL is persisted by QoLStorage (config/ToastersReskinLoaderQoL.json
         // + config/ToastersReskinLoaderServerPrefs.json). Do not add a
         // playerQoL property here — it would re-couple the visual reskin
