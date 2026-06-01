@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
+using ToasterReskinLoader.qol;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -15,6 +16,11 @@ namespace ToasterReskinLoader.swappers;
 /// </summary>
 public static class MinimapSwapper
 {
+    // Minimap settings live in the QoL profile now (HUD). Non-null fallback so the per-frame
+    // tinting code can't NRE before the QoL runner has bootstrapped.
+    private static readonly QoLConfig _fallback = new QoLConfig();
+    private static QoLConfig Cfg => QoLRunner.Instance?.Config ?? _fallback;
+
     private static readonly FieldInfo PlayerMapField = typeof(UIMinimap)
         .GetField("playerBodyVisualElementMap", BindingFlags.Instance | BindingFlags.NonPublic);
 
@@ -36,7 +42,7 @@ public static class MinimapSwapper
             var minimap = uiManager.Minimap;
             if (minimap == null) return;
 
-            int rate = ReskinProfileManager.currentProfile.minimapRefreshRate;
+            int rate = Cfg.minimapRefreshRate;
             UpdateRateField?.SetValue(minimap, rate);
         }
         catch (Exception e)
@@ -56,7 +62,7 @@ public static class MinimapSwapper
             if (uiManager == null) return;
             var minimap = uiManager.Minimap;
             if (minimap == null) return;
-            var profile = ReskinProfileManager.currentProfile;
+            var profile = Cfg;
             if (profile == null) return;
 
             // Refresh player elements
@@ -84,7 +90,7 @@ public static class MinimapSwapper
         }
     }
 
-    private static void ApplyPlayerStyle(VisualElement rootEl, PlayerTeam team, bool isLocalPlayer, ReskinProfileManager.Profile profile)
+    private static void ApplyPlayerStyle(VisualElement rootEl, PlayerTeam team, bool isLocalPlayer, QoLConfig profile)
     {
         if (rootEl == null) return;
 
@@ -120,7 +126,7 @@ public static class MinimapSwapper
             playerEl.style.scale = new StyleScale(new Scale(Vector2.one));
     }
 
-    private static void ApplyPuckStyle(VisualElement puckEl, ReskinProfileManager.Profile profile)
+    private static void ApplyPuckStyle(VisualElement puckEl, QoLConfig profile)
     {
         if (puckEl == null) return;
 
@@ -172,7 +178,7 @@ public static class MinimapSwapper
             try
             {
                 if (!playerBody || !playerBody.Player) return;
-                var profile = ReskinProfileManager.currentProfile;
+                var profile = Cfg;
                 if (profile == null) return;
 
                 var map = (Dictionary<PlayerBody, VisualElement>)PlayerMapField?.GetValue(__instance);
@@ -196,7 +202,7 @@ public static class MinimapSwapper
             try
             {
                 if (!puck) return;
-                var profile = ReskinProfileManager.currentProfile;
+                var profile = Cfg;
                 if (profile == null) return;
 
                 var map = (Dictionary<Puck, VisualElement>)PuckMapField?.GetValue(__instance);

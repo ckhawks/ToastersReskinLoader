@@ -180,10 +180,6 @@ namespace ToasterReskinLoader.swappers
             return null;
         }
 
-        // Steam Workshop app id for Puck. Subscribed workshop items install under
-        // <Steam>\steamapps\workshop\content\<APP_ID>\<itemId>\.
-        private const string WORKSHOP_APP_ID = "2994020";
-
         // A workshop mod is "missing files" when its content folder isn't actually
         // on disk — subscribed but not downloaded yet, or the files were deleted.
         // Local plugins always live on disk (that's how they're discovered), so
@@ -211,7 +207,7 @@ namespace ToasterReskinLoader.swappers
                 {
                     string conventional = System.IO.Path.GetFullPath(System.IO.Path.Combine(
                         System.IO.Path.GetFullPath("."), "..", "..",
-                        "workshop", "content", WORKSHOP_APP_ID, id));
+                        "workshop", "content", PathManager.WorkshopAppId, id));
                     if (System.IO.Directory.Exists(conventional)) return conventional;
                 }
             }

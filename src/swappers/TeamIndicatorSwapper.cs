@@ -64,8 +64,7 @@ public static class TeamIndicatorSwapper
     {
         if (_teamColorBar == null) return;
 
-        var profile = ReskinProfileManager.currentProfile;
-        if (profile == null || !profile.teamIndicatorEnabled)
+        if (!(qol.QoLRunner.Instance?.Config?.teamIndicatorEnabled ?? false))
         {
             _teamColorBar.style.display = DisplayStyle.None;
             return;
@@ -83,8 +82,7 @@ public static class TeamIndicatorSwapper
     {
         if (_teamColorBar == null) return;
 
-        var profile = ReskinProfileManager.currentProfile;
-        if (profile == null || !profile.teamIndicatorEnabled)
+        if (!(qol.QoLRunner.Instance?.Config?.teamIndicatorEnabled ?? false))
         {
             _teamColorBar.style.display = DisplayStyle.None;
             return;

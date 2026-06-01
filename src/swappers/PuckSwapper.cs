@@ -66,6 +66,21 @@ public static class PuckSwapper
     }
 
     /// <summary>
+    /// The clean puck normal map applied when a custom skin is active (the vanilla bump
+    /// has embossed lettering). Exposed so the locker-room preview matches the in-game look.
+    /// </summary>
+    public static Texture GetCleanBumpMap()
+    {
+        if (string.IsNullOrEmpty(_puckBumpMapPath)) GetBumpMapPathAndLoad();
+        return TextureManager.GetTextureFromFilePath(_puckBumpMapPath);
+    }
+
+    /// <summary>The vanilla puck base texture, captured the first time a puck is textured.</summary>
+    public static Texture OriginalTexture => _originalTexture;
+    /// <summary>The vanilla puck bump map, captured the first time a puck is textured.</summary>
+    public static Texture OriginalBumpMap => _originalBumpMap;
+
+    /// <summary>
     /// Gets a random puck from the randomizer list.
     /// If randomizer list is empty, returns null to use original/default texture.
     /// </summary>
@@ -103,6 +118,8 @@ public static class PuckSwapper
         [HarmonyPostfix]
         public static void Postfix(Puck __instance)
         {
+            // Backup source for the locker-room preview mesh (primary source is the loaded prefab).
+            PuckPreview.TryCaptureAssets(__instance);
             var puckTexture = GetPuckForRandomizer();
             SetPuckTexture(__instance, puckTexture);
         }

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ToasterReskinLoader.qol;
 using UnityEngine;
 
 namespace ToasterReskinLoader.swappers;
@@ -14,6 +15,9 @@ namespace ToasterReskinLoader.swappers;
 /// </summary>
 public static class GlossSwapper
 {
+    // Gloss settings live in the QoL profile now (personal/perf).
+    private static QoLConfig Cfg => QoLRunner.Instance?.Config;
+
     private class Tracked
     {
         public Material material;
@@ -43,7 +47,7 @@ public static class GlossSwapper
     /// </summary>
     public static void Scan()
     {
-        if (!ReskinProfileManager.currentProfile.glossRemoverEnabled) return;
+        if (!(Cfg?.glossRemoverEnabled ?? false)) return;
 
         var meshes = Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None);
         foreach (var r in meshes) ProcessRenderer(r);
@@ -71,7 +75,7 @@ public static class GlossSwapper
     /// </summary>
     public static void RequestScan()
     {
-        if (!ReskinProfileManager.currentProfile.glossRemoverEnabled) return;
+        if (!(Cfg?.glossRemoverEnabled ?? false)) return;
         if (_scanScheduled) return;
 
         var runner = MonoBehaviourSingleton<UIManager>.Instance;
@@ -169,7 +173,7 @@ public static class GlossSwapper
 
     private static void WritePropertyBlock(Renderer r)
     {
-        float s = Mathf.Clamp01(ReskinProfileManager.currentProfile.glossSmoothness);
+        float s = Mathf.Clamp01(Cfg?.glossSmoothness ?? 0.5f);
         r.GetPropertyBlock(_block);
         _block.SetFloat("_Smoothness", s);
         _block.SetFloat("_Glossiness", s);
@@ -228,7 +232,8 @@ public static class GlossSwapper
 
     private static bool CategoryEnabled(ObjectCategory cat)
     {
-        var p = ReskinProfileManager.currentProfile;
+        var p = Cfg;
+        if (p == null) return false;
         switch (cat)
         {
             case ObjectCategory.Stick: return p.glossAffectSticks;
@@ -247,7 +252,7 @@ public static class GlossSwapper
 
     private static void ApplyGloss(Material mat)
     {
-        float s = Mathf.Clamp01(ReskinProfileManager.currentProfile.glossSmoothness);
+        float s = Mathf.Clamp01(Cfg?.glossSmoothness ?? 0.5f);
         float roughness = 1f - s;
 
         if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", s);

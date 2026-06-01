@@ -26,13 +26,28 @@ public static class PatchMinimapRotation
     private static readonly FieldInfo _playerMapField = typeof(UIMinimap)
         .GetField("playerBodyVisualElementMap", BindingFlags.Instance | BindingFlags.NonPublic);
 
+    // Drop references to UIMinimap instances destroyed by a scene change so the
+    // tracking set doesn't accumulate stale entries.
+    public static void ResetTracking() => PatchUIMinimapUpdate._rotated.Clear();
+
     [HarmonyPatch(typeof(UIMinimap), "Update")]
     private class PatchUIMinimapUpdate
     {
+        // Instances we've rotated. While rotation is off and we haven't touched
+        // an instance, skip the per-frame reflection + per-label UQuery. When
+        // it's switched back to "off" we run one more pass (deg=0) to reset the
+        // minimap + labels to identity, then drop the instance and go quiet.
+        internal static readonly HashSet<UIMinimap> _rotated = new HashSet<UIMinimap>();
+
         private static void Postfix(UIMinimap __instance)
         {
             var cfg = QoLRunner.Instance?.Config;
             if (cfg == null) return;
+
+            bool active = cfg.minimapRotationMode == "rotate90" ||
+                          cfg.minimapRotationMode == "followPlayer";
+            if (!active && !_rotated.Contains(__instance)) return;
+
             if (_minimapField == null) return;
             if (_minimapField.GetValue(__instance) is not VisualElement minimap) return;
 
@@ -76,6 +91,9 @@ public static class PatchMinimapRotation
                         label.style.rotate = new Rotate(new Angle(-deg, AngleUnit.Degree));
                 }
             }
+
+            if (active) _rotated.Add(__instance);
+            else _rotated.Remove(__instance);
         }
     }
 }

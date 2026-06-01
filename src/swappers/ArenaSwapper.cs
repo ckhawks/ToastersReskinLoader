@@ -447,7 +447,10 @@ public static class ArenaSwapper
                 else if (!isBlue && _originalRedGoalFrameColor == null)
                     _originalRedGoalFrameColor = mr.material.GetColor("_BaseColor");
 
-                if (profile.teamColorsEnabled)
+                bool teamEnabled = isBlue
+                    ? TeamColorSwapper.IsEnabled(PlayerTeam.Blue)
+                    : TeamColorSwapper.IsEnabled(PlayerTeam.Red);
+                if (teamEnabled)
                 {
                     Color color = isBlue ? profile.blueTeamColor : profile.redTeamColor;
                     mr.material.SetColor("_BaseColor", color);

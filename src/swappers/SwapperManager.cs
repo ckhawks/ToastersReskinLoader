@@ -192,6 +192,8 @@ public static class SwapperManager
     {
         Plugin.Log($"OnSceneLoaded: {scene.name}");
         ToasterReskinLoader.qol.ArenaVisuals.InvalidateCache();
+        ToasterReskinLoader.qol.PatchMinimapRotation.ResetTracking();
+        ToasterReskinLoader.qol.PatchPlayerUsernameColors.ResetTracking();
         GlossSwapper.ResetScanScheduled();
         if (scene.name.Equals("locker_room"))
         {
@@ -211,7 +213,7 @@ public static class SwapperManager
 
             // Entering a game scene — fetch appearances for all players on the server
             AppearanceAPI.FetchAllPlayersOnServer();
-            ui.sections.UISection.ApplyChatBackground(ReskinProfileManager.currentProfile.chatBackground);
+            ui.sections.UISection.ApplyChatBackground(qol.QoLRunner.Instance?.Config?.chatBackground ?? false);
             MinimapSwapper.ApplyRefreshRate();
         }
 

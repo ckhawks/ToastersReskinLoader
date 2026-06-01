@@ -45,7 +45,8 @@ public static class ToasterReskinLoaderAPI
 
     /// <summary>Whether custom team colors are enabled by the user.</summary>
     public static bool TeamColorsEnabled =>
-        ReskinProfileManager.currentProfile?.teamColorsEnabled ?? false;
+        (ReskinProfileManager.currentProfile?.blueTeamColorEnabled ?? false)
+        || (ReskinProfileManager.currentProfile?.redTeamColorEnabled ?? false);
 
     /// <summary>The user's custom blue team color, or the default if not customized.</summary>
     public static Color BlueTeamColor =>
@@ -73,19 +74,19 @@ public static class ToasterReskinLoaderAPI
 
     /// <summary>The user's minimap puck color.</summary>
     public static Color MinimapPuckColor =>
-        ReskinProfileManager.currentProfile?.minimapPuckColor ?? Color.black;
+        qol.QoLRunner.Instance?.Config?.minimapPuckColor ?? Color.black;
 
     /// <summary>The user's minimap puck icon scale multiplier (default 1.0).</summary>
     public static float MinimapPuckScale =>
-        ReskinProfileManager.currentProfile?.minimapPuckScale ?? 1f;
+        qol.QoLRunner.Instance?.Config?.minimapPuckScale ?? 1f;
 
     /// <summary>The user's minimap refresh rate in updates per second (default 60).</summary>
     public static int MinimapRefreshRate =>
-        ReskinProfileManager.currentProfile?.minimapRefreshRate ?? 60;
+        qol.QoLRunner.Instance?.Config?.minimapRefreshRate ?? 60;
 
     /// <summary>The user's minimap player icon scale multiplier (default 1.0).</summary>
     public static float MinimapPlayerScale =>
-        ReskinProfileManager.currentProfile?.minimapPlayerScale ?? 1f;
+        qol.QoLRunner.Instance?.Config?.minimapPlayerScale ?? 1f;
 
     /// <summary>Call this internally whenever minimap settings change.</summary>
     internal static void NotifyMinimapSettingsChanged()

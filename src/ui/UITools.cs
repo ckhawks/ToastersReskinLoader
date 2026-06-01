@@ -153,6 +153,33 @@ public static class UITools
         return label;
     }
 
+    /// A text input styled to match the config palette (dark fill, white text) so it reads
+    /// as an editable box rather than transparent text.
+    public static TextField CreateConfigurationTextField(string value)
+    {
+        var field = new TextField { value = value ?? "" };
+        field.style.minHeight = 30;
+        field.style.fontSize = 16;
+        field.RegisterCallback<AttachToPanelEvent>(evt =>
+        {
+            var input = field.Q(className: "unity-base-text-field__input");
+            if (input == null) return;
+            input.style.backgroundColor = new StyleColor(new Color(0.15f, 0.15f, 0.15f));
+            input.style.color = Color.white;
+            input.style.paddingLeft = 8;
+            input.style.paddingRight = 8;
+            input.style.borderTopColor = new StyleColor(new Color(0.4f, 0.4f, 0.4f));
+            input.style.borderBottomColor = new StyleColor(new Color(0.4f, 0.4f, 0.4f));
+            input.style.borderLeftColor = new StyleColor(new Color(0.4f, 0.4f, 0.4f));
+            input.style.borderRightColor = new StyleColor(new Color(0.4f, 0.4f, 0.4f));
+            input.style.borderTopWidth = 1;
+            input.style.borderBottomWidth = 1;
+            input.style.borderLeftWidth = 1;
+            input.style.borderRightWidth = 1;
+        });
+        return field;
+    }
+
     public static Toggle CreateConfigurationCheckbox(bool defaultValue)
     {
         Toggle toggle = new Toggle();

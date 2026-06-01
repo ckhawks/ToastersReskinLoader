@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
+using ToasterReskinLoader.presets;
 using ToasterReskinLoader.swappers;
 using UnityEngine;
 
@@ -457,69 +458,28 @@ public static class ReskinProfileManager
                     : defaultProfile.redGoalieShaftTapeColor,
 
                 // Team Colors
-                teamColorsEnabled = serializableProfile.TeamColorsEnabled
-                    ?? defaultProfile.teamColorsEnabled,
+                // Per-team enable; migrate the legacy single toggle to both sides.
+                blueTeamColorEnabled = serializableProfile.BlueTeamColorEnabled
+                    ?? serializableProfile.TeamColorsEnabled
+                    ?? defaultProfile.blueTeamColorEnabled,
+                redTeamColorEnabled = serializableProfile.RedTeamColorEnabled
+                    ?? serializableProfile.TeamColorsEnabled
+                    ?? defaultProfile.redTeamColorEnabled,
                 blueTeamColor = serializableProfile.BlueTeamColor != null
                     ? (Color)serializableProfile.BlueTeamColor
                     : defaultProfile.blueTeamColor,
                 redTeamColor = serializableProfile.RedTeamColor != null
                     ? (Color)serializableProfile.RedTeamColor
                     : defaultProfile.redTeamColor,
-                teamIndicatorEnabled = serializableProfile.TeamIndicatorEnabled
-                    ?? defaultProfile.teamIndicatorEnabled,
+                // teamIndicatorEnabled moved to the QoL profile — see QoLConfig.
                 blueTeamName = serializableProfile.BlueTeamName
                     ?? defaultProfile.blueTeamName,
                 redTeamName = serializableProfile.RedTeamName
                     ?? defaultProfile.redTeamName,
 
-                // Minimap
-                blueMinimapNumberColor = serializableProfile.BlueMinimapNumberColor != null
-                    ? (Color)serializableProfile.BlueMinimapNumberColor
-                    : defaultProfile.blueMinimapNumberColor,
-                redMinimapNumberColor = serializableProfile.RedMinimapNumberColor != null
-                    ? (Color)serializableProfile.RedMinimapNumberColor
-                    : defaultProfile.redMinimapNumberColor,
-                minimapPuckColor = serializableProfile.MinimapPuckColor != null
-                    ? (Color)serializableProfile.MinimapPuckColor
-                    : defaultProfile.minimapPuckColor,
-                minimapPlayerScale = serializableProfile.MinimapPlayerScale
-                    ?? defaultProfile.minimapPlayerScale,
-                minimapPuckScale = serializableProfile.MinimapPuckScale
-                    ?? defaultProfile.minimapPuckScale,
-                minimapRefreshRate = serializableProfile.MinimapRefreshRate
-                    ?? defaultProfile.minimapRefreshRate,
-                localPlayerMinimapIconEnabled = serializableProfile.LocalPlayerMinimapIconEnabled
-                    ?? defaultProfile.localPlayerMinimapIconEnabled,
-                blueLocalPlayerMinimapIconColor = serializableProfile.BlueLocalPlayerMinimapIconColor != null
-                    ? (Color)serializableProfile.BlueLocalPlayerMinimapIconColor
-                    : defaultProfile.blueLocalPlayerMinimapIconColor,
-                redLocalPlayerMinimapIconColor = serializableProfile.RedLocalPlayerMinimapIconColor != null
-                    ? (Color)serializableProfile.RedLocalPlayerMinimapIconColor
-                    : defaultProfile.redLocalPlayerMinimapIconColor,
+                // Minimap moved to the QoL profile (HUD) — see QoLConfig.
 
-                // Chat
-                chatHeight = serializableProfile.ChatHeight
-                    ?? defaultProfile.chatHeight,
-                chatBackground = serializableProfile.ChatBackground
-                    ?? defaultProfile.chatBackground,
-                quickChatX = serializableProfile.QuickChatX
-                    ?? defaultProfile.quickChatX,
-                quickChatY = serializableProfile.QuickChatY
-                    ?? defaultProfile.quickChatY,
-                chatRenderAllEmojis = serializableProfile.ChatRenderAllEmojis
-                    ?? defaultProfile.chatRenderAllEmojis,
-
-                // Shadows (CrispyShadows)
-                crispyShadowsEnabled = serializableProfile.CrispyShadowsEnabled
-                    ?? defaultProfile.crispyShadowsEnabled,
-                shadowResolution = serializableProfile.ShadowResolution
-                    ?? defaultProfile.shadowResolution,
-                shadowDistance = serializableProfile.ShadowDistance
-                    ?? defaultProfile.shadowDistance,
-                shadowCascadeCount = serializableProfile.ShadowCascadeCount
-                    ?? defaultProfile.shadowCascadeCount,
-                shadowSoftShadows = serializableProfile.ShadowSoftShadows
-                    ?? defaultProfile.shadowSoftShadows,
+                // Chat moved to the QoL profile (HUD) — see QoLConfig.
 
                 // Skybox
                 skyboxAtmosphereThickness =
@@ -592,18 +552,7 @@ public static class ReskinProfileManager
                     : defaultProfile.puckFXSilhouetteColor,
 
                 // QoL lives in side-car files now; nothing to copy here.
-
-                // glossiness
-                glossRemoverEnabled = serializableProfile.GlossRemoverEnabled
-                    ?? defaultProfile.glossRemoverEnabled,
-                glossSmoothness = serializableProfile.GlossSmoothness
-                    ?? defaultProfile.glossSmoothness,
-                glossAffectSticks = serializableProfile.GlossAffectSticks
-                    ?? defaultProfile.glossAffectSticks,
-                glossAffectPlayers = serializableProfile.GlossAffectPlayers
-                    ?? defaultProfile.glossAffectPlayers,
-                glossAffectPucks = serializableProfile.GlossAffectPucks
-                    ?? defaultProfile.glossAffectPucks,
+                // Gloss moved to the QoL profile (personal/perf) — see QoLConfig.
             };
 
             Plugin.Log("Reskin profile loaded successfully.");
@@ -628,6 +577,12 @@ public static class ReskinProfileManager
         {
             foreach (var puckRef in serializableProfile.PuckListRef)
             {
+                if (puckRef?.PackId == DefaultPuckPackId)
+                {
+                    puckList.Add(CreateDefaultPuckEntry());
+                    continue;
+                }
+
                 var entry = FindEntryFromReference(puckRef, "puck");
                 if (entry != null)
                 {
@@ -712,7 +667,7 @@ public static class ReskinProfileManager
 
                 // Puck
                 PuckRef = CreateReferenceFromEntry(currentProfile.puck),
-                PuckListRef = currentProfile.puckList.Select(p => CreateReferenceFromEntry(p)).ToList(),
+                PuckListRef = currentProfile.puckList.Select(p => CreatePuckReference(p)).ToList(),
 
                 // Full arena
                 FullArenaEnabled = currentProfile.fullArenaEnabled,
@@ -769,37 +724,16 @@ public static class ReskinProfileManager
                 RedGoalieShaftTapeColor = new SerializableColor(currentProfile.redGoalieShaftTapeColor),
 
                 // Team Colors
-                TeamColorsEnabled = currentProfile.teamColorsEnabled,
+                BlueTeamColorEnabled = currentProfile.blueTeamColorEnabled,
+                RedTeamColorEnabled = currentProfile.redTeamColorEnabled,
                 BlueTeamColor = new SerializableColor(currentProfile.blueTeamColor),
                 RedTeamColor = new SerializableColor(currentProfile.redTeamColor),
-                TeamIndicatorEnabled = currentProfile.teamIndicatorEnabled,
                 BlueTeamName = currentProfile.blueTeamName,
                 RedTeamName = currentProfile.redTeamName,
 
-                // Minimap
-                BlueMinimapNumberColor = new SerializableColor(currentProfile.blueMinimapNumberColor),
-                RedMinimapNumberColor = new SerializableColor(currentProfile.redMinimapNumberColor),
-                MinimapPuckColor = new SerializableColor(currentProfile.minimapPuckColor),
-                MinimapPlayerScale = currentProfile.minimapPlayerScale,
-                MinimapPuckScale = currentProfile.minimapPuckScale,
-                MinimapRefreshRate = currentProfile.minimapRefreshRate,
-                LocalPlayerMinimapIconEnabled = currentProfile.localPlayerMinimapIconEnabled,
-                BlueLocalPlayerMinimapIconColor = new SerializableColor(currentProfile.blueLocalPlayerMinimapIconColor),
-                RedLocalPlayerMinimapIconColor = new SerializableColor(currentProfile.redLocalPlayerMinimapIconColor),
+                // Minimap moved to the QoL profile (HUD) — see QoLConfig.
 
-                // Chat
-                ChatHeight = currentProfile.chatHeight,
-                ChatBackground = currentProfile.chatBackground,
-                QuickChatX = currentProfile.quickChatX,
-                QuickChatY = currentProfile.quickChatY,
-                ChatRenderAllEmojis = currentProfile.chatRenderAllEmojis,
-
-                // Shadows (CrispyShadows)
-                CrispyShadowsEnabled = currentProfile.crispyShadowsEnabled,
-                ShadowResolution = currentProfile.shadowResolution,
-                ShadowDistance = currentProfile.shadowDistance,
-                ShadowCascadeCount = currentProfile.shadowCascadeCount,
-                ShadowSoftShadows = currentProfile.shadowSoftShadows,
+                // Chat moved to the QoL profile (HUD) — see QoLConfig.
 
                 // Skybox
                 SkyboxAtmosphereThickness = currentProfile.skyboxAtmosphereThickness,
@@ -829,12 +763,7 @@ public static class ReskinProfileManager
                 // QoL is persisted by QoLStorage; do not re-include it
                 // in the reskin profile so visual profiles stay shareable.
 
-                // Glossiness
-                GlossRemoverEnabled = currentProfile.glossRemoverEnabled,
-                GlossSmoothness = currentProfile.glossSmoothness,
-                GlossAffectSticks = currentProfile.glossAffectSticks,
-                GlossAffectPlayers = currentProfile.glossAffectPlayers,
-                GlossAffectPucks = currentProfile.glossAffectPucks,
+                // Gloss moved to the QoL profile (personal/perf) — see QoLConfig.
             };
 
             string json = JsonConvert.SerializeObject(serializableProfile, Formatting.Indented);
@@ -976,6 +905,30 @@ public static class ReskinProfileManager
         return entry;
     }
     
+    // Sentinel pack id used to persist the "Default" (vanilla) puck in the randomizer list.
+    // The Default entry has no ParentPack, so a normal reference can't be created for it;
+    // this sentinel lets it round-trip through save/load instead of being silently dropped.
+    private const string DefaultPuckPackId = "__trl_default_puck__";
+
+    /// <summary>True if the entry represents the vanilla/default puck (no pack, no texture).</summary>
+    public static bool IsDefaultPuckEntry(ReskinRegistry.ReskinEntry entry) =>
+        entry != null && entry.ParentPack == null && string.IsNullOrEmpty(entry.Path);
+
+    /// <summary>Creates a fresh "Default" puck entry for the randomizer list.</summary>
+    public static ReskinRegistry.ReskinEntry CreateDefaultPuckEntry() =>
+        new ReskinRegistry.ReskinEntry { Name = "Default", Path = null, Type = "puck" };
+
+    /// <summary>
+    /// Serializes a puck-list entry, emitting a sentinel reference for the Default puck
+    /// (which CreateReferenceFromEntry can't represent because it has no parent pack).
+    /// </summary>
+    private static ReskinReference CreatePuckReference(ReskinRegistry.ReskinEntry entry)
+    {
+        if (IsDefaultPuckEntry(entry))
+            return new ReskinReference { PackId = DefaultPuckPackId, EntryName = "Default" };
+        return CreateReferenceFromEntry(entry);
+    }
+
     /// <summary>
     /// Creates a serializable ReskinReference from a live ReskinEntry.
     /// </summary>
@@ -1061,7 +1014,8 @@ public static class ReskinProfileManager
 
         var defaultValues = new Profile();
 
-        currentProfile.teamColorsEnabled = defaultValues.teamColorsEnabled;
+        currentProfile.blueTeamColorEnabled = defaultValues.blueTeamColorEnabled;
+        currentProfile.redTeamColorEnabled = defaultValues.redTeamColorEnabled;
         currentProfile.blueTeamColor = defaultValues.blueTeamColor;
         currentProfile.redTeamColor = defaultValues.redTeamColor;
         currentProfile.blueTeamName = defaultValues.blueTeamName;
@@ -1073,257 +1027,301 @@ public static class ReskinProfileManager
     }
 
     /// <summary>
-    /// Resets only the shadow-related properties of the current profile
-    /// to their default values and saves the profile.
+    /// Resets the entire profile to defaults (the "start fresh" action in the Presets
+    /// section). Callers should refresh the world afterward (PresetApplier.RefreshWorld).
     /// </summary>
-    public static void ResetShadowsToDefault()
+    public static void ResetAllToDefault()
     {
-        Plugin.Log("Resetting shadow settings to their default values.");
-
-        var defaultValues = new Profile();
-
-        currentProfile.crispyShadowsEnabled = defaultValues.crispyShadowsEnabled;
-        currentProfile.shadowResolution = defaultValues.shadowResolution;
-        currentProfile.shadowDistance = defaultValues.shadowDistance;
-        currentProfile.shadowCascadeCount = defaultValues.shadowCascadeCount;
-        currentProfile.shadowSoftShadows = defaultValues.shadowSoftShadows;
-
-        SaveProfile();
-
-        swappers.CrispyShadowsSwapper.Apply();
-    }
-
-    /// <summary>
-    /// Resets only the Gloss Remover properties of the current profile
-    /// to their default values and saves the profile.
-    /// </summary>
-    public static void ResetGlossRemoverToDefault()
-    {
-        Plugin.Log("Resetting Gloss Remover settings to their default values.");
-
-        var defaultValues = new Profile();
-
-        currentProfile.glossRemoverEnabled = defaultValues.glossRemoverEnabled;
-        currentProfile.glossSmoothness = defaultValues.glossSmoothness;
-        currentProfile.glossAffectSticks = defaultValues.glossAffectSticks;
-        currentProfile.glossAffectPlayers = defaultValues.glossAffectPlayers;
-        currentProfile.glossAffectPucks = defaultValues.glossAffectPucks;
-
-        SaveProfile();
-
-        swappers.GlossSwapper.RestoreAll();
-        if (currentProfile.glossRemoverEnabled)
-            swappers.GlossSwapper.Scan();
-    }
-
-    public static void ResetMinimapToDefault()
-    {
-        Plugin.Log("Resetting minimap settings to their default values.");
-
-        var defaultValues = new Profile();
-
-        currentProfile.blueMinimapNumberColor = defaultValues.blueMinimapNumberColor;
-        currentProfile.redMinimapNumberColor = defaultValues.redMinimapNumberColor;
-        currentProfile.minimapPuckColor = defaultValues.minimapPuckColor;
-        currentProfile.minimapPlayerScale = defaultValues.minimapPlayerScale;
-        currentProfile.minimapPuckScale = defaultValues.minimapPuckScale;
-        currentProfile.minimapRefreshRate = defaultValues.minimapRefreshRate;
-        currentProfile.localPlayerMinimapIconEnabled = defaultValues.localPlayerMinimapIconEnabled;
-        currentProfile.blueLocalPlayerMinimapIconColor = defaultValues.blueLocalPlayerMinimapIconColor;
-        currentProfile.redLocalPlayerMinimapIconColor = defaultValues.redLocalPlayerMinimapIconColor;
-
+        Plugin.Log("Resetting ALL reskin settings to their default values.");
+        currentProfile = new Profile();
         SaveProfile();
     }
+
+    // Minimap reset moved to the QoL profile (UISection).
 
     public class Profile
     {
         // Sticks section
+        [PresetField("Sticks", "Team stick", ReskinType = "stick_attacker")]
         public ReskinRegistry.ReskinEntry stickAttackerBlue;
+        [PresetField("Sticks", "Personal stick", ReskinType = "stick_attacker")]
         public ReskinRegistry.ReskinEntry stickAttackerBluePersonal;
+        [PresetField("Sticks", "Team stick", ReskinType = "stick_attacker")]
         public ReskinRegistry.ReskinEntry stickAttackerRed;
+        [PresetField("Sticks", "Personal stick", ReskinType = "stick_attacker")]
         public ReskinRegistry.ReskinEntry stickAttackerRedPersonal;
+        [PresetField("Sticks", "Team stick", ReskinType = "stick_goalie")]
         public ReskinRegistry.ReskinEntry stickGoalieBlue;
+        [PresetField("Sticks", "Personal stick", ReskinType = "stick_goalie")]
         public ReskinRegistry.ReskinEntry stickGoalieBluePersonal;
+        [PresetField("Sticks", "Team stick", ReskinType = "stick_goalie")]
         public ReskinRegistry.ReskinEntry stickGoalieRed;
+        [PresetField("Sticks", "Personal stick", ReskinType = "stick_goalie")]
         public ReskinRegistry.ReskinEntry stickGoalieRedPersonal;
         
-        // Jerseys
+        // Jerseys (grouped with Skaters / Goalies to match the menu's section layout)
+        [PresetField("Skaters", "Jersey torso", ReskinType = "jersey_torso")]
         public ReskinRegistry.ReskinEntry blueSkaterTorso;
+        [PresetField("Skaters", "Jersey groin", ReskinType = "jersey_groin")]
         public ReskinRegistry.ReskinEntry blueSkaterGroin;
+        [PresetField("Goalies", "Jersey torso", ReskinType = "jersey_torso")]
         public ReskinRegistry.ReskinEntry blueGoalieTorso;
+        [PresetField("Goalies", "Jersey groin", ReskinType = "jersey_groin")]
         public ReskinRegistry.ReskinEntry blueGoalieGroin;
+        [PresetField("Skaters", "Jersey torso", ReskinType = "jersey_torso")]
         public ReskinRegistry.ReskinEntry  redSkaterTorso;
+        [PresetField("Skaters", "Jersey groin", ReskinType = "jersey_groin")]
         public ReskinRegistry.ReskinEntry  redSkaterGroin;
+        [PresetField("Goalies", "Jersey torso", ReskinType = "jersey_torso")]
         public ReskinRegistry.ReskinEntry  redGoalieTorso;
+        [PresetField("Goalies", "Jersey groin", ReskinType = "jersey_groin")]
         public ReskinRegistry.ReskinEntry  redGoalieGroin;
+        [PresetField("Goalies", "Left pad", ReskinType = "legpad", Role = PresetRole.Goalie)]
         public ReskinRegistry.ReskinEntry blueLegPadLeft;
+        [PresetField("Goalies", "Right pad", ReskinType = "legpad", Role = PresetRole.Goalie)]
         public ReskinRegistry.ReskinEntry blueLegPadRight;
+        [PresetField("Goalies", "Left pad", ReskinType = "legpad", Role = PresetRole.Goalie)]
         public ReskinRegistry.ReskinEntry redLegPadLeft;
+        [PresetField("Goalies", "Right pad", ReskinType = "legpad", Role = PresetRole.Goalie)]
         public ReskinRegistry.ReskinEntry redLegPadRight;
+        [PresetField("Goalies", "Pad default color", Role = PresetRole.Goalie)]
         public Color blueLegPadDefaultColor = new Color(0.151f, 0.151f, 0.151f, 1f);
+        [PresetField("Goalies", "Pad default color", Role = PresetRole.Goalie)]
         public Color redLegPadDefaultColor = new Color(0.151f, 0.151f, 0.151f, 1f);
+        [PresetField("Goalies", "Helmet", ReskinType = "helmet")]
         public ReskinRegistry.ReskinEntry blueGoalieHelmet;
+        [PresetField("Goalies", "Helmet", ReskinType = "helmet")]
         public ReskinRegistry.ReskinEntry redGoalieHelmet;
+        [PresetField("Goalies", "Helmet color")]
         public Color blueGoalieHelmetColor = Color.black;
+        [PresetField("Goalies", "Helmet color")]
         public Color redGoalieHelmetColor = Color.black;
 
+        [PresetField("Goalies", "Mask", ReskinType = "goalie_mask")]
         public ReskinRegistry.ReskinEntry blueGoalieMask;
+        [PresetField("Goalies", "Mask", ReskinType = "goalie_mask")]
         public ReskinRegistry.ReskinEntry redGoalieMask;
+        [PresetField("Goalies", "Mask color")]
         public Color blueGoalieMaskColor = Color.black;
+        [PresetField("Goalies", "Mask color")]
         public Color redGoalieMaskColor = Color.black;
 
+        [PresetField("Goalies", "Cage color")]
         public Color blueGoalieCageColor = new Color(0.708f, 0.708f, 0.708f, 1f);
+        [PresetField("Goalies", "Cage color")]
         public Color redGoalieCageColor = new Color(0.708f, 0.708f, 0.708f, 1f);
 
+        [PresetField("Skaters", "Helmet", ReskinType = "helmet")]
         public ReskinRegistry.ReskinEntry blueSkaterHelmet;
+        [PresetField("Skaters", "Helmet", ReskinType = "helmet")]
         public ReskinRegistry.ReskinEntry redSkaterHelmet;
+        [PresetField("Skaters", "Helmet color")]
         public Color blueSkaterHelmetColor = Color.black;
+        [PresetField("Skaters", "Helmet color")]
         public Color redSkaterHelmetColor = Color.black;
 
         // Lettering colors (default: white)
+        [PresetField("Skaters", "Lettering color")]
         public Color blueSkaterLetteringColor = new Color(1f, 1f, 1f, 1f);
+        [PresetField("Skaters", "Lettering color")]
         public Color redSkaterLetteringColor = new Color(1f, 1f, 1f, 1f);
+        [PresetField("Goalies", "Lettering color")]
         public Color blueGoalieLetteringColor = new Color(1f, 1f, 1f, 1f);
+        [PresetField("Goalies", "Lettering color")]
         public Color redGoalieLetteringColor = new Color(1f, 1f, 1f, 1f);
 
         // Jersey number outline (default: width 0 = off, color black)
+        [PresetField("Skaters", "Number outline color")]
         public Color blueSkaterNumberOutlineColor = new Color(0f, 0f, 0f, 1f);
+        [PresetField("Skaters", "Number outline color")]
         public Color redSkaterNumberOutlineColor = new Color(0f, 0f, 0f, 1f);
+        [PresetField("Goalies", "Number outline color")]
         public Color blueGoalieNumberOutlineColor = new Color(0f, 0f, 0f, 1f);
+        [PresetField("Goalies", "Number outline color")]
         public Color redGoalieNumberOutlineColor = new Color(0f, 0f, 0f, 1f);
+        [PresetField("Skaters", "Number outline width")]
         public float blueSkaterNumberOutlineWidth = 0f;
+        [PresetField("Skaters", "Number outline width")]
         public float redSkaterNumberOutlineWidth = 0f;
+        [PresetField("Goalies", "Number outline width")]
         public float blueGoalieNumberOutlineWidth = 0f;
+        [PresetField("Goalies", "Number outline width")]
         public float redGoalieNumberOutlineWidth = 0f;
 
         // Puck section
         public ReskinRegistry.ReskinEntry puck; // Kept for backwards compatibility
+        [PresetField("Puck", "Randomizer pucks", ReskinType = "puck")]
         public List<ReskinRegistry.ReskinEntry> puckList = new List<ReskinRegistry.ReskinEntry>();
 
         // Arena section
+        [PresetField("Arena", "Full arena enabled")]
         public bool fullArenaEnabled = false;
+        [PresetField("Arena", "Full arena bundle")]
         public string fullArenaBundle = "";
+        [PresetField("Arena", "Full arena prefab")]
         public string fullArenaPrefab = "Arena";
-        public string fullArenaWorkshopId = ""; 
+        [PresetField("Arena", "Full arena workshop id")]
+        public string fullArenaWorkshopId = "";
+        [PresetField("Arena", "Crowd enabled")]
         public bool crowdEnabled = true;
+        [PresetField("Arena", "Hangar enabled")]
         public bool hangarEnabled = true;
+        [PresetField("Arena", "Glass enabled")]
         public bool glassEnabled = true;
+        [PresetField("Arena", "Scoreboard enabled")]
         public bool scoreboardEnabled = true;
+        [PresetField("Arena", "Ice", ReskinType = "rink_ice")]
         public ReskinRegistry.ReskinEntry ice;
+        [PresetField("Arena", "Ice smoothness")]
         public float                      iceSmoothness = 0.8f;
+        [PresetField("Arena", "Boards border top")]
         public Color boardsBorderTopColor    = new Color(0, 0.260123f, 1, 1);
+        [PresetField("Arena", "Boards middle")]
         public Color boardsMiddleColor       = new Color(1, 1, 1, 1);
+        [PresetField("Arena", "Boards border bottom")]
         public Color boardsBorderBottomColor = new Color(1, 0.868332f, 0, 1);
+        [PresetField("Arena", "Pillars color")]
         public Color pillarsColor = new Color(0.7830189f, 0.7830189f, 0.7830189f, 1);
+        [PresetField("Arena", "Glass smoothness")]
         public float glassSmoothness = 1f;
+        [PresetField("Arena", "Spectator density")]
         public float spectatorDensity = 0.25f;
+        [PresetField("Arena", "Net", ReskinType = "net")]
         public ReskinRegistry.ReskinEntry net;
 
         // Stick Tape Customization
         // Blue Team Skater
+        [PresetField("Tape", "Blade mode")]
         public string blueSkaterBladeTapeMode = "Unchanged";
+        [PresetField("Tape", "Blade", ReskinType = "tape_attacker_blade")]
         public ReskinRegistry.ReskinEntry blueSkaterBladeTape;
+        [PresetField("Tape", "Blade color")]
         public Color blueSkaterBladeTapeColor = Color.white;
 
+        [PresetField("Tape", "Shaft mode")]
         public string blueSkaterShaftTapeMode = "Unchanged";
+        [PresetField("Tape", "Shaft", ReskinType = "tape_attacker_shaft")]
         public ReskinRegistry.ReskinEntry blueSkaterShaftTape;
+        [PresetField("Tape", "Shaft color")]
         public Color blueSkaterShaftTapeColor = Color.white;
 
         // Blue Team Goalie
+        [PresetField("Tape", "Blade mode")]
         public string blueGoalieBladeTapeMode = "Unchanged";
+        [PresetField("Tape", "Blade", ReskinType = "tape_goalie_blade")]
         public ReskinRegistry.ReskinEntry blueGoalieBladeTape;
+        [PresetField("Tape", "Blade color")]
         public Color blueGoalieBladeTapeColor = Color.white;
 
+        [PresetField("Tape", "Shaft mode")]
         public string blueGoalieShaftTapeMode = "Unchanged";
+        [PresetField("Tape", "Shaft", ReskinType = "tape_goalie_shaft")]
         public ReskinRegistry.ReskinEntry blueGoalieShaftTape;
+        [PresetField("Tape", "Shaft color")]
         public Color blueGoalieShaftTapeColor = Color.white;
 
         // Red Team Skater
+        [PresetField("Tape", "Blade mode")]
         public string redSkaterBladeTapeMode = "Unchanged";
+        [PresetField("Tape", "Blade", ReskinType = "tape_attacker_blade")]
         public ReskinRegistry.ReskinEntry redSkaterBladeTape;
+        [PresetField("Tape", "Blade color")]
         public Color redSkaterBladeTapeColor = Color.white;
 
+        [PresetField("Tape", "Shaft mode")]
         public string redSkaterShaftTapeMode = "Unchanged";
+        [PresetField("Tape", "Shaft", ReskinType = "tape_attacker_shaft")]
         public ReskinRegistry.ReskinEntry redSkaterShaftTape;
+        [PresetField("Tape", "Shaft color")]
         public Color redSkaterShaftTapeColor = Color.white;
 
         // Red Team Goalie
+        [PresetField("Tape", "Blade mode")]
         public string redGoalieBladeTapeMode = "Unchanged";
+        [PresetField("Tape", "Blade", ReskinType = "tape_goalie_blade")]
         public ReskinRegistry.ReskinEntry redGoalieBladeTape;
+        [PresetField("Tape", "Blade color")]
         public Color redGoalieBladeTapeColor = Color.white;
 
+        [PresetField("Tape", "Shaft mode")]
         public string redGoalieShaftTapeMode = "Unchanged";
+        [PresetField("Tape", "Shaft", ReskinType = "tape_goalie_shaft")]
         public ReskinRegistry.ReskinEntry redGoalieShaftTape;
+        [PresetField("Tape", "Shaft color")]
         public Color redGoalieShaftTapeColor = Color.white;
 
-        // UI section
-        public bool teamColorsEnabled = false;
+        // Team colors (per-team enable — replaced the single teamColorsEnabled toggle)
+        [PresetField("Team Colors", "Custom color enabled")]
+        public bool blueTeamColorEnabled = false;
+        [PresetField("Team Colors", "Custom color enabled")]
+        public bool redTeamColorEnabled = false;
+        [PresetField("Team Colors", "Color")]
         public Color blueTeamColor = new Color(0.231f, 0.510f, 0.965f, 1f); // #3b82f6
+        [PresetField("Team Colors", "Color")]
         public Color redTeamColor = new Color(0.820f, 0.200f, 0.200f, 1f);  // #d13333
-        public bool teamIndicatorEnabled = false;
+        // teamIndicatorEnabled moved to the QoL profile — see QoLConfig.
+        [PresetField("Team Colors", "Name")]
         public string blueTeamName = "";
+        [PresetField("Team Colors", "Name")]
         public string redTeamName = "";
 
-        // Minimap section
-        public Color blueMinimapNumberColor = Color.white;
-        public Color redMinimapNumberColor = Color.white;
-        public Color minimapPuckColor = new Color(0f, 0f, 0f, 1f);
-        public float minimapPlayerScale = 1f;
-        public float minimapPuckScale = 1f;
-        public int minimapRefreshRate = 60;
-        public bool localPlayerMinimapIconEnabled = false;
-        public Color blueLocalPlayerMinimapIconColor = new Color(0f, 1f, 0f, 1f);
-        public Color redLocalPlayerMinimapIconColor = new Color(0f, 1f, 0f, 1f);
+        // Minimap moved to the QoL profile (HUD) — see QoLConfig.
 
-        // Chat section
-        public float chatHeight = 300f; // game default
-        public bool chatBackground = false;
-        public float quickChatX = 0f;
-        public float quickChatY = 50f;
-        public bool chatRenderAllEmojis = true;
+        // Chat moved to the QoL profile (HUD) — see QoLConfig.
 
-        // Shadows section (CrispyShadows)
-        public bool crispyShadowsEnabled = true;
-        public int shadowResolution = 8192;
-        public float shadowDistance = 50f;
-        public int shadowCascadeCount = 4;
-        public bool shadowSoftShadows = true;
+        // Shadows moved to the QoL profile (personal/perf) — see QoLConfig.
 
         // Skybox section
+        [PresetField("Skybox", "Atmosphere thickness")]
         public float skyboxAtmosphereThickness = 1;
+        [PresetField("Skybox", "Exposure")]
         public float skyboxExposure = 1.3f;
+        [PresetField("Skybox", "Sun disk")]
         public float skyboxSunDisk = 1;
+        [PresetField("Skybox", "Sun size")]
         public float skyboxSunSize = 0.04f;
+        [PresetField("Skybox", "Sun size convergence")]
         public float skyboxSunSizeConvergence = 5;
+        [PresetField("Skybox", "Ground color")]
         public Color skyboxGroundColor = new Color(0.369f, 0.349f, 0.341f, 1f);
+        [PresetField("Skybox", "Sky tint")]
         public Color skyboxSkyTint = new Color(0.5f, 0.5f, 0.5f, 1f);
 
         // Puck FX section
+        [PresetField("Puck FX", "Outline color")]
         public Color puckFXOutlineColor = Color.white;
+        [PresetField("Puck FX", "Outline kernel size")]
         public int puckFXOutlineKernelSize = 1;
+        [PresetField("Puck FX", "Elevation indicator color")]
         public Color puckFXElevationIndicatorColor = new Color(0f, 0f, 0f, 1f);
+        [PresetField("Puck FX", "Verticality line color")]
         public Color puckFXVerticalityLineColor = new Color(0f, 0f, 0f, 0.8f);
+        [PresetField("Puck FX", "Verticality line start alpha")]
         public float puckFXVerticalityLineStartAlpha = 0.5f;
+        [PresetField("Puck FX", "Verticality line end alpha")]
         public float puckFXVerticalityLineEndAlpha = 1f;
+        [PresetField("Puck FX", "Trail enabled")]
         public bool puckFXTrailEnabled = false;
+        [PresetField("Puck FX", "Trail color")]
         public Color puckFXTrailColor = Color.black;
+        [PresetField("Puck FX", "Trail start width")]
         public float puckFXTrailStartWidth = 0.1f;
+        [PresetField("Puck FX", "Trail end width")]
         public float puckFXTrailEndWidth = 0f;
+        [PresetField("Puck FX", "Trail lifetime")]
         public float puckFXTrailLifetime = 0.6f;
+        [PresetField("Puck FX", "Trail start alpha")]
         public float puckFXTrailStartAlpha = 0f;
+        [PresetField("Puck FX", "Trail end alpha")]
         public float puckFXTrailEndAlpha = 1f;
+        [PresetField("Puck FX", "Silhouette color")]
         public Color puckFXSilhouetteColor = new Color(1f, 1f, 1f, 0.502f);
 
         // QoL config lives in its own side-car files now (reskinprofiles/
         // QoL.json + ServerPrefs.json) so visual profiles stay shareable
         // without leaking toggles or per-server credentials. See QoLStorage.
 
-        // Gloss Remover section
-        public bool glossRemoverEnabled = false;
-        public float glossSmoothness = 0.5f;
-        public bool glossAffectSticks = true;
-        public bool glossAffectPlayers = true;
-        public bool glossAffectPucks = true;
+        // Gloss moved to the QoL profile (personal/perf) — see QoLConfig.
     }
     
     /// <summary>
@@ -1562,62 +1560,26 @@ public static class ReskinProfileManager
         public List<ReskinReference> PuckListRef { get; set; } = new List<ReskinReference>();
 
         // TEAM COLORS
+        // Legacy single toggle — kept for read-only migration into the per-team flags.
         [JsonProperty("teamColorsEnabled")]
         public bool? TeamColorsEnabled { get; set; }
+        [JsonProperty("blueTeamColorEnabled")]
+        public bool? BlueTeamColorEnabled { get; set; }
+        [JsonProperty("redTeamColorEnabled")]
+        public bool? RedTeamColorEnabled { get; set; }
         [JsonProperty("blueTeamColor")]
         public SerializableColor BlueTeamColor { get; set; }
         [JsonProperty("redTeamColor")]
         public SerializableColor RedTeamColor { get; set; }
-        [JsonProperty("teamIndicatorEnabled")]
-        public bool? TeamIndicatorEnabled { get; set; }
+        // teamIndicatorEnabled moved to the QoL profile — see QoLConfig.
         [JsonProperty("blueTeamName")]
         public string BlueTeamName { get; set; }
         [JsonProperty("redTeamName")]
         public string RedTeamName { get; set; }
 
-        // MINIMAP
-        [JsonProperty("blueMinimapNumberColor")]
-        public SerializableColor BlueMinimapNumberColor { get; set; }
-        [JsonProperty("redMinimapNumberColor")]
-        public SerializableColor RedMinimapNumberColor { get; set; }
-        [JsonProperty("minimapPuckColor")]
-        public SerializableColor MinimapPuckColor { get; set; }
-        [JsonProperty("minimapPlayerScale")]
-        public float? MinimapPlayerScale { get; set; }
-        [JsonProperty("minimapPuckScale")]
-        public float? MinimapPuckScale { get; set; }
-        [JsonProperty("minimapRefreshRate")]
-        public int? MinimapRefreshRate { get; set; }
-        [JsonProperty("localPlayerMinimapIconEnabled")]
-        public bool? LocalPlayerMinimapIconEnabled { get; set; }
-        [JsonProperty("blueLocalPlayerMinimapIconColor")]
-        public SerializableColor BlueLocalPlayerMinimapIconColor { get; set; }
-        [JsonProperty("redLocalPlayerMinimapIconColor")]
-        public SerializableColor RedLocalPlayerMinimapIconColor { get; set; }
+        // Minimap moved to the QoL profile (HUD) — see QoLConfig.
 
-        // CHAT
-        [JsonProperty("chatHeight")]
-        public float? ChatHeight { get; set; }
-        [JsonProperty("chatBackground")]
-        public bool? ChatBackground { get; set; }
-        [JsonProperty("quickChatX")]
-        public float? QuickChatX { get; set; }
-        [JsonProperty("quickChatY")]
-        public float? QuickChatY { get; set; }
-        [JsonProperty("chatRenderAllEmojis")]
-        public bool? ChatRenderAllEmojis { get; set; }
-
-        // SHADOWS (CrispyShadows)
-        [JsonProperty("crispyShadowsEnabled")]
-        public bool? CrispyShadowsEnabled { get; set; }
-        [JsonProperty("shadowResolution")]
-        public int? ShadowResolution { get; set; }
-        [JsonProperty("shadowDistance")]
-        public float? ShadowDistance { get; set; }
-        [JsonProperty("shadowCascadeCount")]
-        public int? ShadowCascadeCount { get; set; }
-        [JsonProperty("shadowSoftShadows")]
-        public bool? ShadowSoftShadows { get; set; }
+        // Chat moved to the QoL profile (HUD) — see QoLConfig.
 
         // SKYBOX
         [JsonProperty("skyboxAtmosphereThickness")]
@@ -1671,17 +1633,7 @@ public static class ReskinProfileManager
         // profile to QoL state and re-introduce the share-leak risk the
         // split was meant to avoid.
       
-        // Glossiness
-        [JsonProperty("glossRemoverEnabled")]
-        public bool? GlossRemoverEnabled { get; set; }
-        [JsonProperty("glossSmoothness")]
-        public float? GlossSmoothness { get; set; }
-        [JsonProperty("glossAffectSticks")]
-        public bool? GlossAffectSticks { get; set; }
-        [JsonProperty("glossAffectPlayers")]
-        public bool? GlossAffectPlayers { get; set; }
-        [JsonProperty("glossAffectPucks")]
-        public bool? GlossAffectPucks { get; set; }
+        // Gloss moved to the QoL profile (personal/perf) — see QoLConfig.
     }
 }
 

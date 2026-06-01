@@ -19,6 +19,10 @@ public static class PatchPlayerUsernameColors
     private static readonly FieldInfo _mapField = typeof(UIUsernames)
         .GetField("playerBodyVisualElementMap", BindingFlags.Instance | BindingFlags.NonPublic);
 
+    // Drop references to UIUsernames instances destroyed by a scene change so
+    // the tracking set doesn't accumulate stale entries.
+    public static void ResetTracking() => PatchUpdate._applied.Clear();
+
     private static Color GetTeamColor(PlayerTeam team)
     {
         // Use the user's custom team color when custom team colors are enabled;
@@ -67,12 +71,25 @@ public static class PatchPlayerUsernameColors
     [HarmonyPatch(typeof(UIUsernames), "Update")]
     private class PatchUpdate
     {
+        // Instances we've applied team colors to. While the feature is off and
+        // we haven't touched an instance, skip the per-frame map walk + per-label
+        // UQuery entirely. When it's toggled off we still run one final pass so
+        // ApplyTo restores vanilla, then drop the instance and go quiet.
+        internal static readonly HashSet<UIUsernames> _applied = new HashSet<UIUsernames>();
+
         private static void Postfix(UIUsernames __instance)
         {
+            var cfg = QoLRunner.Instance?.Config;
+            bool enabled = cfg != null && cfg.enablePlayerUsernameTeamColors;
+            if (!enabled && !_applied.Contains(__instance)) return;
+
             if (_mapField == null) return;
             if (_mapField.GetValue(__instance) is not Dictionary<PlayerBody, VisualElement> map) return;
             foreach (var kvp in map)
                 if (kvp.Key != null) ApplyTo(kvp.Value, kvp.Key);
+
+            if (enabled) _applied.Add(__instance);
+            else _applied.Remove(__instance);
         }
     }
 }

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using ToasterReskinLoader.qol;
 using ToasterReskinLoader.swappers;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -8,6 +9,25 @@ namespace ToasterReskinLoader.ui.sections;
 
 public static class GlossSection
 {
+    // Gloss settings live in the QoL profile now (personal/perf).
+    private static QoLConfig Cfg => QoLRunner.Instance?.Config;
+    private static void Save() => QoLRunner.Instance?.SaveAndRefresh();
+
+    private static void ResetGlossToDefault()
+    {
+        var d = new QoLConfig();
+        var c = Cfg;
+        if (c == null) return;
+        c.glossRemoverEnabled = d.glossRemoverEnabled;
+        c.glossSmoothness = d.glossSmoothness;
+        c.glossAffectSticks = d.glossAffectSticks;
+        c.glossAffectPlayers = d.glossAffectPlayers;
+        c.glossAffectPucks = d.glossAffectPucks;
+        Save();
+        GlossSwapper.RestoreAll();
+        if (c.glossRemoverEnabled) GlossSwapper.Scan();
+    }
+
     public static void CreateSection(VisualElement contentScrollViewContent)
     {
         Label description = UITools.CreateConfigurationLabel(
@@ -23,12 +43,12 @@ public static class GlossSection
         VisualElement enableRow = UITools.CreateConfigurationRow();
         enableRow.Add(UITools.CreateConfigurationLabel("Enable Glossiness Control"));
 
-        Toggle enableToggle = UITools.CreateConfigurationCheckbox(ReskinProfileManager.currentProfile.glossRemoverEnabled);
-        enableToggle.value = ReskinProfileManager.currentProfile.glossRemoverEnabled;
+        Toggle enableToggle = UITools.CreateConfigurationCheckbox(Cfg.glossRemoverEnabled);
+        enableToggle.value = Cfg.glossRemoverEnabled;
         enableToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
         {
-            ReskinProfileManager.currentProfile.glossRemoverEnabled = evt.newValue;
-            ReskinProfileManager.SaveProfile();
+            Cfg.glossRemoverEnabled = evt.newValue;
+            Save();
             if (evt.newValue) GlossSwapper.Scan();
             else GlossSwapper.RestoreAll();
             UITools.UpdateDependentControlsState(dependentControls, evt.newValue);
@@ -40,10 +60,10 @@ public static class GlossSection
         VisualElement smoothRow = UITools.CreateConfigurationRow();
         smoothRow.Add(UITools.CreateConfigurationLabel("Gloss"));
         Slider smoothSlider = UITools.CreateConfigurationSlider(0f, 1f,
-            ReskinProfileManager.currentProfile.glossSmoothness, 300);
+            Cfg.glossSmoothness, 300);
         smoothSlider.RegisterCallback<ChangeEvent<float>>(evt =>
         {
-            ReskinProfileManager.currentProfile.glossSmoothness = evt.newValue;
+            Cfg.glossSmoothness = evt.newValue;
             GlossSwapper.ReapplyAll();
         });
         smoothSlider.RegisterCallback<PointerUpEvent>(evt => ReskinProfileManager.SaveProfile());
@@ -81,16 +101,16 @@ public static class GlossSection
 
         AddCategoryToggle(contentScrollViewContent, dependentControls,
             "Sticks",
-            () => ReskinProfileManager.currentProfile.glossAffectSticks,
-            v => ReskinProfileManager.currentProfile.glossAffectSticks = v);
+            () => Cfg.glossAffectSticks,
+            v => Cfg.glossAffectSticks = v);
         AddCategoryToggle(contentScrollViewContent, dependentControls,
             "Players (body, helmet, jersey, etc.)",
-            () => ReskinProfileManager.currentProfile.glossAffectPlayers,
-            v => ReskinProfileManager.currentProfile.glossAffectPlayers = v);
+            () => Cfg.glossAffectPlayers,
+            v => Cfg.glossAffectPlayers = v);
         AddCategoryToggle(contentScrollViewContent, dependentControls,
             "Pucks",
-            () => ReskinProfileManager.currentProfile.glossAffectPucks,
-            v => ReskinProfileManager.currentProfile.glossAffectPucks = v);
+            () => Cfg.glossAffectPucks,
+            v => Cfg.glossAffectPucks = v);
 
         // Reset button
         Button resetButton = new Button
@@ -110,7 +130,7 @@ public static class GlossSection
         UITools.AddHoverEffectsForButton(resetButton);
         resetButton.RegisterCallback<ClickEvent>(evt =>
         {
-            ReskinProfileManager.ResetGlossRemoverToDefault();
+            ResetGlossToDefault();
             GlossSwapper.ReapplyAll();
 
             Label title = (Label)contentScrollViewContent.Children().First();
@@ -120,7 +140,7 @@ public static class GlossSection
         });
         contentScrollViewContent.Add(resetButton);
 
-        UITools.UpdateDependentControlsState(dependentControls, ReskinProfileManager.currentProfile.glossRemoverEnabled);
+        UITools.UpdateDependentControlsState(dependentControls, Cfg.glossRemoverEnabled);
     }
 
     private static void AddCategoryToggle(VisualElement container, List<VisualElement> dependents,
@@ -132,7 +152,7 @@ public static class GlossSection
         toggle.RegisterCallback<ChangeEvent<bool>>(evt =>
         {
             setter(evt.newValue);
-            ReskinProfileManager.SaveProfile();
+            Save();
             GlossSwapper.ReapplyAll();
         });
         row.Add(toggle);
@@ -157,8 +177,8 @@ public static class GlossSection
         UITools.AddHoverEffectsForButton(btn);
         btn.RegisterCallback<ClickEvent>(evt =>
         {
-            ReskinProfileManager.currentProfile.glossSmoothness = value;
-            ReskinProfileManager.SaveProfile();
+            Cfg.glossSmoothness = value;
+            Save();
             GlossSwapper.ReapplyAll();
 
             Label title = (Label)contentRoot.Children().First();
