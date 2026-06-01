@@ -206,6 +206,11 @@ public static class PlayerQoLSection
         Note(contentScrollViewContent,
             "Larger optional enhancements that go beyond small base-game patches.");
 
+        ToggleRow(contentScrollViewContent, "Free-look camera in position select", cfg.enablePositionSelectFreeLook,
+            v => { cfg.enablePositionSelectFreeLook = v; runner.SaveAndRefresh(); });
+        Note(contentScrollViewContent,
+            "Right-click to fly around like a spectator while picking a position; right-click or Esc to return.");
+
         ToggleRow(contentScrollViewContent, "Use enhanced friends list", cfg.enableBetterFriendsList,
             v =>
             {

@@ -80,6 +80,11 @@ public class QoLConfig
     // the first click on a menu button is eaten. Default off so controller
     // players are unaffected. See DisableControllerInput.
     public bool disableControllerInput = false;
+    // Fly the position-select bench camera around like a spectator while you've
+    // joined a team but haven't claimed a position yet. Right-click toggles
+    // free-look. Purely client-local (see PositionSelectFreeLook). Default on;
+    // it only does anything once you right-click during position select.
+    public bool enablePositionSelectFreeLook = true;
 
     // Per-server "trust this mod list" memory. Keyed by "ip:port"; value
     // is the sorted, comma-joined list of mod IDs the user previously

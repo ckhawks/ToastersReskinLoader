@@ -83,6 +83,8 @@ public class QoLProfile
     public bool EnableAutoConnectMatchmaking { get; set; } = false;
     [JsonProperty("disableControllerInput")]
     public bool DisableControllerInput { get; set; } = false;
+    [JsonProperty("enablePositionSelectFreeLook")]
+    public bool EnablePositionSelectFreeLook { get; set; } = true;
 
     // Persisted server browser filter values
     [JsonProperty("browserSearch")]
@@ -209,6 +211,7 @@ public class QoLProfile
             enableEnhancedModMenu = EnableEnhancedModMenu,
             enableAutoConnectMatchmaking = EnableAutoConnectMatchmaking,
             disableControllerInput = DisableControllerInput,
+            enablePositionSelectFreeLook = EnablePositionSelectFreeLook,
             browserSearch = BrowserSearch,
             browserMaxPing = BrowserMaxPing,
             browserShowFull = BrowserShowFull,
@@ -287,6 +290,7 @@ public class QoLProfile
         EnableEnhancedModMenu = c.enableEnhancedModMenu;
         EnableAutoConnectMatchmaking = c.enableAutoConnectMatchmaking;
         DisableControllerInput = c.disableControllerInput;
+        EnablePositionSelectFreeLook = c.enablePositionSelectFreeLook;
         BrowserSearch = c.browserSearch;
         BrowserMaxPing = c.browserMaxPing;
         BrowserShowFull = c.browserShowFull;
