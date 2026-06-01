@@ -14,7 +14,7 @@ namespace ToasterReskinLoader;
 public class Plugin : IPuckPlugin
 {
     public static string MOD_NAME = "ToasterReskinLoader";
-    public static string MOD_VERSION = "2.2.0";
+    public static string MOD_VERSION = "2.2.1";
     public static string MOD_GUID = "pw.stellaric.toaster.reskinloader";
 
     static readonly Harmony harmony = new Harmony(MOD_GUID);
@@ -113,6 +113,9 @@ public class Plugin : IPuckPlugin
                 if (ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.enableAutoConnectMatchmaking ?? false)
                     ToasterReskinLoader.qol.AutoConnectMatchmaking.Enable();
 
+                if (ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.disableControllerInput ?? false)
+                    ToasterReskinLoader.qol.DisableControllerInput.Enable();
+
                 if (ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.enableFrameProfiler ?? false)
                     ToasterReskinLoader.qol.FrameProfiler.Enable();
 
@@ -146,6 +149,7 @@ public class Plugin : IPuckPlugin
             ToasterReskinLoader.qol.beacon.BeaconPing.Disable();
             ToasterReskinLoader.qol.VanillaUIRetheme.Disable();
             ToasterReskinLoader.qol.AutoConnectMatchmaking.Disable();
+            ToasterReskinLoader.qol.DisableControllerInput.Disable();
             ToasterReskinLoader.qol.FrameProfiler.Disable();
             harmony.UnpatchSelf();
             AppearanceAPI.Cleanup();

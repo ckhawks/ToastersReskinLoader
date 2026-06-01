@@ -30,6 +30,7 @@ public sealed class QoLRunner : MonoBehaviour
         UnityEngine.Object.DontDestroyOnLoad(go);
         var runner = go.AddComponent<QoLRunner>();
         try { DevConsole.AttachTo(go); } catch (Exception e) { Debug.LogError("[QoL] DevConsole attach failed: " + e); }
+        try { PositionSelectFreeLook.AttachTo(go); } catch (Exception e) { Debug.LogError("[QoL] PositionSelectFreeLook attach failed: " + e); }
         return runner;
     }
 
