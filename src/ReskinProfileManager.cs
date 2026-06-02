@@ -609,7 +609,7 @@ public static class ReskinProfileManager
         SaveProfile();
     }
 
-    // Minimap reset moved to the QoL profile (HudSection).
+    // Minimap reset moved to the QoL profile (MinimapSection).
 
     // ----------------------------------------------------------------------------------
     //  Serialization

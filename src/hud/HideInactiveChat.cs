@@ -7,7 +7,7 @@
 //                                    fade-out).
 //
 // (Chat background is handled separately by the reskin's "Chat
-// Background" setting — HudSection.ApplyChatBackground.)
+// Background" setting — ChatSection.ApplyChatBackground.)
 //
 // Vanilla adds a "blurred" USS class to expired messages; we still rely
 // on that as the "all messages blurred → hide container" signal but
@@ -26,7 +26,7 @@
 //                                    distracting fast-scroll on the
 //                                    first message after a hide).
 //
-// Toggles are runtime-safe: ChatScoreboardSection calls RefreshVisualState()
+// Toggles are runtime-safe: ChatSection calls RefreshVisualState()
 // on flip so live transitions apply / revert every override immediately.
 
 using System;
@@ -135,7 +135,7 @@ internal static class HideInactiveChat
         SettingsRunner.Instance?.Config?.enableChatNoFade ?? false;
 
     // Single source of truth for the per-toggle visuals. Called from
-    // the ChatScoreboardSection toggle handlers so flips take effect live,
+    // the ChatSection toggle handlers so flips take effect live,
     // and idempotently from UIChat.Show / per-message hooks.
     public static void RefreshVisualState()
     {

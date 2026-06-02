@@ -209,7 +209,7 @@ public static class SwapperManager
             HatSwapper.ClearHats();
             GenderSwapper.ClearCache();
             AppearanceAPI.ClearCache();
-            ui.sections.HudSection.ApplyChatBackground(false);
+            ui.sections.ChatSection.ApplyChatBackground(false);
             Plugin.Log($"Local player caches reset from switching to locker room");
         }
         else
@@ -217,7 +217,7 @@ public static class SwapperManager
 
             // Entering a game scene — fetch appearances for all players on the server
             AppearanceAPI.FetchAllPlayersOnServer();
-            ui.sections.HudSection.ApplyChatBackground(core.SettingsRunner.Instance?.Config?.chatBackground ?? false);
+            ui.sections.ChatSection.ApplyChatBackground(core.SettingsRunner.Instance?.Config?.chatBackground ?? false);
             MinimapSwapper.ApplyRefreshRate();
         }
 

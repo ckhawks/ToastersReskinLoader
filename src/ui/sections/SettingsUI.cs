@@ -52,6 +52,52 @@ internal static class SettingsUI
         return row;
     }
 
+    // Generic labeled slider. onChange fires on every drag step; the caller's
+    // setter is responsible for persisting (typically SettingsRunner.SaveAndRefresh).
+    public static VisualElement SliderRow(VisualElement parent, string label, float min, float max,
+        float current, Action<float> onChange)
+    {
+        var row = UITools.CreateConfigurationRow();
+        row.Add(UITools.CreateConfigurationLabel(label));
+        var slider = UITools.CreateConfigurationSlider(min, max, current, 300);
+        slider.RegisterCallback<ChangeEvent<float>>(evt => onChange(evt.newValue));
+        row.Add(slider);
+        parent.Add(row);
+        return row;
+    }
+
+    // A styled "Reset to default" button that, on click, runs resetState then
+    // rebuilds the section in place (preserving the section-title label that
+    // ReskinManagerMenu adds as the first child).
+    public static Button RebuildButton(VisualElement root, string text, Action resetState,
+        Action<VisualElement> rebuild)
+    {
+        var btn = new Button
+        {
+            text = text,
+            style =
+            {
+                backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f)),
+                unityTextAlign = TextAnchor.MiddleLeft,
+                fontSize = 18,
+                marginTop = 8,
+                paddingTop = 8,
+                paddingBottom = 8,
+                paddingLeft = 15,
+            },
+        };
+        UITools.AddHoverEffectsForButton(btn);
+        btn.RegisterCallback<ClickEvent>(_ =>
+        {
+            resetState?.Invoke();
+            var title = root.childCount > 0 ? root[0] : null;
+            root.Clear();
+            if (title != null) root.Add(title);
+            rebuild(root);
+        });
+        return btn;
+    }
+
     // Shared guard: returns the live SettingsConfig, or null (after rendering a
     // "not ready yet" notice) if the runtime hasn't booted. Every Tweaks
     // section calls this first.

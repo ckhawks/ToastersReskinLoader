@@ -24,8 +24,9 @@ public static class ReskinManagerMenu
     
     // menu state
     public static string[] sections = new []{"Packs", "Presets", "Appearance", "Players", "Sticks", "Tapes", "Skaters", "Goalies", "Pucks", "Puck FX", "Arena",
-        "Skybox", "Shadows", "HUD", "Glossiness",
-        "General", "Chat & Scoreboard", "Server Browser", "Multiplayer", "Input & Camera", "Developer",
+        "Skybox",
+        "Minimap", "Chat", "Scoreboard", "Nameplates", "Rendering", "Interface",
+        "Server Browser", "Multiplayer", "Input & Camera", "Developer",
         "Extras", "About" };
     public static int selectedSectionIndex = 0;
 
@@ -62,10 +63,12 @@ public static class ReskinManagerMenu
         SidebarEntry.Group("Skins", "Players", "Pucks"),
         SidebarEntry.Group("Environment", "Arena", "Skybox", "Puck FX"),
 
-        SidebarEntry.Divider("Display & Game"),
-        // Personal display + performance settings (stored in the settings profile).
-        SidebarEntry.Group("Display", "HUD", "Shadows", "Glossiness"),
-        SidebarEntry.Group("Tweaks", "General", "Chat & Scoreboard", "Server Browser", "Multiplayer", "Input & Camera", "Developer"),
+        SidebarEntry.Divider("Tweaks"),
+        // Personal/local settings (stored in the settings profile), grouped by topic.
+        SidebarEntry.Group("HUD", "Minimap", "Chat", "Scoreboard", "Nameplates"),
+        SidebarEntry.Group("Game", "Rendering", "Interface", "Input & Camera"),
+        SidebarEntry.Group("Online", "Server Browser", "Multiplayer"),
+        SidebarEntry.Item("Developer"),
 
         SidebarEntry.Divider("More"),
         SidebarEntry.Item("Extras"),
@@ -112,7 +115,7 @@ public static class ReskinManagerMenu
             MonoBehaviourSingleton<UIManager>.Instance?.GameState.Hide();
             // Keep minimap visible if on the User Interface tab (for previewing minimap settings)
             // but not in the main menu where the minimap doesn't exist
-            if (sections[selectedSectionIndex] != "HUD" || ChangingRoomHelper.IsInMainMenu())
+            if (sections[selectedSectionIndex] != "Minimap" || ChangingRoomHelper.IsInMainMenu())
                 MonoBehaviourSingleton<UIManager>.Instance?.Minimap.Hide();
         }
 
@@ -426,23 +429,26 @@ public static class ReskinManagerMenu
             case "Puck FX":
                 PuckFXSection.CreateSection(contentScrollViewContent);
                 break;
-            case "Shadows":
-                ShadowsSection.CreateSection(contentScrollViewContent);
-                break;
-            case "Glossiness":
-                GlossSection.CreateSection(contentScrollViewContent);
-                break;
             case "Appearance":
                 PlayerCustomizationSection.CreateSection(contentScrollViewContent);
                 break;
-            case "HUD":
-                HudSection.CreateSection(contentScrollViewContent);
+            case "Minimap":
+                MinimapSection.CreateSection(contentScrollViewContent);
                 break;
-            case "General":
-                GeneralSection.CreateSection(contentScrollViewContent);
+            case "Chat":
+                ChatSection.CreateSection(contentScrollViewContent);
                 break;
-            case "Chat & Scoreboard":
-                ChatScoreboardSection.CreateSection(contentScrollViewContent);
+            case "Scoreboard":
+                ScoreboardSection.CreateSection(contentScrollViewContent);
+                break;
+            case "Nameplates":
+                NameplatesSection.CreateSection(contentScrollViewContent);
+                break;
+            case "Rendering":
+                RenderingSection.CreateSection(contentScrollViewContent);
+                break;
+            case "Interface":
+                InterfaceSection.CreateSection(contentScrollViewContent);
                 break;
             case "Server Browser":
                 ServerBrowserSection.CreateSection(contentScrollViewContent);
@@ -481,9 +487,9 @@ public static class ReskinManagerMenu
             var minimap = MonoBehaviourSingleton<UIManager>.Instance?.Minimap;
             if (minimap != null)
             {
-                if (sections[sectionIndex] == "HUD")
+                if (sections[sectionIndex] == "Minimap")
                     minimap.Show();
-                else if (sections[oldSectionIndex] == "HUD")
+                else if (sections[oldSectionIndex] == "Minimap")
                     minimap.Hide();
             }
         }

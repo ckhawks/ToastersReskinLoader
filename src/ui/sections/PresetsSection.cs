@@ -150,7 +150,26 @@ public static class PresetsSection
         if (packPresets.Count > 0)
         {
             if (showHeadings) _root.Add(GroupHeading("From Packs", 18));
-            RenderPresetGroup(packPresets);
+            RenderPackPresets(packPresets);
+        }
+    }
+
+    // Pack presets grouped by their source pack, alphabetical by pack name, then alphabetical
+    // by preset name within each pack. (SourceLabel is "Pack: <name>"; strip the prefix for
+    // the per-pack heading since we're already under the "From Packs" heading.)
+    private static void RenderPackPresets(List<Preset> presets)
+    {
+        var byPack = presets
+            .GroupBy(p => p.SourceLabel ?? "")
+            .OrderBy(g => g.Key, System.StringComparer.OrdinalIgnoreCase);
+
+        foreach (var pack in byPack)
+        {
+            const string prefix = "Pack: ";
+            string packName = pack.Key.StartsWith(prefix) ? pack.Key.Substring(prefix.Length) : pack.Key;
+            _root.Add(GroupHeading(packName, 14));
+            foreach (var preset in pack.OrderBy(p => p.PresetName, System.StringComparer.OrdinalIgnoreCase))
+                _root.Add(BuildPresetRow(preset));
         }
     }
 

@@ -67,7 +67,7 @@ internal static class UiTextShadow
         catch (Exception e) { Plugin.LogError("[QoL] UiTextShadow init failed: " + e); }
     }
 
-    // Called from GeneralSection on toggle flip.
+    // Called from InterfaceSection on toggle flip.
     public static void RefreshForCurrentState()
     {
         try { ApplyAcrossAllInGameViews(); }
