@@ -781,10 +781,13 @@ public static class AppearanceAPI
                     Plugin.Log($"[AppearanceAPI] New hat unlocked: {hatName} (id={hatId})");
                 }
 
-                string hatList = string.Join(", ", newHats.Select(h => (string)h["name"]));
-                string body = $"TRL: Level {level} — You unlocked: {hatList}";
-                MonoBehaviourSingleton<UIManager>.Instance?.ToastManager?.ShowToast(
-                    "TRL", body, 5f);
+                if (Plugin.modSettings.ShowLevelUpNotifications)
+                {
+                    string hatList = string.Join(", ", newHats.Select(h => (string)h["name"]));
+                    string body = $"TRL: Level {level} — You unlocked: {hatList}";
+                    MonoBehaviourSingleton<UIManager>.Instance?.ToastManager?.ShowToast(
+                        "TRL", body, 5f);
+                }
             }
 
             OnUnlocksChanged?.Invoke();

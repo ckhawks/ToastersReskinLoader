@@ -287,6 +287,17 @@ public static class PlayerCustomizationSection
         contentScrollViewContent.Add(showSkinRow);
         dependentControls.Add(showSkinRow);
 
+        VisualElement levelUpRow = UITools.CreateConfigurationRow();
+        levelUpRow.Add(UITools.CreateConfigurationLabel("Show Level Up Notifications"));
+        Toggle levelUpToggle = UITools.CreateConfigurationCheckbox(Plugin.modSettings.ShowLevelUpNotifications);
+        levelUpToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
+        {
+            Plugin.modSettings.ShowLevelUpNotifications = evt.newValue;
+            Plugin.modSettings.Save();
+        });
+        levelUpRow.Add(levelUpToggle);
+        contentScrollViewContent.Add(levelUpRow);
+
         UITools.UpdateDependentControlsState(dependentControls, Plugin.modSettings.ShowPersonalization);
     }
 
