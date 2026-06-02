@@ -1,23 +1,20 @@
-// File-backed storage for the QoL feature surface.
+// File-backed storage for the settings surface.
 //
-// Two files under <gameRoot>/config/, prefixed with ToastersReskinLoader
-// so they're trivially attributable when sitting next to other plugins'
-// config files:
-//   * ToastersReskinLoaderQoL.json          — toggles + filters + dev-console window state
-//   * ToastersReskinLoaderServerPrefs.json  — savedServerPasswords + trustedServerMods
+// Two files under <gameRoot>/config/, prefixed with ToastersReskinLoader so
+// they're trivially attributable next to other plugins' config files:
+//   * ToastersReskinLoaderQoL.json          — SettingsConfig (toggles + filters + window state)
+//   * ToastersReskinLoaderServerPrefs.json  — per-server credentials (passwords/trusted/fav/blocked)
 //
-// Reskin profiles can be shared without leaking any of the QoL surface;
-// per-server credentials live in their own file so they're obviously not
-// part of the shareable visual profile.
+// SettingsConfig is the on-disk shape directly (no SettingsProfile mirror).
+// The four per-server dicts are [JsonIgnore]d on SettingsConfig and round-trip
+// through ServerPrefsProfile here so credentials stay out of the shareable QoL file.
+// Color fields use ColorJsonConverter to match the old SerializableColor shape.
 
 using System;
 using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
 using UnityEngine;
-
-
-using ToasterReskinLoader.serverbrowser;
 
 namespace ToasterReskinLoader.core;
 
@@ -29,16 +26,21 @@ internal static class SettingsStorage
     internal static readonly string QoLPath         = Path.Combine(Dir, "ToastersReskinLoaderQoL.json");
     internal static readonly string ServerPrefsPath = Path.Combine(Dir, "ToastersReskinLoaderServerPrefs.json");
 
+    private static readonly JsonSerializerSettings JsonSettings = new JsonSerializerSettings
+    {
+        Formatting = Formatting.Indented,
+        Converters = { new ColorJsonConverter() },
+    };
+
     public static SettingsConfig Load()
     {
         try
         {
             Directory.CreateDirectory(Dir);
 
-            var qol   = ReadJson<SettingsProfile>(QoLPath)               ?? new SettingsProfile();
+            var cfg   = ReadJson<SettingsConfig>(QoLPath)        ?? new SettingsConfig();
             var prefs = ReadJson<ServerPrefsProfile>(ServerPrefsPath) ?? new ServerPrefsProfile();
 
-            var cfg = qol.ToConfig();
             cfg.savedServerPasswords = prefs.SavedServerPasswords ?? new Dictionary<string, string>();
             cfg.trustedServerMods    = prefs.TrustedServerMods    ?? new Dictionary<string, string>();
             cfg.favoriteServers      = prefs.FavoriteServers      ?? new Dictionary<string, string>();
@@ -59,9 +61,7 @@ internal static class SettingsStorage
         {
             Directory.CreateDirectory(Dir);
 
-            var qol = new SettingsProfile();
-            qol.FromConfig(cfg);
-            File.WriteAllText(QoLPath, JsonConvert.SerializeObject(qol, Formatting.Indented));
+            File.WriteAllText(QoLPath, JsonConvert.SerializeObject(cfg, JsonSettings));
 
             var prefs = new ServerPrefsProfile
             {
@@ -78,7 +78,7 @@ internal static class SettingsStorage
                     ? new Dictionary<string, string>(cfg.blockedServers)
                     : new Dictionary<string, string>(),
             };
-            File.WriteAllText(ServerPrefsPath, JsonConvert.SerializeObject(prefs, Formatting.Indented));
+            File.WriteAllText(ServerPrefsPath, JsonConvert.SerializeObject(prefs, JsonSettings));
         }
         catch (Exception e) { Plugin.LogError($"[QoL] SettingsStorage.Save failed: {e.Message}"); }
     }
@@ -88,7 +88,7 @@ internal static class SettingsStorage
         if (!File.Exists(path)) return null;
         try
         {
-            return JsonConvert.DeserializeObject<T>(File.ReadAllText(path));
+            return JsonConvert.DeserializeObject<T>(File.ReadAllText(path), JsonSettings);
         }
         catch (Exception e)
         {

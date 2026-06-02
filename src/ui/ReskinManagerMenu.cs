@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using HarmonyLib;
+using ToasterReskinLoader.api;
 using ToasterReskinLoader.swappers;
 using ToasterReskinLoader.ui.sections;
 using UnityEngine;
@@ -23,12 +24,37 @@ public static class ReskinManagerMenu
     public static VisualElement contentScrollViewContent;
     
     // menu state
-    public static string[] sections = new []{"Packs", "Presets", "Appearance", "Players", "Sticks", "Tapes", "Skaters", "Goalies", "Pucks", "Puck FX", "Arena",
+    private static readonly string[] builtinSections = {"Packs", "Presets", "Appearance", "Players", "Sticks", "Tapes", "Skaters", "Goalies", "Pucks", "Puck FX", "Arena",
         "Skybox",
         "Minimap", "Chat", "Scoreboard", "Player HUD", "Rendering", "Interface", "Fixes",
         "Server Browser", "Multiplayer", "Input & Camera", "Developer",
         "Extras", "About" };
+
+    // The built-in sections plus any pages other mods registered via the public API, appended
+    // in registry order. Selection is by index into this combined list, so the order other code
+    // sees must stay consistent while the menu is open (the registry only changes at mod load).
+    public static string[] sections
+    {
+        get
+        {
+            var panels = SettingsPanelRegistry.Panels;
+            if (panels.Count == 0) return builtinSections;
+            var list = new List<string>(builtinSections);
+            foreach (var p in panels) list.Add(p.Title);
+            return list.ToArray();
+        }
+    }
     public static int selectedSectionIndex = 0;
+
+    // Rebuild the sidebar when a mod registers/unregisters a panel after the menu already exists
+    // (the common case — registration at load — is picked up by Create reading the registry).
+    static ReskinManagerMenu()
+    {
+        SettingsPanelRegistry.OnChanged += () =>
+        {
+            if (sidebarScrollView != null) PopulateSidebar();
+        };
+    }
 
     // One row of the sidebar: a bucket divider (labeled separator line), a collapsible group
     // (header + indented child sections), or a standalone top-level section button.
@@ -289,28 +315,8 @@ public static class ReskinManagerMenu
         sidebarScrollView = new ScrollView();
         sidebarScrollView.style.backgroundColor = new StyleColor(new Color(64f / 255f, 64f / 255f, 64f / 255f, 1));
         sidebarContainer.Add(sidebarScrollView);
-        sectionButtons.Clear();
-        foreach (var entry in sidebarLayout)
-        {
-            switch (entry.Kind)
-            {
-                case SidebarKind.Divider:
-                    sidebarScrollView.Add(MakeBucketDivider(entry.Label));
-                    break;
+        PopulateSidebar();
 
-                case SidebarKind.Item:
-                    sidebarScrollView.Add(MakeSectionButton(entry.Label, 15));
-                    break;
-
-                case SidebarKind.Group:
-                    // Grouping now reads as a right-aligned tag on each row, so the buttons sit
-                    // flush (paddingLeft 15) like standalone items rather than indented under a heading.
-                    foreach (var name in entry.Items)
-                        sidebarScrollView.Add(MakeSectionButton(name, 15, entry.Label));
-                    break;
-            }
-        }
-        
         VisualElement contentContainer = new VisualElement();
         contentContainer.style.flexDirection = FlexDirection.Column;
         contentContainer.style.minHeight = new StyleLength(new Length(100, LengthUnit.Percent));
@@ -469,6 +475,27 @@ public static class ReskinManagerMenu
                 ExtrasSection.CreateSection(contentScrollViewContent);
                 break;
             default:
+                // Externally registered panel? Hand it the content container to fill. Wrapped so a
+                // misbehaving third-party panel renders an error note instead of breaking the menu.
+                var external = FindExternalPanel(sections[sectionIndex]);
+                if (external != null)
+                {
+                    try
+                    {
+                        external.Build(contentScrollViewContent);
+                    }
+                    catch (Exception e)
+                    {
+                        Plugin.LogError($"External settings panel '{external.Id}' threw while building: {e}");
+                        var err = new Label("This plugin's settings page failed to load.");
+                        err.style.color = new Color(1f, 0.5f, 0.4f);
+                        err.style.whiteSpace = WhiteSpace.Normal;
+                        err.style.marginTop = 20;
+                        contentScrollViewContent.Add(err);
+                    }
+                    break;
+                }
+
                 Label contentSectionDummyText = new Label("This section does not yet exist.");
                 contentSectionDummyText.style.fontSize = 14;
                 contentSectionDummyText.style.color = Color.white;
@@ -530,6 +557,54 @@ public static class ReskinManagerMenu
         if (tag == null) return;
         tag.style.color = active ? Color.black : Color.white;
         tag.style.opacity = active ? 1f : 0.4f;
+    }
+
+    // (Re)builds the sidebar buttons from the static layout plus any externally registered
+    // panels. Safe to call again after a panel registers/unregisters while the menu is open.
+    private static void PopulateSidebar()
+    {
+        if (sidebarScrollView == null) return;
+
+        sidebarScrollView.Clear();
+        sectionButtons.Clear();
+        foreach (var entry in sidebarLayout)
+        {
+            switch (entry.Kind)
+            {
+                case SidebarKind.Divider:
+                    sidebarScrollView.Add(MakeBucketDivider(entry.Label));
+                    break;
+
+                case SidebarKind.Item:
+                    sidebarScrollView.Add(MakeSectionButton(entry.Label, 15));
+                    break;
+
+                case SidebarKind.Group:
+                    // Grouping now reads as a right-aligned tag on each row, so the buttons sit
+                    // flush (paddingLeft 15) like standalone items rather than indented under a heading.
+                    foreach (var name in entry.Items)
+                        sidebarScrollView.Add(MakeSectionButton(name, 15, entry.Label));
+                    break;
+            }
+        }
+
+        // Pages contributed by other mods, in their own bucket at the bottom. Each panel's
+        // optional Group renders as the per-row right-aligned tag, matching the built-in rows.
+        var panels = SettingsPanelRegistry.Panels;
+        if (panels.Count > 0)
+        {
+            sidebarScrollView.Add(MakeBucketDivider("Plugins"));
+            foreach (var p in panels)
+                sidebarScrollView.Add(MakeSectionButton(p.Title, 15, p.Group));
+        }
+    }
+
+    // Registered external panel whose Title matches the given section name, or null.
+    private static SettingsPanelRegistration FindExternalPanel(string title)
+    {
+        foreach (var p in SettingsPanelRegistry.Panels)
+            if (p.Title == title) return p;
+        return null;
     }
 
     // `tag`, when set, renders a quiet right-aligned label inside the button (e.g. "LIBRARY"

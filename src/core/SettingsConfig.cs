@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 using UnityEngine;
 
 using ToasterReskinLoader.input;
@@ -76,6 +77,7 @@ public class SettingsConfig
     // Default off. Persisted under a renamed JSON key (see SettingsProfile) so that
     // users who already had the original default-on key saved start fresh at
     // off rather than inheriting their old "true".
+    [JsonProperty("enableServerPreviewCacheV2")]
     public bool enableServerPreviewCache = false;
     // Fast server browser scanning. Vanilla pings servers one at a time on a
     // single worker; with N servers and ~1s timeout per dead one, a refresh
@@ -85,10 +87,12 @@ public class SettingsConfig
     // ~3-4s. Off falls back to vanilla's sequential wave; cache seeding
     // still works either way. Default off, persisted under a renamed JSON
     // key (see SettingsProfile) for the same migration reason as the cache toggle.
+    [JsonProperty("enableFastServerBrowserScanningV2")]
     public bool enableFastServerBrowserScanning = false;
-    public int  serverBrowserPingConcurrency = 16;
-    public int  serverBrowserPingConnectTimeoutMs = 1000;
-    public int  serverBrowserPingResponseTimeoutMs = 1000;
+    // In-memory only — never persisted by the old SettingsProfile, so keep it that way.
+    [JsonIgnore] public int  serverBrowserPingConcurrency = 16;
+    [JsonIgnore] public int  serverBrowserPingConnectTimeoutMs = 1000;
+    [JsonIgnore] public int  serverBrowserPingResponseTimeoutMs = 1000;
     public bool enableVanillaUIRetheme = true;
     // Auto-retry into a full server: on ServerFull rejection, poll the
     // target every 5s and rejoin the moment a slot opens. Reuses the
@@ -99,6 +103,7 @@ public class SettingsConfig
     // filters. Lightly biased toward TR-tagged servers. Default off for
     // now — auto-connecting straight off the title screen is a big action
     // to take unprompted.
+    [JsonProperty("enableMainMenuQuickJoinV2")]
     public bool enableMainMenuQuickJoin = false;
     // Title-screen Server Browser button (off by default — vanilla
     // already exposes one inside the Play sub-menu, this is a shortcut
@@ -117,11 +122,13 @@ public class SettingsConfig
     //     amber→red lerp 30s→10s, solid red the last 10s, red flashing in
     //     the final 5s. Only animates during the Warmup / Play phases (see
     //     ScoreboardPolish).
+    [JsonProperty("enableScoreboardMillisecondsV2")]
     public bool enableScoreboardMilliseconds = false;
     public bool enableScoreboardClockColor   = true;
     // Chat visual option: expired messages stay at full opacity instead
     // of fading to the .blurred USS state. Default off — the vanilla fade
     // keeps stale chatter from piling up on screen.
+    [JsonProperty("enableChatNoFadeV2")]
     public bool enableChatNoFade = false;
     public bool enableEnhancedModMenu = true;
     public bool enableAutoConnectMatchmaking = false;
@@ -144,23 +151,23 @@ public class SettingsConfig
     // and emulate the OK-click side effects so the reconnect flow
     // proceeds unattended. Any change to the mod set invalidates the
     // entry and the popup re-appears, forcing the user to re-consent.
-    public Dictionary<string, string> trustedServerMods = new Dictionary<string, string>();
+    [JsonIgnore] public Dictionary<string, string> trustedServerMods = new Dictionary<string, string>();
 
     // Favorite servers, keyed by "ip:port". Value is the last-seen
     // friendly name (cached at favorite time so the QoL management UI
     // can show "ponseguck.net #1" instead of a bare ip:port even when
     // the server isn't currently in the browser list). Favorites always
     // sort to the top of the server browser regardless of column.
-    public Dictionary<string, string> favoriteServers = new Dictionary<string, string>();
+    [JsonIgnore] public Dictionary<string, string> favoriteServers = new Dictionary<string, string>();
 
     // Blocked servers, same shape as favoriteServers. Rows that match
     // an entry get style.display = None in the server browser. Blocking
     // a server also removes it from favorites (mutually exclusive).
-    public Dictionary<string, string> blockedServers = new Dictionary<string, string>();
+    [JsonIgnore] public Dictionary<string, string> blockedServers = new Dictionary<string, string>();
 
     // ip:port -> last-known-good password. Populated when the user opts
     // in via the "Remember password" checkbox on the password popup.
-    public Dictionary<string, string> savedServerPasswords = new Dictionary<string, string>();
+    [JsonIgnore] public Dictionary<string, string> savedServerPasswords = new Dictionary<string, string>();
 
     // Server browser filter state — defaults match the base game's
     // hard-coded values in UIServerBrowser.Awake so first-load behavior
