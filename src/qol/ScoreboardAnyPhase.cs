@@ -14,6 +14,8 @@ using HarmonyLib;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol;
 
 internal static class ScoreboardAnyPhase

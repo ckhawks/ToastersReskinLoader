@@ -10,7 +10,9 @@ using System.IO;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 
-namespace ToasterReskinLoader.qol;
+using ToasterReskinLoader.qol;
+
+namespace ToasterReskinLoader.core;
 
 internal static class DisplaySettingsMigration
 {

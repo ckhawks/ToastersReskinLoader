@@ -64,7 +64,7 @@ public static class TeamIndicatorSwapper
     {
         if (_teamColorBar == null) return;
 
-        if (!(qol.QoLRunner.Instance?.Config?.teamIndicatorEnabled ?? false))
+        if (!(core.QoLRunner.Instance?.Config?.teamIndicatorEnabled ?? false))
         {
             _teamColorBar.style.display = DisplayStyle.None;
             return;
@@ -82,7 +82,7 @@ public static class TeamIndicatorSwapper
     {
         if (_teamColorBar == null) return;
 
-        if (!(qol.QoLRunner.Instance?.Config?.teamIndicatorEnabled ?? false))
+        if (!(core.QoLRunner.Instance?.Config?.teamIndicatorEnabled ?? false))
         {
             _teamColorBar.style.display = DisplayStyle.None;
             return;

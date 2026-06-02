@@ -4,6 +4,8 @@ using System.IO;
 using System.Text.Json;
 using UnityEngine;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol.beacon;
 
 /// Caches the most recent Beacon[] observed from the game's "playerBeaconRttRequest"

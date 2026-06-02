@@ -19,6 +19,8 @@
 using System;
 using System.Collections.Generic;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol;
 
 public static class AutoConnectMatchmaking

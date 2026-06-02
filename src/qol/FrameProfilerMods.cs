@@ -7,6 +7,8 @@ using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol;
 
 // Cross-mod instrumentation. Discovers every loaded mod assembly

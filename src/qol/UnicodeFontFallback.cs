@@ -22,6 +22,8 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.TextCore.Text;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol;
 
 public static class UnicodeFontFallback

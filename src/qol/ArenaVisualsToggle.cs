@@ -11,6 +11,7 @@
 using System;
 using System.IO;
 using ToasterReskinLoader.qol;
+using ToasterReskinLoader.core;
 using UnityEngine;
 
 namespace ToasterReskinLoader.qol;

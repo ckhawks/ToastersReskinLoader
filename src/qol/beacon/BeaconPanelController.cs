@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol.beacon;
 
 /// Wires the panel show/hide to main-menu events:

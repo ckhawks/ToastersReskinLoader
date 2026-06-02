@@ -7,6 +7,8 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Profiling;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol;
 
 // IMGUI overlay that tracks frame times, detects spikes, and helps isolate

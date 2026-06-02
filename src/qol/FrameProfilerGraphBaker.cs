@@ -1,6 +1,8 @@
 using System;
 using UnityEngine;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol;
 
 // A baked graph: instead of issuing N GUI.DrawTexture calls per frame to

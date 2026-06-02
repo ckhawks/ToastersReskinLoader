@@ -24,6 +24,8 @@ using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UIElements;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol;
 
 public static class VanillaUIRetheme

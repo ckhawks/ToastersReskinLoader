@@ -1,5 +1,7 @@
 using HarmonyLib;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol;
 
 [HarmonyPatch(typeof(UIDebug), nameof(UIDebug.SetBuild))]

@@ -17,6 +17,8 @@ using System.Collections.Generic;
 using HarmonyLib;
 using UnityEngine;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol;
 
 [HarmonyPatch(typeof(UIManagerController), "Event_Everyone_OnPlayerGameStateChanged")]

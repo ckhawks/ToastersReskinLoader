@@ -4,6 +4,8 @@ using System.IO;
 using System.Text.Json;
 using UnityEngine;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol.serverbrowser;
 
 /// Persists the last successful ServerPreviewData per endpoint so the

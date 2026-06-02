@@ -64,6 +64,8 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol;
 
 internal sealed class PositionSelectFreeLook : MonoBehaviour

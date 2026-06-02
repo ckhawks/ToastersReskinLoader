@@ -18,7 +18,7 @@ public static class StaminaSwapper
 
     private static float CurrentInterval()
     {
-        int rate = qol.QoLRunner.Instance?.Config?.minimapRefreshRate ?? 60;
+        int rate = core.QoLRunner.Instance?.Config?.minimapRefreshRate ?? 60;
         if (rate <= 0) rate = 60;
         return 1f / rate;
     }

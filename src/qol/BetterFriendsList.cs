@@ -9,6 +9,8 @@ using UI;
 using UnityEngine;
 using UnityEngine.UIElements;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol;
 
 /// <summary>

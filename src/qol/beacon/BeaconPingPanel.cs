@@ -4,6 +4,8 @@ using ToasterReskinLoader.ui;
 using UnityEngine;
 using UnityEngine.UIElements;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol.beacon;
 
 /// Right-side panel injected into the UIPlay view. One row per cached beacon

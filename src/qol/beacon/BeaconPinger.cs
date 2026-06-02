@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol.beacon;
 
 /// Mirrors BackendManagerController.PingBeacon — TCP connect to beacon.host:beacon.tcp_port,

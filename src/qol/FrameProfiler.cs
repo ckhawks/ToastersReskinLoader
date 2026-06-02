@@ -3,6 +3,8 @@ using HarmonyLib;
 using UnityEngine;
 using UnityEngine.Rendering;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol;
 
 // Frame timing / stutter profiler. Ported from the standalone

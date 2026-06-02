@@ -36,6 +36,8 @@ using ToasterReskinLoader.qol.serverbrowser;
 using UnityEngine;
 using UnityEngine.UIElements;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol;
 
 internal static class MainMenuButtons

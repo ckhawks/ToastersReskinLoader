@@ -1,3 +1,5 @@
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol.beacon;
 
 /// Beacon ping panel feature toggle. Enables a right-side panel on the Play

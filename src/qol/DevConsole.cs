@@ -18,6 +18,8 @@ using UnityEngine.InputSystem.Controls;
 using UnityEngine.UIElements;
 using UITK = UnityEngine.UIElements;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol;
 
 public sealed class DevConsole : MonoBehaviour

@@ -4,6 +4,8 @@ using System.Diagnostics;
 using HarmonyLib;
 using UnityEngine;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol;
 
 // Harmony patches that instrument suspected stutter sources. Tracks both

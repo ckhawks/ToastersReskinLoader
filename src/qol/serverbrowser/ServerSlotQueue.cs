@@ -51,6 +51,8 @@ using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UIElements;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol.serverbrowser;
 
 internal static class ServerSlotQueue

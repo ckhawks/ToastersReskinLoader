@@ -16,7 +16,9 @@ using System.IO;
 using Newtonsoft.Json;
 using UnityEngine;
 
-namespace ToasterReskinLoader.qol;
+using ToasterReskinLoader.qol;
+
+namespace ToasterReskinLoader.core;
 
 internal static class QoLStorage
 {

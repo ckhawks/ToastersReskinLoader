@@ -1,5 +1,7 @@
 using System;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol.beacon;
 
 /// Marshals work onto Unity's main thread via the game's ThreadManager singleton.

@@ -13,7 +13,9 @@
 using System;
 using UnityEngine;
 
-namespace ToasterReskinLoader.qol;
+using ToasterReskinLoader.qol;
+
+namespace ToasterReskinLoader.core;
 
 public sealed class QoLRunner : MonoBehaviour
 {

@@ -15,6 +15,8 @@
 using System;
 using UnityEngine.InputSystem;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol;
 
 internal static class DisableControllerInput

@@ -8,7 +8,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace ToasterReskinLoader.qol;
+namespace ToasterReskinLoader.core;
 
 [Serializable]
 public class QoLConfig

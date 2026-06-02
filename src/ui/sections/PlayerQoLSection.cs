@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using ToasterReskinLoader.qol;
+using ToasterReskinLoader.core;
 using ToasterReskinLoader.qol.beacon;
 using UnityEngine;
 using UnityEngine.UIElements;

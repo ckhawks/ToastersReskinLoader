@@ -4,6 +4,8 @@ using HarmonyLib;
 using Unity.Netcode;
 using UnityEngine;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol;
 
 // Client-side network instrumentation. Patches the server→client sync RPC

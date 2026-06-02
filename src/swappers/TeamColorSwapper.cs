@@ -89,7 +89,7 @@ public static class TeamColorSwapper
                         if (!kvp.Key || !kvp.Key.Player) continue;
 
                         // Local player icon color is handled by MinimapSwapper
-                        if (profile != null && (qol.QoLRunner.Instance?.Config?.localPlayerMinimapIconEnabled ?? false) && kvp.Key.Player.IsLocalPlayer)
+                        if (profile != null && (core.QoLRunner.Instance?.Config?.localPlayerMinimapIconEnabled ?? false) && kvp.Key.Player.IsLocalPlayer)
                             continue;
 
                         Color? c = GetOverrideColor(kvp.Key.Player.Team);
@@ -176,7 +176,7 @@ public static class TeamColorSwapper
                 var profile = ReskinProfileManager.currentProfile;
 
                 // Local player icon color takes priority over team color
-                if (profile != null && (qol.QoLRunner.Instance?.Config?.localPlayerMinimapIconEnabled ?? false) && playerBody.Player.IsLocalPlayer)
+                if (profile != null && (core.QoLRunner.Instance?.Config?.localPlayerMinimapIconEnabled ?? false) && playerBody.Player.IsLocalPlayer)
                     return;
 
                 Color? c = GetOverrideColor(playerBody.Player.Team);
@@ -308,7 +308,7 @@ public static class TeamColorSwapper
                 var blueBtn = (Button)_blueButtonField?.GetValue(teamSelect);
                 var redBtn = (Button)_redButtonField?.GetValue(teamSelect);
 
-                bool showCount = ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.enableTeamButtonPlayerCount ?? true;
+                bool showCount = ToasterReskinLoader.core.QoLRunner.Instance?.Config?.enableTeamButtonPlayerCount ?? true;
 
                 int blueCount = showCount && PlayerManager.Instance != null
                     ? PlayerManager.Instance.GetPlayersByTeam(PlayerTeam.Blue).Count : 0;
@@ -512,7 +512,7 @@ public static class TeamColorSwapper
         [HarmonyPrefix]
         public static bool Prefix(ref string __result, string content, bool isSystem, Units units, bool filterProfanity)
         {
-            if (!(qol.QoLRunner.Instance?.Config?.chatRenderAllEmojis ?? true)) return true;
+            if (!(core.QoLRunner.Instance?.Config?.chatRenderAllEmojis ?? true)) return true;
             if (isSystem) return true;
 
             // Non-system: filter rich text and profanity, but skip

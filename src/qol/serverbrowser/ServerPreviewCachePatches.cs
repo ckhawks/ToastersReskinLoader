@@ -35,6 +35,8 @@ using HarmonyLib;
 using ToasterReskinLoader.qol.beacon;
 using UnityEngine.UIElements;
 
+using ToasterReskinLoader.core;
+
 namespace ToasterReskinLoader.qol.serverbrowser;
 
 internal static class ServerPreviewCachePatches
