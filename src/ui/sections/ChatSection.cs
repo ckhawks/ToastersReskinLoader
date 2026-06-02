@@ -32,6 +32,8 @@ public static class ChatSection
             v => { cfg.enableHideInactiveChat = v; runner.SaveAndRefresh(); HideInactiveChat.RefreshVisualState(); });
         SettingsUI.ToggleRow(root, "Keep expired messages at full opacity", cfg.enableChatNoFade,
             v => { cfg.enableChatNoFade = v; runner.SaveAndRefresh(); HideInactiveChat.RefreshVisualState(); });
+        SettingsUI.ToggleRow(root, "Prefix player names with jersey number", cfg.enableNumberedNames,
+            v => { cfg.enableNumberedNames = v; runner.SaveAndRefresh(); });
 
         SettingsUI.Separator(root);
         SettingsUI.Header(root, "Appearance");

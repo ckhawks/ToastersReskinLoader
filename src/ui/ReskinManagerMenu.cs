@@ -25,7 +25,7 @@ public static class ReskinManagerMenu
     // menu state
     public static string[] sections = new []{"Packs", "Presets", "Appearance", "Players", "Sticks", "Tapes", "Skaters", "Goalies", "Pucks", "Puck FX", "Arena",
         "Skybox",
-        "Minimap", "Chat", "Scoreboard", "Nameplates", "Rendering", "Interface",
+        "Minimap", "Chat", "Scoreboard", "Player HUD", "Rendering", "Interface", "Fixes",
         "Server Browser", "Multiplayer", "Input & Camera", "Developer",
         "Extras", "About" };
     public static int selectedSectionIndex = 0;
@@ -65,8 +65,8 @@ public static class ReskinManagerMenu
 
         SidebarEntry.Divider("Tweaks"),
         // Personal/local settings (stored in the settings profile), grouped by topic.
-        SidebarEntry.Group("HUD", "Minimap", "Chat", "Scoreboard", "Nameplates"),
-        SidebarEntry.Group("Game", "Rendering", "Interface", "Input & Camera"),
+        SidebarEntry.Group("HUD", "Minimap", "Chat", "Scoreboard", "Player HUD"),
+        SidebarEntry.Group("Game", "Rendering", "Interface", "Fixes", "Input & Camera"),
         SidebarEntry.Group("Online", "Server Browser", "Multiplayer"),
         SidebarEntry.Item("Developer"),
 
@@ -441,14 +441,17 @@ public static class ReskinManagerMenu
             case "Scoreboard":
                 ScoreboardSection.CreateSection(contentScrollViewContent);
                 break;
-            case "Nameplates":
-                NameplatesSection.CreateSection(contentScrollViewContent);
+            case "Player HUD":
+                PlayerHudSection.CreateSection(contentScrollViewContent);
                 break;
             case "Rendering":
                 RenderingSection.CreateSection(contentScrollViewContent);
                 break;
             case "Interface":
                 InterfaceSection.CreateSection(contentScrollViewContent);
+                break;
+            case "Fixes":
+                FixesSection.CreateSection(contentScrollViewContent);
                 break;
             case "Server Browser":
                 ServerBrowserSection.CreateSection(contentScrollViewContent);

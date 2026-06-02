@@ -26,15 +26,6 @@ public static class InterfaceSection
                 runner.SaveAndRefresh();
                 UiTextShadow.RefreshForCurrentState();
             });
-        SettingsUI.ToggleRow(root, "Restore Unicode glyphs", cfg.enableUnicodeFontFallback,
-            v =>
-            {
-                cfg.enableUnicodeFontFallback = v;
-                runner.SaveAndRefresh();
-                if (v) UnicodeFontFallback.Apply();
-                else   UnicodeFontFallback.Disable();
-            });
-
         SettingsUI.ToggleRow(root, "Use enhanced mod menu (search, sort, badges, update checker)", cfg.enableEnhancedModMenu,
             v => { cfg.enableEnhancedModMenu = v; runner.SaveAndRefresh(); });
         SettingsUI.Note(root,
