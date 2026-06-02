@@ -44,7 +44,7 @@ internal static class FlagMaterialFix
         private static void Prefix(MeshRendererTexturer __instance)
         {
             // Default on; only skip when explicitly disabled. (Config may be null
-            // for the brief window before SettingsRunner bootstraps -- default to
+            // for the brief window before the runtime bootstraps -- default to
             // applying the fix in that case, which is the correct behavior.)
             if (!(Settings.Current?.enableFlagMaterialFix ?? true)) return;
             if (_materialField == null || _isInstantiatedField == null) return;

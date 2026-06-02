@@ -53,7 +53,7 @@ internal static class SettingsUI
     }
 
     // Generic labeled slider. onChange fires on every drag step; the caller's
-    // setter is responsible for persisting (typically SettingsRunner.SaveAndRefresh).
+    // setter is responsible for persisting (typically Settings.Save).
     public static VisualElement SliderRow(VisualElement parent, string label, float min, float max,
         float current, Action<float> onChange)
     {

@@ -2,7 +2,7 @@
 // Persistence goes through SettingsStorage (the QoL.json + ServerPrefs.json side-cars),
 // independent of the shareable reskin profile.
 //
-// SettingsRunner now delegates to this; the long-term goal is to dissolve the
+// The runner that used to hold this is dissolved; TickDriver now owns only the
 // MonoBehaviour entirely (see docs/settings-runtime-refactor-plan.md).
 
 namespace ToasterReskinLoader.core;

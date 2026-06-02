@@ -64,7 +64,7 @@ public class Plugin : IPuckPlugin
                 modSettings = ModSettings.Load();
                 modSettings.Save(); // So that it writes any missing config values immediately
 
-                // Run the display-settings migration FIRST (standalone — doesn't need SettingsRunner).
+                // Run the display-settings migration FIRST (standalone — doesn't need the runtime).
                 // It reads the OLD keys (shadows/gloss/minimap/chat/team-indicator) straight from
                 // ReskinProfile.json, so it must run BEFORE LoadProfile / PuckFXMigrator can
                 // re-save and strip those keys from the profile.
@@ -101,15 +101,22 @@ public class Plugin : IPuckPlugin
                 PartyLineup.Initialize();
                 ToothbrushFilter.ResetIfActive();
 
-                // Player QoL runtime (ported from PoncePlayerInput)
-                ToasterReskinLoader.core.SettingsRunner.Bootstrap();
+                // Load settings, run the runtime feature init batch (each isolated
+                // so one failure doesn't abort the rest), then start the tick host.
+                core.Settings.Load();
+                SafeInit("SavedServerPasswords", ToasterReskinLoader.serverbrowser.SavedServerPasswords.Initialize);
+                SafeInit("ServerSlotQueue", ToasterReskinLoader.serverbrowser.ServerSlotQueue.Initialize);
+                SafeInit("MainMenuButtons", ToasterReskinLoader.serverbrowser.MainMenuButtons.Initialize);
+                SafeInit("ServerBrowserSort", ToasterReskinLoader.serverbrowser.ServerBrowserSort.Initialize);
+                SafeInit("UiTextShadow", ToasterReskinLoader.hud.UiTextShadow.Initialize);
+                core.TickDriver.Bootstrap();
 
                 if (ToasterReskinLoader.core.Settings.Current?.enableEnhancedModMenu ?? true)
                     ModMenuEnhancer.RegisterEvents();
 
                 // Restore Unicode glyph coverage lost in b323 (sort arrows, etc.).
-                // Gated on the QoL toggle; defaults on. Must run after SettingsRunner.Bootstrap
-                // so Instance/Config are populated.
+                // Gated on the QoL toggle; defaults on. Must run after Settings.Load
+                // so config is populated.
                 if (ToasterReskinLoader.core.Settings.Current?.enableUnicodeFontFallback ?? true)
                     ToasterReskinLoader.ui.UnicodeFontFallback.Apply();
 
@@ -167,7 +174,10 @@ public class Plugin : IPuckPlugin
             AppearanceAPI.Cleanup();
             PartyLineup.Cleanup();
             SwapperManager.Destroy();
-            ToasterReskinLoader.core.SettingsRunner.Teardown();
+            try { ToasterReskinLoader.serverbrowser.SavedServerPasswords.Teardown(); } catch { }
+            try { ToasterReskinLoader.serverbrowser.ServerSlotQueue.Teardown(); } catch { }
+            try { ToasterReskinLoader.serverbrowser.MainMenuButtons.Teardown(); } catch { }
+            ToasterReskinLoader.core.TickDriver.Teardown();
             Plugin.Log($"Disabled! Goodbye!");
             MonoBehaviourSingleton<UIManager>.Instance.ToastManager.ShowToast("Warning", "Please restart your game to fully disable Toaster's Reskin Loader.", 5f);
             return true;
@@ -182,6 +192,13 @@ public class Plugin : IPuckPlugin
     public static bool IsDedicatedServer()
     {
         return SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null;
+    }
+
+    // Run a feature's Initialize in isolation so one failure doesn't abort the rest.
+    private static void SafeInit(string name, Action init)
+    {
+        try { init(); }
+        catch (Exception e) { Plugin.LogError($"{name}.Initialize failed: {e}"); }
     }
 
     public static void LogAllPatchedMethods()

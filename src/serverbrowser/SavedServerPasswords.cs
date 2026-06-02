@@ -69,7 +69,7 @@ internal static class SavedServerPasswords
     private static Dictionary<string, string> Store =>
         Settings.Current?.savedServerPasswords;
 
-    // Called once from SettingsRunner.Awake — registers our EventManager
+    // Called once from Plugin.OnEnable — registers our EventManager
     // listeners. Harmony patches in the nested classes are picked up
     // automatically by PatchAll.
     internal static void Initialize()

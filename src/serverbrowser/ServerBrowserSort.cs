@@ -110,7 +110,7 @@ internal static class ServerBrowserSort
     private static readonly HashSet<string> _modDetailsRequested = new HashSet<string>();
     private static bool _initialized;
 
-    // Called once by SettingsRunner.Awake.
+    // Called once by Plugin.OnEnable.
     public static void Initialize()
     {
         if (_initialized) return;
@@ -170,7 +170,7 @@ internal static class ServerBrowserSort
     // each call so it tracks config reloads) with the shared
     // contains/snapshot/name/remove/clear ops; the public APIs below
     // delegate so the two can't drift. Mutations persist via
-    // SettingsRunner.SaveAndRefresh.
+    // Settings.Save.
     private sealed class ServerKeyStore
     {
         private readonly Func<Dictionary<string, string>> _resolve;

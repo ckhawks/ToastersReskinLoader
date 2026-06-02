@@ -19,7 +19,7 @@ internal static class DisplaySettingsMigration
     {
         try
         {
-            // Load the QoL config straight from disk — this runs before SettingsRunner bootstraps so
+            // Load the QoL config straight from disk — this runs before the runtime bootstraps so
             // it can read the reskin profile before anything re-saves (and strips) it.
             var cfg = SettingsStorage.Load();
             if (cfg.displaySettingsMigrated) return;

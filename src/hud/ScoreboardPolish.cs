@@ -51,7 +51,7 @@ internal static class ScoreboardPolish
     {
         // No event subscription needed — the Harmony postfix below
         // captures SetTick directly. Initialize exists for symmetry
-        // with the other QoL modules and to give SettingsRunner a stable
+        // with the other QoL modules and to give the tick host a stable
         // hook point.
     }
 
@@ -69,14 +69,14 @@ internal static class ScoreboardPolish
                 EnsureLabels(__instance);
                 // Render once immediately so the very first SetTick
                 // call shows the polished output without waiting for
-                // the next SettingsRunner.Update tick.
+                // the next TickDriver.Update tick.
                 Render();
             }
             catch (Exception e) { Plugin.LogWarning("[QoL] ScoreboardPolish SetTick postfix failed: " + e.Message); }
         }
     }
 
-    // Called every frame from SettingsRunner.Update so the ms counter
+    // Called every frame from TickDriver.Update so the ms counter
     // rolls between server ticks and the color/flash animate smoothly.
     public static void Tick()
     {

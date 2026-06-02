@@ -716,7 +716,7 @@ public sealed class DevConsole : MonoBehaviour
         {
             if (raw.StartsWith("/"))
             {
-                SettingsRunner.Instance?.SendChatMessage(raw);
+                SendChatMessage(raw);
                 Print("[chat] sent: " + raw);
                 return;
             }
@@ -842,7 +842,7 @@ public sealed class DevConsole : MonoBehaviour
     {
         if (parts.Length < 2) { Print("Usage: chat <text>", LogType.Warning); return; }
         var msg = string.Join(" ", parts.Skip(1));
-        SettingsRunner.Instance?.SendChatMessage(msg);
+        SendChatMessage(msg);
         Print("[chat] " + msg);
     }
 
@@ -909,5 +909,19 @@ public sealed class DevConsole : MonoBehaviour
         if (t == typeof(double)) return double.Parse(raw, System.Globalization.CultureInfo.InvariantCulture);
         if (t.IsEnum) return Enum.Parse(t, raw, ignoreCase: true);
         throw new InvalidCastException($"unsupported type {t.Name}");
+    }
+
+    // Send-from-console / send-from-mod chat entry. Goes through the b310+
+    // ChatManager path; falls back silently if it isn't reachable.
+    // (Moved here from the old SettingsRunner — DevConsole is the only caller.)
+    public static void SendChatMessage(string message)
+    {
+        if (string.IsNullOrEmpty(message)) return;
+        try
+        {
+            var chatMgr = NetworkBehaviourSingleton<ChatManager>.Instance;
+            if (chatMgr != null) chatMgr.Client_SendChatMessage(message, false, false);
+        }
+        catch (Exception e) { Debug.LogError("[QoL] SendChatMessage failed: " + e); }
     }
 }
