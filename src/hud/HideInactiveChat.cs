@@ -26,7 +26,7 @@
 //                                    distracting fast-scroll on the
 //                                    first message after a hide).
 //
-// Toggles are runtime-safe: PlayerQoLSection calls RefreshVisualState()
+// Toggles are runtime-safe: ChatScoreboardSection calls RefreshVisualState()
 // on flip so live transitions apply / revert every override immediately.
 
 using System;
@@ -135,7 +135,7 @@ internal static class HideInactiveChat
         QoLRunner.Instance?.Config?.enableChatNoFade ?? false;
 
     // Single source of truth for the per-toggle visuals. Called from
-    // the PlayerQoLSection toggle handlers so flips take effect live,
+    // the ChatScoreboardSection toggle handlers so flips take effect live,
     // and idempotently from UIChat.Show / per-message hooks.
     public static void RefreshVisualState()
     {

@@ -138,7 +138,7 @@ internal static class SavedServerPasswords
         QoLRunner.Instance?.SaveAndRefresh();
     }
 
-    // Snapshot used by the management UI in PlayerQoLSection.
+    // Snapshot used by the management UI in ServerBrowserSection.
     internal static List<string> SnapshotKeys()
     {
         var store = Store;

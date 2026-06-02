@@ -24,7 +24,9 @@ public static class ReskinManagerMenu
     
     // menu state
     public static string[] sections = new []{"Packs", "Presets", "Appearance", "Players", "Sticks", "Tapes", "Skaters", "Goalies", "Pucks", "Puck FX", "Arena",
-        "Skybox", "Shadows", "HUD", "Quality of Life", "Glossiness", "Extras", "About" };
+        "Skybox", "Shadows", "HUD", "Glossiness",
+        "General", "Chat & Scoreboard", "Server Browser", "Multiplayer", "Input & Camera", "Developer",
+        "Extras", "About" };
     public static int selectedSectionIndex = 0;
 
     // One row of the sidebar: a bucket divider (labeled separator line), a collapsible group
@@ -61,9 +63,9 @@ public static class ReskinManagerMenu
         SidebarEntry.Group("Environment", "Arena", "Skybox", "Puck FX"),
 
         SidebarEntry.Divider("Display & Game"),
-        // Personal display + performance settings (stored in the QoL profile).
+        // Personal display + performance settings (stored in the settings profile).
         SidebarEntry.Group("Display", "HUD", "Shadows", "Glossiness"),
-        SidebarEntry.Item("Quality of Life"),
+        SidebarEntry.Group("Tweaks", "General", "Chat & Scoreboard", "Server Browser", "Multiplayer", "Input & Camera", "Developer"),
 
         SidebarEntry.Divider("More"),
         SidebarEntry.Item("Extras"),
@@ -190,6 +192,15 @@ public static class ReskinManagerMenu
         title.style.fontSize = 30;
         title.style.color = Color.white;
         titleContainer.Add(title);
+        // Version shown alongside the title (also surfaced in the About section).
+        Label versionLabel = new Label($"v{Plugin.MOD_VERSION}");
+        versionLabel.style.fontSize = 14;
+        versionLabel.style.color = Color.white;
+        versionLabel.style.opacity = 0.5f;
+        versionLabel.style.unityTextAlign = TextAnchor.LowerLeft;
+        versionLabel.style.marginLeft = 8;
+        versionLabel.style.marginBottom = 5;
+        titleContainer.Add(versionLabel);
         Button reloadButton = new Button();
         reloadButton.text = "Reload";
         reloadButton.style.backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f));
@@ -422,8 +433,23 @@ public static class ReskinManagerMenu
             case "HUD":
                 HudSection.CreateSection(contentScrollViewContent);
                 break;
-            case "Quality of Life":
-                PlayerQoLSection.CreateSection(contentScrollViewContent);
+            case "General":
+                GeneralSection.CreateSection(contentScrollViewContent);
+                break;
+            case "Chat & Scoreboard":
+                ChatScoreboardSection.CreateSection(contentScrollViewContent);
+                break;
+            case "Server Browser":
+                ServerBrowserSection.CreateSection(contentScrollViewContent);
+                break;
+            case "Multiplayer":
+                MultiplayerSection.CreateSection(contentScrollViewContent);
+                break;
+            case "Input & Camera":
+                InputCameraSection.CreateSection(contentScrollViewContent);
+                break;
+            case "Developer":
+                DeveloperSection.CreateSection(contentScrollViewContent);
                 break;
             case "Extras":
                 ExtrasSection.CreateSection(contentScrollViewContent);
@@ -477,6 +503,19 @@ public static class ReskinManagerMenu
             ? new Color(0.7f, 0.7f, 0.7f)
             : new Color(0.25f, 0.25f, 0.25f));
         button.style.color = selected ? Color.black : Color.white;
+        // The right-aligned tag doesn't reliably inherit the button color, so set it
+        // explicitly here too (covers the selected/idle states; hover is handled inline).
+        ApplyTagColor(button, selected);
+    }
+
+    // Tints the optional right-aligned tag label: solid black when the row is
+    // hovered/selected, dimmed white otherwise so it reads as a quiet secondary tag.
+    private static void ApplyTagColor(Button button, bool active)
+    {
+        var tag = button.Q<Label>();
+        if (tag == null) return;
+        tag.style.color = active ? Color.black : Color.white;
+        tag.style.opacity = active ? 1f : 0.4f;
     }
 
     // `tag`, when set, renders a quiet right-aligned label inside the button (e.g. "LIBRARY"
@@ -496,8 +535,8 @@ public static class ReskinManagerMenu
         if (tag != null)
         {
             // Absolutely positioned so it doesn't disturb the button's own left-aligned text.
-            // No explicit color: it inherits the button's text color (which flips on hover /
-            // selection), dimmed via opacity so it reads as a secondary tag in both states.
+            // Color/opacity are driven by ApplyTagColor so the tag goes solid black on
+            // hover/selection and stays a dimmed secondary tag otherwise.
             var tagLabel = new Label(tag.ToUpperInvariant());
             tagLabel.style.position = Position.Absolute;
             tagLabel.style.right = 20;
@@ -506,7 +545,6 @@ public static class ReskinManagerMenu
             tagLabel.style.unityTextAlign = TextAnchor.MiddleRight;
             tagLabel.style.fontSize = 10;
             tagLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
-            tagLabel.style.opacity = 0.4f;
             tagLabel.pickingMode = PickingMode.Ignore;
             button.Add(tagLabel);
         }
@@ -517,6 +555,7 @@ public static class ReskinManagerMenu
         {
             button.style.backgroundColor = Color.white;
             button.style.color = Color.black;
+            ApplyTagColor(button, true);
         });
         button.RegisterCallback<MouseLeaveEvent>(_ =>
             ApplySidebarButtonStyle(button, name == sections[selectedSectionIndex]));
