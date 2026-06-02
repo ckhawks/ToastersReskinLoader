@@ -342,7 +342,7 @@ public static class ReskinMenu
         closeButton.style.paddingLeft = 16;
         closeButton.style.paddingRight = 16;
         UITools.AddHoverEffectsForButton(closeButton);
-        closeButton.RegisterCallback<ClickEvent>(QuickChatPlusSettingsCloseButtonClickHandler);
+        closeButton.RegisterCallback<ClickEvent>(CloseButtonClickHandler);
         
         bottomRow.Add(closeButton);
         mainContainer.Add(bottomRow);
@@ -352,7 +352,7 @@ public static class ReskinMenu
         MonoBehaviourSingleton<UIManager>.Instance.RootVisualElement.Add(rootContainer);
         return;
 
-        static void QuickChatPlusSettingsCloseButtonClickHandler(ClickEvent evt)
+        static void CloseButtonClickHandler(ClickEvent evt)
         {
             Hide();
         }
@@ -384,7 +384,7 @@ public static class ReskinMenu
                 PlayersSection.CreateSection(contentScrollViewContent);
                 break;
             case "Skaters":
-                SkaterSection.CreateSection(contentScrollViewContent);
+                SkatersSection.CreateSection(contentScrollViewContent);
                 break;
             case "Sticks":
                 SticksSection.CreateSection(contentScrollViewContent);
@@ -420,7 +420,7 @@ public static class ReskinMenu
                 PlayerCustomizationSection.CreateSection(contentScrollViewContent);
                 break;
             case "HUD":
-                UISection.CreateSection(contentScrollViewContent);
+                HudSection.CreateSection(contentScrollViewContent);
                 break;
             case "Quality of Life":
                 PlayerQoLSection.CreateSection(contentScrollViewContent);

@@ -81,8 +81,8 @@ public class Plugin : IPuckPlugin
                 ReskinMenuAccessButtons.Setup();
                 AppearanceAPI.Initialize(MonoBehaviourSingleton<UIManager>.Instance);
                 PlayerCustomizationSection.SubscribeToServerLoad();
-                UISection.ApplyChatHeight(qol.QoLRunner.Instance?.Config?.chatHeight ?? 300f);
-                UISection.ApplyQuickChatPosition();
+                HudSection.ApplyChatHeight(qol.QoLRunner.Instance?.Config?.chatHeight ?? 300f);
+                HudSection.ApplyQuickChatPosition();
                 MinimapSwapper.ApplyRefreshRate();
                 ToasterReskinLoader.qol.WorkshopUpdateChecker.Initialize();
                 SwapperManager.SetupMatchmakingListeners();

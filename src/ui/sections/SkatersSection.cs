@@ -5,7 +5,7 @@ using UnityEngine.UIElements;
 
 namespace ToasterReskinLoader.ui.sections;
 
-public static class SkaterSection
+public static class SkatersSection
 {
     // Helper to set enabled state of all sliders in a color configuration row
     private static void SetColorSliderEnabled(VisualElement colorConfigSection, bool enabled)

@@ -7,7 +7,7 @@
 //                                    fade-out).
 //
 // (Chat background is handled separately by the reskin's "Chat
-// Background" setting — UISection.ApplyChatBackground.)
+// Background" setting — HudSection.ApplyChatBackground.)
 //
 // Vanilla adds a "blurred" USS class to expired messages; we still rely
 // on that as the "all messages blurred → hide container" signal but

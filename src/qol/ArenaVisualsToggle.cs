@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace ToasterReskinLoader.qol;
 
-public static class ArenaVisuals
+public static class ArenaVisualsToggle
 {
     private static Material _originalSkybox;
     private static Material _baseGameSkybox;

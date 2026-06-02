@@ -20,8 +20,8 @@ public sealed class QoLRunner : MonoBehaviour
     internal static QoLRunner _instance;
     public static QoLRunner Instance => _instance;
 
-    private QoLConfig _cmd = new QoLConfig();
-    public QoLConfig Config => _cmd;
+    private QoLConfig _config = new QoLConfig();
+    public QoLConfig Config => _config;
 
     public static QoLRunner Bootstrap()
     {
@@ -77,7 +77,7 @@ public sealed class QoLRunner : MonoBehaviour
         // the period clock keeps interpolating milliseconds during play.
         try { ScoreboardPolish.Tick(); } catch { }
 
-        if (_cmd == null || !_cmd.enableEscCloseMenus) return;
+        if (_config == null || !_config.enableEscCloseMenus) return;
         if (DevConsole.Instance != null && DevConsole.Instance.IsOpen) return;
 
         var root = ToasterReskinLoader.ui.ReskinMenu.rootContainer;
@@ -97,14 +97,14 @@ public sealed class QoLRunner : MonoBehaviour
 
     public void ReloadFromProfile()
     {
-        _cmd = QoLStorage.Load();
+        _config = QoLStorage.Load();
     }
 
     public void SaveAndRefresh()
     {
         try
         {
-            QoLStorage.Save(_cmd);
+            QoLStorage.Save(_config);
         }
         catch (Exception e) { Debug.LogError("[QoL] SaveAndRefresh failed: " + e); }
     }

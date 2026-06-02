@@ -191,7 +191,7 @@ public static class SwapperManager
     public static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         Plugin.Log($"OnSceneLoaded: {scene.name}");
-        ToasterReskinLoader.qol.ArenaVisuals.InvalidateCache();
+        ToasterReskinLoader.qol.ArenaVisualsToggle.InvalidateCache();
         ToasterReskinLoader.qol.PatchMinimapRotation.ResetTracking();
         ToasterReskinLoader.qol.PatchPlayerUsernameColors.ResetTracking();
         GlossSwapper.ResetScanScheduled();
@@ -205,7 +205,7 @@ public static class SwapperManager
             HatSwapper.ClearHats();
             GenderSwapper.ClearCache();
             AppearanceAPI.ClearCache();
-            ui.sections.UISection.ApplyChatBackground(false);
+            ui.sections.HudSection.ApplyChatBackground(false);
             Plugin.Log($"Local player caches reset from switching to locker room");
         }
         else
@@ -213,7 +213,7 @@ public static class SwapperManager
 
             // Entering a game scene — fetch appearances for all players on the server
             AppearanceAPI.FetchAllPlayersOnServer();
-            ui.sections.UISection.ApplyChatBackground(qol.QoLRunner.Instance?.Config?.chatBackground ?? false);
+            ui.sections.HudSection.ApplyChatBackground(qol.QoLRunner.Instance?.Config?.chatBackground ?? false);
             MinimapSwapper.ApplyRefreshRate();
         }
 

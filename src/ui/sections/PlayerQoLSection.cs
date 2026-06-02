@@ -245,16 +245,16 @@ public static class PlayerQoLSection
 
         ToggleRow(contentScrollViewContent, "Disable all arena visuals",
             cfg.disableArenaVisuals,
-            v => { cfg.disableArenaVisuals = v; runner.SaveAndRefresh(); ToasterReskinLoader.qol.ArenaVisuals.ApplyState(cfg); });
+            v => { cfg.disableArenaVisuals = v; runner.SaveAndRefresh(); ToasterReskinLoader.qol.ArenaVisualsToggle.ApplyState(cfg); });
 
         ToggleRow(contentScrollViewContent, "Disable arena props", cfg.disableArenaProps,
-            v => { cfg.disableArenaProps = v; runner.SaveAndRefresh(); ToasterReskinLoader.qol.ArenaVisuals.ApplyPartial(cfg); });
+            v => { cfg.disableArenaProps = v; runner.SaveAndRefresh(); ToasterReskinLoader.qol.ArenaVisualsToggle.ApplyPartial(cfg); });
         ToggleRow(contentScrollViewContent, "Disable arena lights", cfg.disableArenaLights,
-            v => { cfg.disableArenaLights = v; runner.SaveAndRefresh(); ToasterReskinLoader.qol.ArenaVisuals.ApplyPartial(cfg); });
+            v => { cfg.disableArenaLights = v; runner.SaveAndRefresh(); ToasterReskinLoader.qol.ArenaVisualsToggle.ApplyPartial(cfg); });
         ToggleRow(contentScrollViewContent, "Disable custom skybox", cfg.disableArenaSkybox,
-            v => { cfg.disableArenaSkybox = v; runner.SaveAndRefresh(); ToasterReskinLoader.qol.ArenaVisuals.ApplyPartial(cfg); });
+            v => { cfg.disableArenaSkybox = v; runner.SaveAndRefresh(); ToasterReskinLoader.qol.ArenaVisualsToggle.ApplyPartial(cfg); });
         ToggleRow(contentScrollViewContent, "Disable arena particles", cfg.disableArenaParticles,
-            v => { cfg.disableArenaParticles = v; runner.SaveAndRefresh(); ToasterReskinLoader.qol.ArenaVisuals.ApplyPartial(cfg); });
+            v => { cfg.disableArenaParticles = v; runner.SaveAndRefresh(); ToasterReskinLoader.qol.ArenaVisualsToggle.ApplyPartial(cfg); });
 
         var audioRow = UITools.CreateConfigurationRow();
         audioRow.Add(UITools.CreateConfigurationLabel("Arena ambient audio volume"));
@@ -263,7 +263,7 @@ public static class PlayerQoLSection
         {
             cfg.arenaAudioVolume = evt.newValue;
             runner.SaveAndRefresh();
-            ToasterReskinLoader.qol.ArenaVisuals.ApplyPartial(cfg);
+            ToasterReskinLoader.qol.ArenaVisualsToggle.ApplyPartial(cfg);
         });
         audioRow.Add(audioSlider);
         contentScrollViewContent.Add(audioRow);

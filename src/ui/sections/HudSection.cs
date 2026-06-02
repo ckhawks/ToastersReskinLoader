@@ -8,7 +8,7 @@ using UnityEngine.UIElements;
 
 namespace ToasterReskinLoader.ui.sections;
 
-public static class UISection
+public static class HudSection
 {
     // Minimap settings live in the QoL profile now (HUD). Team colors stay in the reskin profile.
     private static QoLConfig Cfg => QoLRunner.Instance?.Config;
