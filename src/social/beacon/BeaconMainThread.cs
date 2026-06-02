@@ -2,7 +2,7 @@ using System;
 
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol.beacon;
+namespace ToasterReskinLoader.social.beacon;
 
 /// Marshals work onto Unity's main thread via the game's ThreadManager singleton.
 /// TCP callbacks from TCPClient fire on the SimpleTcpClient worker thread, but

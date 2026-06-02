@@ -11,7 +11,7 @@ using UnityEngine.UIElements;
 
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol;
+namespace ToasterReskinLoader.social;
 
 /// <summary>
 /// Friends list enhancement: rich-presence-aware status labels, server-name lookups,

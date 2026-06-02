@@ -32,7 +32,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using HarmonyLib;
-using ToasterReskinLoader.qol.beacon;
+using ToasterReskinLoader.social.beacon;
 using UnityEngine.UIElements;
 
 using ToasterReskinLoader.core;

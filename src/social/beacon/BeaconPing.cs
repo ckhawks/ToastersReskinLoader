@@ -1,6 +1,6 @@
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol.beacon;
+namespace ToasterReskinLoader.social.beacon;
 
 /// Beacon ping panel feature toggle. Enables a right-side panel on the Play
 /// menu that lists cached server beacons with RTT measurements and a slider

@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol.beacon;
+namespace ToasterReskinLoader.social.beacon;
 
 /// Wires the panel show/hide to main-menu events:
 ///   Event_OnMainMenuClickPlay   -> show + trigger one sweep

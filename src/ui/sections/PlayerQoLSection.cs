@@ -9,11 +9,13 @@ using System.IO;
 using System.Linq;
 using ToasterReskinLoader.qol;
 using ToasterReskinLoader.core;
-using ToasterReskinLoader.qol.beacon;
+using ToasterReskinLoader.social.beacon;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 using ToasterReskinLoader.serverbrowser;
+
+using ToasterReskinLoader.social;
 
 namespace ToasterReskinLoader.ui.sections;
 

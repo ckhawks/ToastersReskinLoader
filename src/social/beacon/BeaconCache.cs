@@ -6,7 +6,7 @@ using UnityEngine;
 
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol.beacon;
+namespace ToasterReskinLoader.social.beacon;
 
 /// Caches the most recent Beacon[] observed from the game's "playerBeaconRttRequest"
 /// websocket message and persists it to disk so the panel can ping on cold start.

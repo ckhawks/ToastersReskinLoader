@@ -12,6 +12,8 @@ using UnityEngine.Rendering;
 
 using ToasterReskinLoader.serverbrowser;
 
+using ToasterReskinLoader.social;
+
 namespace ToasterReskinLoader;
 
 public class Plugin : IPuckPlugin
@@ -108,7 +110,7 @@ public class Plugin : IPuckPlugin
                     BetterFriendsList.Enable();
 
                 if (ToasterReskinLoader.core.QoLRunner.Instance?.Config?.enableBeaconPing ?? true)
-                    ToasterReskinLoader.qol.beacon.BeaconPing.Enable();
+                    ToasterReskinLoader.social.beacon.BeaconPing.Enable();
 
                 if (ToasterReskinLoader.core.QoLRunner.Instance?.Config?.enableVanillaUIRetheme ?? true)
                     ToasterReskinLoader.qol.VanillaUIRetheme.Enable();
@@ -149,7 +151,7 @@ public class Plugin : IPuckPlugin
         {
             Plugin.Log($"Disabling...");
             BetterFriendsList.Disable();
-            ToasterReskinLoader.qol.beacon.BeaconPing.Disable();
+            ToasterReskinLoader.social.beacon.BeaconPing.Disable();
             ToasterReskinLoader.qol.VanillaUIRetheme.Disable();
             ToasterReskinLoader.serverbrowser.AutoConnectMatchmaking.Disable();
             ToasterReskinLoader.qol.DisableControllerInput.Disable();

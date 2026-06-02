@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol.beacon;
+namespace ToasterReskinLoader.social.beacon;
 
 /// Mirrors BackendManagerController.PingBeacon — TCP connect to beacon.host:beacon.tcp_port,
 /// send "ping", measure RTT to first response. Background sweeps return per-beacon results

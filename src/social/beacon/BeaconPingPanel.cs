@@ -6,7 +6,7 @@ using UnityEngine.UIElements;
 
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol.beacon;
+namespace ToasterReskinLoader.social.beacon;
 
 /// Right-side panel injected into the UIPlay view. One row per cached beacon
 /// with location label + RTT in ms, sorted best-first. A divider line marks the
