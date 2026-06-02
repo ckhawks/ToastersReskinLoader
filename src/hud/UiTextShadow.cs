@@ -59,7 +59,7 @@ internal static class UiTextShadow
         "Usernames",
     };
 
-    private static bool Enabled => QoLRunner.Instance?.Config?.enableUiTextShadow ?? true;
+    private static bool Enabled => SettingsRunner.Instance?.Config?.enableUiTextShadow ?? true;
 
     public static void Initialize()
     {

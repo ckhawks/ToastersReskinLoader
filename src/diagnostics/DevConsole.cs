@@ -180,7 +180,7 @@ public sealed class DevConsole : MonoBehaviour
 
     private void Update()
     {
-        var cfg = QoLRunner.Instance?.Config;
+        var cfg = SettingsRunner.Instance?.Config;
         if (cfg == null || !cfg.enableDevConsole) { if (_open) Close(); return; }
 
         // Pull any new lines that landed in Puck.log since last tick.
@@ -296,7 +296,7 @@ public sealed class DevConsole : MonoBehaviour
         _root = ui?.UIDocument?.rootVisualElement;
         if (_root == null) return;
 
-        var cfg = QoLRunner.Instance?.Config;
+        var cfg = SettingsRunner.Instance?.Config;
         float x = cfg?.devConsoleX ?? 40f;
         float y = cfg?.devConsoleY ?? 40f;
         float w = Mathf.Max(420f, cfg?.devConsoleW ?? 900f);
@@ -566,7 +566,7 @@ public sealed class DevConsole : MonoBehaviour
     {
         try
         {
-            var cfg = QoLRunner.Instance?.Config;
+            var cfg = SettingsRunner.Instance?.Config;
             if (cfg == null) return;
             cfg.devConsoleX = _panel.style.left.value.value;
             cfg.devConsoleY = _panel.style.top.value.value;
@@ -716,7 +716,7 @@ public sealed class DevConsole : MonoBehaviour
         {
             if (raw.StartsWith("/"))
             {
-                QoLRunner.Instance?.SendChatMessage(raw);
+                SettingsRunner.Instance?.SendChatMessage(raw);
                 Print("[chat] sent: " + raw);
                 return;
             }
@@ -757,7 +757,7 @@ public sealed class DevConsole : MonoBehaviour
     {
         Print("Commands:");
         Print("  /<chat>             — forward to game chat");
-        Print("  set <field> <value> — change a QoLConfig field");
+        Print("  set <field> <value> — change a SettingsConfig field");
         Print("  get <field>         — show current value");
         Print("  toggle <field>      — flip a bool field");
         Print("  list [filter]       — list config fields, optional name substring");
@@ -774,28 +774,28 @@ public sealed class DevConsole : MonoBehaviour
 
     private static FieldInfo FindField(string name)
     {
-        return typeof(QoLConfig).GetField(name,
+        return typeof(SettingsConfig).GetField(name,
             BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
     }
 
     private void CmdSet(string[] parts)
     {
         if (parts.Length < 3) { Print("Usage: set <field> <value>", LogType.Warning); return; }
-        var cfg = QoLRunner.Instance?.Config;
+        var cfg = SettingsRunner.Instance?.Config;
         var field = FindField(parts[1]);
         if (cfg == null || field == null) { Print($"No such field: {parts[1]}", LogType.Warning); return; }
         object converted;
         try { converted = ConvertValue(string.Join(" ", parts.Skip(2)), field.FieldType); }
         catch (Exception e) { Print($"Bad value for {field.Name} ({field.FieldType.Name}): {e.Message}", LogType.Warning); return; }
         field.SetValue(cfg, converted);
-        QoLRunner.Instance?.SaveConfigsAndRefresh();
+        SettingsRunner.Instance?.SaveConfigsAndRefresh();
         Print($"set {field.Name} = {converted}");
     }
 
     private void CmdGet(string[] parts)
     {
         if (parts.Length < 2) { Print("Usage: get <field>", LogType.Warning); return; }
-        var cfg = QoLRunner.Instance?.Config;
+        var cfg = SettingsRunner.Instance?.Config;
         var field = FindField(parts[1]);
         if (cfg == null || field == null) { Print($"No such field: {parts[1]}", LogType.Warning); return; }
         Print($"{field.Name} = {field.GetValue(cfg)}");
@@ -804,12 +804,12 @@ public sealed class DevConsole : MonoBehaviour
     private void CmdToggle(string[] parts)
     {
         if (parts.Length < 2) { Print("Usage: toggle <field>", LogType.Warning); return; }
-        var cfg = QoLRunner.Instance?.Config;
+        var cfg = SettingsRunner.Instance?.Config;
         var field = FindField(parts[1]);
         if (cfg == null || field == null || field.FieldType != typeof(bool)) { Print($"No bool field: {parts[1]}", LogType.Warning); return; }
         bool cur = (bool)field.GetValue(cfg);
         field.SetValue(cfg, !cur);
-        QoLRunner.Instance?.SaveConfigsAndRefresh();
+        SettingsRunner.Instance?.SaveConfigsAndRefresh();
         Print($"{field.Name} = {!cur}");
     }
 
@@ -817,7 +817,7 @@ public sealed class DevConsole : MonoBehaviour
     {
         string filter = parts.Length > 1 ? parts[1].ToLowerInvariant() : "";
         var sb = new StringBuilder("Config fields:");
-        foreach (var f in typeof(QoLConfig).GetFields(BindingFlags.Public | BindingFlags.Instance)
+        foreach (var f in typeof(SettingsConfig).GetFields(BindingFlags.Public | BindingFlags.Instance)
                           .OrderBy(f => f.Name))
         {
             if (filter.Length > 0 && f.Name.IndexOf(filter, StringComparison.OrdinalIgnoreCase) < 0) continue;
@@ -828,13 +828,13 @@ public sealed class DevConsole : MonoBehaviour
 
     private void CmdSave()
     {
-        QoLRunner.Instance?.SaveConfigsAndRefresh();
+        SettingsRunner.Instance?.SaveConfigsAndRefresh();
         Print("Config saved.");
     }
 
     private void CmdReload()
     {
-        QoLRunner.Instance?.DoReload();
+        SettingsRunner.Instance?.DoReload();
         Print("Config reloaded.");
     }
 
@@ -842,7 +842,7 @@ public sealed class DevConsole : MonoBehaviour
     {
         if (parts.Length < 2) { Print("Usage: chat <text>", LogType.Warning); return; }
         var msg = string.Join(" ", parts.Skip(1));
-        QoLRunner.Instance?.SendChatMessage(msg);
+        SettingsRunner.Instance?.SendChatMessage(msg);
         Print("[chat] " + msg);
     }
 

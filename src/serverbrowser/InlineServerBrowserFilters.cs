@@ -26,7 +26,7 @@ namespace ToasterReskinLoader.serverbrowser;
 internal static class InlineServerBrowserFilters
 {
     private static bool Enabled =>
-        QoLRunner.Instance?.Config?.enableInlineServerBrowserFilters ?? true;
+        SettingsRunner.Instance?.Config?.enableInlineServerBrowserFilters ?? true;
 
     private static UIServerBrowser _inlinedFor;
     // Tracks (child, originalParent) for every control we yanked out of the

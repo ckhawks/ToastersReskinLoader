@@ -188,19 +188,24 @@ public static class ReskinManagerMenu
         titleContainer.style.paddingBottom = 10;
         titleContainer.style.backgroundColor = new StyleColor(new Color(0.14f, 0.14f, 0.14f));
         
+        // Title + version grouped in their own row so the container's SpaceBetween keeps
+        // them together on the left (otherwise the version floats to the center).
+        VisualElement titleGroup = new VisualElement();
+        titleGroup.style.flexDirection = FlexDirection.Row;
+        titleGroup.style.alignItems = Align.FlexEnd;
+        titleContainer.Add(titleGroup);
         Label title = new Label("Reskin Manager");
         title.style.fontSize = 30;
         title.style.color = Color.white;
-        titleContainer.Add(title);
+        titleGroup.Add(title);
         // Version shown alongside the title (also surfaced in the About section).
         Label versionLabel = new Label($"v{Plugin.MOD_VERSION}");
         versionLabel.style.fontSize = 14;
         versionLabel.style.color = Color.white;
         versionLabel.style.opacity = 0.5f;
-        versionLabel.style.unityTextAlign = TextAnchor.LowerLeft;
         versionLabel.style.marginLeft = 8;
         versionLabel.style.marginBottom = 5;
-        titleContainer.Add(versionLabel);
+        titleGroup.Add(versionLabel);
         Button reloadButton = new Button();
         reloadButton.text = "Reload";
         reloadButton.style.backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f));

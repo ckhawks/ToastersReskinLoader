@@ -12,12 +12,12 @@ namespace ToasterReskinLoader.ui.sections;
 public static class ShadowsSection
 {
     // Shadows live in the QoL profile now (personal/perf), not the reskin profile.
-    private static QoLConfig Cfg => QoLRunner.Instance?.Config;
-    private static void Save() => QoLRunner.Instance?.SaveAndRefresh();
+    private static SettingsConfig Cfg => SettingsRunner.Instance?.Config;
+    private static void Save() => SettingsRunner.Instance?.SaveAndRefresh();
 
     private static void ResetShadowsToDefault()
     {
-        var d = new QoLConfig();
+        var d = new SettingsConfig();
         var c = Cfg;
         if (c == null) return;
         c.crispyShadowsEnabled = d.crispyShadowsEnabled;

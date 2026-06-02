@@ -125,7 +125,7 @@ public static class PartyLineup
     }
 
     private static bool IsFeatureEnabled() =>
-        ToasterReskinLoader.core.QoLRunner.Instance?.Config?.enablePartyLineup ?? true;
+        ToasterReskinLoader.core.SettingsRunner.Instance?.Config?.enablePartyLineup ?? true;
 
     /// <summary>
     /// Called when the user toggles the feature in the QoL menu. Tears down or

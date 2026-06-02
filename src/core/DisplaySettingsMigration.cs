@@ -19,9 +19,9 @@ internal static class DisplaySettingsMigration
     {
         try
         {
-            // Load the QoL config straight from disk — this runs before QoLRunner bootstraps so
+            // Load the QoL config straight from disk — this runs before SettingsRunner bootstraps so
             // it can read the reskin profile before anything re-saves (and strips) it.
-            var cfg = QoLStorage.Load();
+            var cfg = SettingsStorage.Load();
             if (cfg.displaySettingsMigrated) return;
 
             string path = Path.Combine(PathManager.GameRootFolder, "reskinprofiles", "ReskinProfile.json");
@@ -68,7 +68,7 @@ internal static class DisplaySettingsMigration
             }
 
             cfg.displaySettingsMigrated = true;
-            QoLStorage.Save(cfg);
+            SettingsStorage.Save(cfg);
         }
         catch (Exception e)
         {

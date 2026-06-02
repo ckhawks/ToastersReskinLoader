@@ -16,7 +16,7 @@ public static class MultiplayerSection
         var cfg = SettingsUI.RequireConfig(root,
             "Optional enhancements for friends, parties, and matchmaking.");
         if (cfg == null) return;
-        var runner = QoLRunner.Instance;
+        var runner = SettingsRunner.Instance;
 
         SettingsUI.ToggleRow(root, "Use enhanced friends list", cfg.enableBetterFriendsList,
             v =>

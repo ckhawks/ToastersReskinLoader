@@ -18,7 +18,7 @@ public static class CrispyShadowsSwapper
     {
         try
         {
-            var cfg = QoLRunner.Instance?.Config;
+            var cfg = SettingsRunner.Instance?.Config;
             if (cfg == null)
             {
                 Plugin.LogDebug("CrispyShadows: QoL config not ready, skipping.");

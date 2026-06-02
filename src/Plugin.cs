@@ -64,7 +64,7 @@ public class Plugin : IPuckPlugin
                 modSettings = ModSettings.Load();
                 modSettings.Save(); // So that it writes any missing config values immediately
 
-                // Run the display-settings migration FIRST (standalone — doesn't need QoLRunner).
+                // Run the display-settings migration FIRST (standalone — doesn't need SettingsRunner).
                 // It reads the OLD keys (shadows/gloss/minimap/chat/team-indicator) straight from
                 // ReskinProfile.json, so it must run BEFORE LoadProfile / PuckFXMigrator can
                 // re-save and strip those keys from the profile.
@@ -93,7 +93,7 @@ public class Plugin : IPuckPlugin
                 ReskinManagerMenuAccessButtons.Setup();
                 AppearanceAPI.Initialize(MonoBehaviourSingleton<UIManager>.Instance);
                 PlayerCustomizationSection.SubscribeToServerLoad();
-                HudSection.ApplyChatHeight(core.QoLRunner.Instance?.Config?.chatHeight ?? 300f);
+                HudSection.ApplyChatHeight(core.SettingsRunner.Instance?.Config?.chatHeight ?? 300f);
                 HudSection.ApplyQuickChatPosition();
                 MinimapSwapper.ApplyRefreshRate();
                 ToasterReskinLoader.diagnostics.WorkshopUpdateChecker.Initialize();
@@ -102,33 +102,33 @@ public class Plugin : IPuckPlugin
                 ToothbrushFilter.ResetIfActive();
 
                 // Player QoL runtime (ported from PoncePlayerInput)
-                ToasterReskinLoader.core.QoLRunner.Bootstrap();
+                ToasterReskinLoader.core.SettingsRunner.Bootstrap();
 
-                if (ToasterReskinLoader.core.QoLRunner.Instance?.Config?.enableEnhancedModMenu ?? true)
+                if (ToasterReskinLoader.core.SettingsRunner.Instance?.Config?.enableEnhancedModMenu ?? true)
                     ModMenuEnhancer.RegisterEvents();
 
                 // Restore Unicode glyph coverage lost in b323 (sort arrows, etc.).
-                // Gated on the QoL toggle; defaults on. Must run after QoLRunner.Bootstrap
+                // Gated on the QoL toggle; defaults on. Must run after SettingsRunner.Bootstrap
                 // so Instance/Config are populated.
-                if (ToasterReskinLoader.core.QoLRunner.Instance?.Config?.enableUnicodeFontFallback ?? true)
+                if (ToasterReskinLoader.core.SettingsRunner.Instance?.Config?.enableUnicodeFontFallback ?? true)
                     ToasterReskinLoader.ui.UnicodeFontFallback.Apply();
 
-                if (ToasterReskinLoader.core.QoLRunner.Instance?.Config?.enableBetterFriendsList ?? true)
+                if (ToasterReskinLoader.core.SettingsRunner.Instance?.Config?.enableBetterFriendsList ?? true)
                     BetterFriendsList.Enable();
 
-                if (ToasterReskinLoader.core.QoLRunner.Instance?.Config?.enableBeaconPing ?? true)
+                if (ToasterReskinLoader.core.SettingsRunner.Instance?.Config?.enableBeaconPing ?? true)
                     ToasterReskinLoader.social.beacon.BeaconPing.Enable();
 
-                if (ToasterReskinLoader.core.QoLRunner.Instance?.Config?.enableVanillaUIRetheme ?? true)
+                if (ToasterReskinLoader.core.SettingsRunner.Instance?.Config?.enableVanillaUIRetheme ?? true)
                     ToasterReskinLoader.ui.VanillaUIRetheme.Enable();
 
-                if (ToasterReskinLoader.core.QoLRunner.Instance?.Config?.enableAutoConnectMatchmaking ?? false)
+                if (ToasterReskinLoader.core.SettingsRunner.Instance?.Config?.enableAutoConnectMatchmaking ?? false)
                     ToasterReskinLoader.serverbrowser.AutoConnectMatchmaking.Enable();
 
-                if (ToasterReskinLoader.core.QoLRunner.Instance?.Config?.disableControllerInput ?? false)
+                if (ToasterReskinLoader.core.SettingsRunner.Instance?.Config?.disableControllerInput ?? false)
                     ToasterReskinLoader.input.DisableControllerInput.Enable();
 
-                if (ToasterReskinLoader.core.QoLRunner.Instance?.Config?.enableFrameProfiler ?? false)
+                if (ToasterReskinLoader.core.SettingsRunner.Instance?.Config?.enableFrameProfiler ?? false)
                     ToasterReskinLoader.diagnostics.profiler.FrameProfiler.Enable();
 
                 ToasterReskinLoader.serverbrowser.ServerPreviewCache.Initialize();
@@ -167,7 +167,7 @@ public class Plugin : IPuckPlugin
             AppearanceAPI.Cleanup();
             PartyLineup.Cleanup();
             SwapperManager.Destroy();
-            ToasterReskinLoader.core.QoLRunner.Teardown();
+            ToasterReskinLoader.core.SettingsRunner.Teardown();
             Plugin.Log($"Disabled! Goodbye!");
             MonoBehaviourSingleton<UIManager>.Instance.ToastManager.ShowToast("Warning", "Please restart your game to fully disable Toaster's Reskin Loader.", 5f);
             return true;

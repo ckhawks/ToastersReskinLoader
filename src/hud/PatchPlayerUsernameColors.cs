@@ -40,7 +40,7 @@ public static class PatchPlayerUsernameColors
         var label = playerVisualElement.Q<Label>("UsernameLabel");
         if (label == null) return;
 
-        var cfg = QoLRunner.Instance?.Config;
+        var cfg = SettingsRunner.Instance?.Config;
         if (cfg == null || !cfg.enablePlayerUsernameTeamColors)
         {
             // Restore vanilla — clear our override.
@@ -81,7 +81,7 @@ public static class PatchPlayerUsernameColors
 
         private static void Postfix(UIUsernames __instance)
         {
-            var cfg = QoLRunner.Instance?.Config;
+            var cfg = SettingsRunner.Instance?.Config;
             bool enabled = cfg != null && cfg.enablePlayerUsernameTeamColors;
             if (!enabled && !_applied.Contains(__instance)) return;
 

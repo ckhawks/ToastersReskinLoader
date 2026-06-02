@@ -76,19 +76,19 @@ public static class ToasterReskinLoaderAPI
 
     /// <summary>The user's minimap puck color.</summary>
     public static Color MinimapPuckColor =>
-        core.QoLRunner.Instance?.Config?.minimapPuckColor ?? Color.black;
+        core.SettingsRunner.Instance?.Config?.minimapPuckColor ?? Color.black;
 
     /// <summary>The user's minimap puck icon scale multiplier (default 1.0).</summary>
     public static float MinimapPuckScale =>
-        core.QoLRunner.Instance?.Config?.minimapPuckScale ?? 1f;
+        core.SettingsRunner.Instance?.Config?.minimapPuckScale ?? 1f;
 
     /// <summary>The user's minimap refresh rate in updates per second (default 60).</summary>
     public static int MinimapRefreshRate =>
-        core.QoLRunner.Instance?.Config?.minimapRefreshRate ?? 60;
+        core.SettingsRunner.Instance?.Config?.minimapRefreshRate ?? 60;
 
     /// <summary>The user's minimap player icon scale multiplier (default 1.0).</summary>
     public static float MinimapPlayerScale =>
-        core.QoLRunner.Instance?.Config?.minimapPlayerScale ?? 1f;
+        core.SettingsRunner.Instance?.Config?.minimapPlayerScale ?? 1f;
 
     /// <summary>Call this internally whenever minimap settings change.</summary>
     internal static void NotifyMinimapSettingsChanged()

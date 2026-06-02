@@ -52,17 +52,17 @@ internal static class SettingsUI
         return row;
     }
 
-    // Shared guard: returns the live QoLConfig, or null (after rendering a
+    // Shared guard: returns the live SettingsConfig, or null (after rendering a
     // "not ready yet" notice) if the runtime hasn't booted. Every Tweaks
     // section calls this first.
-    public static ToasterReskinLoader.core.QoLConfig RequireConfig(VisualElement parent, string blurb)
+    public static ToasterReskinLoader.core.SettingsConfig RequireConfig(VisualElement parent, string blurb)
     {
         var description = UITools.CreateConfigurationLabel(blurb);
         description.style.marginBottom = 12;
         description.style.whiteSpace = WhiteSpace.Normal;
         parent.Add(description);
 
-        var runner = ToasterReskinLoader.core.QoLRunner.Instance;
+        var runner = ToasterReskinLoader.core.SettingsRunner.Instance;
         if (runner == null)
         {
             var warn = UITools.CreateConfigurationLabel(

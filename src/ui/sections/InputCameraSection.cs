@@ -13,7 +13,7 @@ public static class InputCameraSection
         var cfg = SettingsUI.RequireConfig(root,
             "Controller handling and the position-select free-look camera.");
         if (cfg == null) return;
-        var runner = QoLRunner.Instance;
+        var runner = SettingsRunner.Instance;
 
         SettingsUI.ToggleRow(root, "Disable controller / gamepad input", cfg.disableControllerInput,
             v =>

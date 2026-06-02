@@ -81,7 +81,7 @@ namespace ToasterReskinLoader.swappers
         // renders untouched. Toggling at runtime only affects future menu opens;
         // controls already injected in this session stay until game restart.
         private static bool IsEnabled() =>
-            ToasterReskinLoader.core.QoLRunner.Instance?.Config?.enableEnhancedModMenu ?? true;
+            ToasterReskinLoader.core.SettingsRunner.Instance?.Config?.enableEnhancedModMenu ?? true;
 
         // Snapshot of all entry→element pairs from both maps.
         // Keys are either Mod or Plugin instances.

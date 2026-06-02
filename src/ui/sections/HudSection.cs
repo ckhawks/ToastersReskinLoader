@@ -13,12 +13,12 @@ namespace ToasterReskinLoader.ui.sections;
 public static class HudSection
 {
     // Minimap settings live in the QoL profile now (HUD). Team colors stay in the reskin profile.
-    private static QoLConfig Cfg => QoLRunner.Instance?.Config;
-    private static void SaveQoL() => QoLRunner.Instance?.SaveAndRefresh();
+    private static SettingsConfig Cfg => SettingsRunner.Instance?.Config;
+    private static void SaveQoL() => SettingsRunner.Instance?.SaveAndRefresh();
 
     private static void ResetMinimapToDefault()
     {
-        var d = new QoLConfig();
+        var d = new SettingsConfig();
         var c = Cfg;
         if (c == null) return;
         c.blueMinimapNumberColor = d.blueMinimapNumberColor;

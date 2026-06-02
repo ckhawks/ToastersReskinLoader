@@ -18,7 +18,7 @@ public static class ServerBrowserSection
         var cfg = SettingsUI.RequireConfig(root,
             "Server browser sorting, filtering, and saved server data.");
         if (cfg == null) return;
-        var runner = QoLRunner.Instance;
+        var runner = SettingsRunner.Instance;
 
         SettingsUI.ToggleRow(root, "Show filters inline", cfg.enableInlineServerBrowserFilters,
             v =>
@@ -289,7 +289,7 @@ public static class ServerBrowserSection
     private static void RebuildSavedPasswordsList(VisualElement container)
         => RebuildStoreList(container, new StoreListSpec
         {
-            Gate         = () => QoLRunner.Instance?.Config?.enableSavedServerPasswords ?? false,
+            Gate         = () => SettingsRunner.Instance?.Config?.enableSavedServerPasswords ?? false,
             GetKeys      = SavedServerPasswords.SnapshotKeys,
             EmptyMessage = "No saved passwords yet.",
             Labels       = key =>

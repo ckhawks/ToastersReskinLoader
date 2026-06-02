@@ -1,6 +1,6 @@
 // MonoBehaviour shell for the QoL feature surface. Responsibilities:
-//   - holds the in-memory QoLConfig
-//   - bridges read/write against QoLStorage (two side-car files in
+//   - holds the in-memory SettingsConfig
+//   - bridges read/write against SettingsStorage (two side-car files in
 //     reskinprofiles/: QoL.json + ServerPrefs.json), independent of the
 //     visual reskin profile so reskin profiles can be shared cleanly
 //   - bootstraps DevConsole
@@ -24,20 +24,20 @@ using ToasterReskinLoader.hud;
 
 namespace ToasterReskinLoader.core;
 
-public sealed class QoLRunner : MonoBehaviour
+public sealed class SettingsRunner : MonoBehaviour
 {
-    internal static QoLRunner _instance;
-    public static QoLRunner Instance => _instance;
+    internal static SettingsRunner _instance;
+    public static SettingsRunner Instance => _instance;
 
-    private QoLConfig _config = new QoLConfig();
-    public QoLConfig Config => _config;
+    private SettingsConfig _config = new SettingsConfig();
+    public SettingsConfig Config => _config;
 
-    public static QoLRunner Bootstrap()
+    public static SettingsRunner Bootstrap()
     {
         if (_instance != null) return _instance;
         var go = new GameObject("ToasterPlayerQoL");
         UnityEngine.Object.DontDestroyOnLoad(go);
-        var runner = go.AddComponent<QoLRunner>();
+        var runner = go.AddComponent<SettingsRunner>();
         try { DevConsole.AttachTo(go); } catch (Exception e) { Debug.LogError("[QoL] DevConsole attach failed: " + e); }
         try { PositionSelectFreeLook.AttachTo(go); } catch (Exception e) { Debug.LogError("[QoL] PositionSelectFreeLook attach failed: " + e); }
         return runner;
@@ -106,14 +106,14 @@ public sealed class QoLRunner : MonoBehaviour
 
     public void ReloadFromProfile()
     {
-        _config = QoLStorage.Load();
+        _config = SettingsStorage.Load();
     }
 
     public void SaveAndRefresh()
     {
         try
         {
-            QoLStorage.Save(_config);
+            SettingsStorage.Save(_config);
         }
         catch (Exception e) { Debug.LogError("[QoL] SaveAndRefresh failed: " + e); }
     }

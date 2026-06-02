@@ -29,7 +29,7 @@ public static class FrameProfiler
 
             // Optional: patch other mods' Update methods for per-mod cost.
             // Off by default — adds 100s of harmony patches at load time.
-            var cfg = QoLRunner.Instance?.Config;
+            var cfg = SettingsRunner.Instance?.Config;
             if (cfg != null && cfg.enableFrameProfilerModInstrumentation)
             {
                 FrameProfilerMods.ApplyPatches(harmony);

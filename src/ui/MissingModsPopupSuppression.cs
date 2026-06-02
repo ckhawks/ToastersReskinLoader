@@ -42,7 +42,7 @@ internal static class MissingModsPopupSuppression
     private const string ToggleName = "ToasterMissingModsDontShow";
 
     private static Dictionary<string, string> Store =>
-        QoLRunner.Instance?.Config?.trustedServerMods;
+        SettingsRunner.Instance?.Config?.trustedServerMods;
 
     // ─────────────────────── management UI surface ────────────────────────
 
@@ -66,7 +66,7 @@ internal static class MissingModsPopupSuppression
     internal static void Remove(string key)
     {
         if (string.IsNullOrEmpty(key)) return;
-        var runner = QoLRunner.Instance;
+        var runner = SettingsRunner.Instance;
         var s = runner?.Config?.trustedServerMods;
         if (s == null) return;
         if (s.Remove(key)) runner.SaveAndRefresh();
@@ -74,7 +74,7 @@ internal static class MissingModsPopupSuppression
 
     internal static void RemoveAll()
     {
-        var runner = QoLRunner.Instance;
+        var runner = SettingsRunner.Instance;
         var s = runner?.Config?.trustedServerMods;
         if (s == null || s.Count == 0) return;
         s.Clear();
@@ -104,7 +104,7 @@ internal static class MissingModsPopupSuppression
     }
 
     private static bool FeatureEnabled =>
-        QoLRunner.Instance?.Config?.enableTrustedModLists ?? true;
+        SettingsRunner.Instance?.Config?.enableTrustedModLists ?? true;
 
     private static bool IsTrustedForCurrentServer(string[] requiredModIds)
     {
@@ -119,7 +119,7 @@ internal static class MissingModsPopupSuppression
 
     private static void RememberTrust(string[] requiredModIds)
     {
-        var runner = QoLRunner.Instance;
+        var runner = SettingsRunner.Instance;
         var store = runner?.Config?.trustedServerMods;
         if (store == null) return;
         string key = CurrentEndpointKey();
@@ -130,7 +130,7 @@ internal static class MissingModsPopupSuppression
 
     private static void ForgetTrust()
     {
-        var runner = QoLRunner.Instance;
+        var runner = SettingsRunner.Instance;
         var store = runner?.Config?.trustedServerMods;
         if (store == null) return;
         string key = CurrentEndpointKey();

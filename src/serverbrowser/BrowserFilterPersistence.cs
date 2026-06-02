@@ -35,7 +35,7 @@ internal static class BrowserFilterPersistence
     private static void ApplyAndHook(UIServerBrowser browser)
     {
         if (browser == null) return;
-        var cfg = QoLRunner.Instance?.Config;
+        var cfg = SettingsRunner.Instance?.Config;
         if (cfg == null || !cfg.enableBrowserFilterPersistence) return;
 
         try
@@ -89,9 +89,9 @@ internal static class BrowserFilterPersistence
         catch (Exception e) { Debug.LogWarning("[QoL] BrowserFilterPersistence apply/hook failed: " + e.Message); }
     }
 
-    private static void Save(Action<QoLConfig> mutate)
+    private static void Save(Action<SettingsConfig> mutate)
     {
-        var runner = QoLRunner.Instance;
+        var runner = SettingsRunner.Instance;
         var cfg = runner?.Config;
         // Also short-circuit when the feature is off — registered
         // callbacks linger across toggle flips, and we don't want them

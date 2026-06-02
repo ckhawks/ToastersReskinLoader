@@ -13,7 +13,7 @@ public static class ChatScoreboardSection
         var cfg = SettingsUI.RequireConfig(root,
             "Chat readability and in-game clock polish.");
         if (cfg == null) return;
-        var runner = QoLRunner.Instance;
+        var runner = SettingsRunner.Instance;
 
         SettingsUI.ToggleRow(root, "Drag-highlight and copy lines", cfg.enableChatDragSelect,
             v => { cfg.enableChatDragSelect = v; runner.SaveAndRefresh(); });

@@ -142,7 +142,7 @@ internal static class ServerSlotQueue
         // happens" reports come in. Filtering decisions are logged below.
         Plugin.Log("[QoL] slot-queue: Event_OnConnectionRejected fired");
 
-        if (!(QoLRunner.Instance?.Config?.enableServerSlotQueue ?? true))
+        if (!(SettingsRunner.Instance?.Config?.enableServerSlotQueue ?? true))
         {
             Plugin.Log("[QoL] slot-queue: feature disabled, ignoring rejection");
             return;
@@ -498,7 +498,7 @@ internal static class ServerSlotQueue
     {
         if (ep == null) return null;
         string key = ep.ipAddress + ":" + ep.port;
-        var store = QoLRunner.Instance?.Config?.savedServerPasswords;
+        var store = SettingsRunner.Instance?.Config?.savedServerPasswords;
         return (store != null && store.TryGetValue(key, out var pw)) ? pw : null;
     }
 

@@ -12,12 +12,12 @@ namespace ToasterReskinLoader.ui.sections;
 public static class GlossSection
 {
     // Gloss settings live in the QoL profile now (personal/perf).
-    private static QoLConfig Cfg => QoLRunner.Instance?.Config;
-    private static void Save() => QoLRunner.Instance?.SaveAndRefresh();
+    private static SettingsConfig Cfg => SettingsRunner.Instance?.Config;
+    private static void Save() => SettingsRunner.Instance?.SaveAndRefresh();
 
     private static void ResetGlossToDefault()
     {
-        var d = new QoLConfig();
+        var d = new SettingsConfig();
         var c = Cfg;
         if (c == null) return;
         c.glossRemoverEnabled = d.glossRemoverEnabled;

@@ -1,5 +1,5 @@
-// QoLProfile — persistence shape for QoL toggles + filters. Written by
-// QoLStorage to <gameRoot>/config/ToastersReskinLoaderQoL.json. Does NOT
+// SettingsProfile — persistence shape for QoL toggles + filters. Written by
+// SettingsStorage to <gameRoot>/config/ToastersReskinLoaderQoL.json. Does NOT
 // include per-server credentials (saved passwords, trusted mod sets);
 // those live in ToastersReskinLoaderServerPrefs.json (see ServerPrefsProfile
 // below) so reskin profiles can be shared without leaking them.
@@ -13,7 +13,7 @@ using ToasterReskinLoader.input;
 
 namespace ToasterReskinLoader.core;
 
-public class QoLProfile
+public class SettingsProfile
 {
     // Arena visuals
     [JsonProperty("disableArenaVisuals")]
@@ -208,9 +208,9 @@ public class QoLProfile
     [JsonProperty("displaySettingsMigrated")]
     public bool DisplaySettingsMigrated { get; set; } = false;
 
-    public QoLConfig ToConfig()
+    public SettingsConfig ToConfig()
     {
-        return new QoLConfig
+        return new SettingsConfig
         {
             disableArenaVisuals = DisableArenaVisuals,
             disableArenaProps = DisableArenaProps,
@@ -298,7 +298,7 @@ public class QoLProfile
         };
     }
 
-    public void FromConfig(QoLConfig c)
+    public void FromConfig(SettingsConfig c)
     {
         if (c == null) return;
         DisableArenaVisuals = c.disableArenaVisuals;

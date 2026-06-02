@@ -89,7 +89,7 @@ internal static class EscClosesMenus
         {
             try
             {
-                var cfg = QoLRunner.Instance?.Config;
+                var cfg = SettingsRunner.Instance?.Config;
                 if (cfg == null || !cfg.enableEscCloseMenus) return;
                 if (__instance == null) return;
 
@@ -156,7 +156,7 @@ internal static class EscClosesMenus
             if (!(__instance is UIPauseMenu)) return;
             try
             {
-                var cfg = QoLRunner.Instance?.Config;
+                var cfg = SettingsRunner.Instance?.Config;
                 if (cfg == null || !cfg.enableEscCloseMenus) return;
                 var ui = MonoBehaviourSingleton<UIManager>.Instance;
                 if (ui == null) return;

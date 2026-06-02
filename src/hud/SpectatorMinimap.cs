@@ -26,7 +26,7 @@ internal static class SpectatorMinimap_Postfix
 {
     private static void Postfix(Dictionary<string, object> message)
     {
-        if (!(QoLRunner.Instance?.Config?.enableSpectatorMinimap ?? false)) return;
+        if (!(SettingsRunner.Instance?.Config?.enableSpectatorMinimap ?? false)) return;
         try
         {
             if (message == null) return;

@@ -22,7 +22,7 @@ namespace ToasterReskinLoader.hud;
 internal static class SelectableChat
 {
     private static bool Enabled =>
-        QoLRunner.Instance?.Config?.enableChatDragSelect ?? true;
+        SettingsRunner.Instance?.Config?.enableChatDragSelect ?? true;
 
     [HarmonyPatch(typeof(UIChat), "AddChatMessage")]
     private static class Chat_MakeSelectable_Postfix

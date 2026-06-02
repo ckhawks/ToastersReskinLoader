@@ -15,7 +15,7 @@ public static class DeveloperSection
         var cfg = SettingsUI.RequireConfig(root,
             "Tools intended for development and debugging. Safe to ignore as a regular player.");
         if (cfg == null) return;
-        var runner = QoLRunner.Instance;
+        var runner = SettingsRunner.Instance;
 
         SettingsUI.ToggleRow(root, "Enable in-game dev console", cfg.enableDevConsole,
             v => { cfg.enableDevConsole = v; runner.SaveAndRefresh(); });

@@ -1,4 +1,4 @@
-// Trimmed QoLConfig — kept just the fields used by the surviving
+// Trimmed SettingsConfig — kept just the fields used by the surviving
 // QoL features (goalie wide-view camera, arena visual disable, dev console,
 // debug logging). The bigger PoncePlayerInput config surface (keybinds,
 // position overrides, chat/tag, mute/social, sounds, etc.) was removed when
@@ -15,7 +15,7 @@ using ToasterReskinLoader.hud;
 namespace ToasterReskinLoader.core;
 
 [Serializable]
-public class QoLConfig
+public class SettingsConfig
 {
     // Arena visuals
     public bool disableArenaVisuals = false;
@@ -73,7 +73,7 @@ public class QoLConfig
     // Additions — opt-in QoL enhancements layered on top of vanilla
     public bool enableBetterFriendsList = true;
     public bool enableBeaconPing = true;
-    // Default off. Persisted under a renamed JSON key (see QoLProfile) so that
+    // Default off. Persisted under a renamed JSON key (see SettingsProfile) so that
     // users who already had the original default-on key saved start fresh at
     // off rather than inheriting their old "true".
     public bool enableServerPreviewCache = false;
@@ -84,7 +84,7 @@ public class QoLConfig
     // (N / concurrency) × timeout — a 50-server refresh drops from ~50s to
     // ~3-4s. Off falls back to vanilla's sequential wave; cache seeding
     // still works either way. Default off, persisted under a renamed JSON
-    // key (see QoLProfile) for the same migration reason as the cache toggle.
+    // key (see SettingsProfile) for the same migration reason as the cache toggle.
     public bool enableFastServerBrowserScanning = false;
     public int  serverBrowserPingConcurrency = 16;
     public int  serverBrowserPingConnectTimeoutMs = 1000;

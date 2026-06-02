@@ -18,7 +18,7 @@ namespace ToasterReskinLoader.display;
 public static class GlossSwapper
 {
     // Gloss settings live in the QoL profile now (personal/perf).
-    private static QoLConfig Cfg => QoLRunner.Instance?.Config;
+    private static SettingsConfig Cfg => SettingsRunner.Instance?.Config;
 
     private class Tracked
     {

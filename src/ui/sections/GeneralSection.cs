@@ -18,7 +18,7 @@ public static class GeneralSection
         var cfg = SettingsUI.RequireConfig(root,
             "Small base-game UX patches and interface fixes.");
         if (cfg == null) return;
-        var runner = QoLRunner.Instance;
+        var runner = SettingsRunner.Instance;
 
         SettingsUI.ToggleRow(root, "Close secondary menus with ESC", cfg.enableEscCloseMenus,
             v => { cfg.enableEscCloseMenus = v; runner.SaveAndRefresh(); });

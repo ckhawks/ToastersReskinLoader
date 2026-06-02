@@ -21,7 +21,7 @@ using ToasterReskinLoader.serverbrowser;
 
 namespace ToasterReskinLoader.core;
 
-internal static class QoLStorage
+internal static class SettingsStorage
 {
     private static readonly string Dir =
         Path.Combine(Path.GetFullPath(Path.Combine(Application.dataPath, "..")), "config");
@@ -29,13 +29,13 @@ internal static class QoLStorage
     internal static readonly string QoLPath         = Path.Combine(Dir, "ToastersReskinLoaderQoL.json");
     internal static readonly string ServerPrefsPath = Path.Combine(Dir, "ToastersReskinLoaderServerPrefs.json");
 
-    public static QoLConfig Load()
+    public static SettingsConfig Load()
     {
         try
         {
             Directory.CreateDirectory(Dir);
 
-            var qol   = ReadJson<QoLProfile>(QoLPath)               ?? new QoLProfile();
+            var qol   = ReadJson<SettingsProfile>(QoLPath)               ?? new SettingsProfile();
             var prefs = ReadJson<ServerPrefsProfile>(ServerPrefsPath) ?? new ServerPrefsProfile();
 
             var cfg = qol.ToConfig();
@@ -47,19 +47,19 @@ internal static class QoLStorage
         }
         catch (Exception e)
         {
-            Plugin.LogError($"[QoL] QoLStorage.Load failed: {e.Message}");
-            return new QoLConfig();
+            Plugin.LogError($"[QoL] SettingsStorage.Load failed: {e.Message}");
+            return new SettingsConfig();
         }
     }
 
-    public static void Save(QoLConfig cfg)
+    public static void Save(SettingsConfig cfg)
     {
         if (cfg == null) return;
         try
         {
             Directory.CreateDirectory(Dir);
 
-            var qol = new QoLProfile();
+            var qol = new SettingsProfile();
             qol.FromConfig(cfg);
             File.WriteAllText(QoLPath, JsonConvert.SerializeObject(qol, Formatting.Indented));
 
@@ -80,7 +80,7 @@ internal static class QoLStorage
             };
             File.WriteAllText(ServerPrefsPath, JsonConvert.SerializeObject(prefs, Formatting.Indented));
         }
-        catch (Exception e) { Plugin.LogError($"[QoL] QoLStorage.Save failed: {e.Message}"); }
+        catch (Exception e) { Plugin.LogError($"[QoL] SettingsStorage.Save failed: {e.Message}"); }
     }
 
     private static T ReadJson<T>(string path) where T : class

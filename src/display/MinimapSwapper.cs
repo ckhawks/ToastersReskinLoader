@@ -20,8 +20,8 @@ public static class MinimapSwapper
 {
     // Minimap settings live in the QoL profile now (HUD). Non-null fallback so the per-frame
     // tinting code can't NRE before the QoL runner has bootstrapped.
-    private static readonly QoLConfig _fallback = new QoLConfig();
-    private static QoLConfig Cfg => QoLRunner.Instance?.Config ?? _fallback;
+    private static readonly SettingsConfig _fallback = new SettingsConfig();
+    private static SettingsConfig Cfg => SettingsRunner.Instance?.Config ?? _fallback;
 
     private static readonly FieldInfo PlayerMapField = typeof(UIMinimap)
         .GetField("playerBodyVisualElementMap", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -92,7 +92,7 @@ public static class MinimapSwapper
         }
     }
 
-    private static void ApplyPlayerStyle(VisualElement rootEl, PlayerTeam team, bool isLocalPlayer, QoLConfig profile)
+    private static void ApplyPlayerStyle(VisualElement rootEl, PlayerTeam team, bool isLocalPlayer, SettingsConfig profile)
     {
         if (rootEl == null) return;
 
@@ -128,7 +128,7 @@ public static class MinimapSwapper
             playerEl.style.scale = new StyleScale(new Scale(Vector2.one));
     }
 
-    private static void ApplyPuckStyle(VisualElement puckEl, QoLConfig profile)
+    private static void ApplyPuckStyle(VisualElement puckEl, SettingsConfig profile)
     {
         if (puckEl == null) return;
 

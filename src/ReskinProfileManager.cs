@@ -988,17 +988,17 @@ public static class ReskinProfileManager
         public Color blueTeamColor = new Color(0.231f, 0.510f, 0.965f, 1f); // #3b82f6
         [PresetField("Team Colors", "Color")]
         public Color redTeamColor = new Color(0.820f, 0.200f, 0.200f, 1f);  // #d13333
-        // teamIndicatorEnabled moved to the QoL profile — see QoLConfig.
+        // teamIndicatorEnabled moved to the QoL profile — see SettingsConfig.
         [PresetField("Team Colors", "Name")]
         public string blueTeamName = "";
         [PresetField("Team Colors", "Name")]
         public string redTeamName = "";
 
-        // Minimap moved to the QoL profile (HUD) — see QoLConfig.
+        // Minimap moved to the QoL profile (HUD) — see SettingsConfig.
 
-        // Chat moved to the QoL profile (HUD) — see QoLConfig.
+        // Chat moved to the QoL profile (HUD) — see SettingsConfig.
 
-        // Shadows moved to the QoL profile (personal/perf) — see QoLConfig.
+        // Shadows moved to the QoL profile (personal/perf) — see SettingsConfig.
 
         // Skybox section
         [PresetField("Skybox", "Atmosphere thickness")]
@@ -1048,9 +1048,9 @@ public static class ReskinProfileManager
 
         // QoL config lives in its own side-car files now (reskinprofiles/
         // QoL.json + ServerPrefs.json) so visual profiles stay shareable
-        // without leaking toggles or per-server credentials. See QoLStorage.
+        // without leaking toggles or per-server credentials. See SettingsStorage.
 
-        // Gloss moved to the QoL profile (personal/perf) — see QoLConfig.
+        // Gloss moved to the QoL profile (personal/perf) — see SettingsConfig.
     }
     
     /// <summary>

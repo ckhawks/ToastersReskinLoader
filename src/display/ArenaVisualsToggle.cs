@@ -57,7 +57,7 @@ public static class ArenaVisualsToggle
         public float originalVolume = 1.0f;
     }
 
-    public static void ApplyState(QoLConfig cfg)
+    public static void ApplyState(SettingsConfig cfg)
     {
         if (cfg == null) return;
         bool disable = cfg.disableArenaVisuals;
@@ -160,7 +160,7 @@ public static class ArenaVisualsToggle
         return true;
     }
 
-    public static void ApplyPartial(QoLConfig cfg)
+    public static void ApplyPartial(SettingsConfig cfg)
     {
         if (cfg == null) return;
         try

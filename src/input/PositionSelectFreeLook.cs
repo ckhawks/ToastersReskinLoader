@@ -119,7 +119,7 @@ internal sealed class PositionSelectFreeLook : MonoBehaviour
     {
         _showEnterPrompt = false;
 
-        bool enabled = QoLRunner.Instance?.Config?.enablePositionSelectFreeLook ?? false;
+        bool enabled = SettingsRunner.Instance?.Config?.enablePositionSelectFreeLook ?? false;
 
         // Any of these means we should not be in (or stay in) free-look.
         if (!enabled || !InPositionSelect() || IsBlockingUIOpen())
