@@ -16,11 +16,16 @@ using ToasterReskinLoader.ui;
 namespace ToasterReskinLoader.social;
 
 /// <summary>
-/// Friends list enhancement: rich-presence-aware status labels, server-name lookups,
-/// status-aware sorting, and per-friend Join buttons.
+/// Friends list enhancement: rich-presence-aware status labels, status-aware sorting,
+/// and per-friend Join buttons.
+///
+/// TODO: the "which server a friend is on" display (server-name lookup) is currently
+/// NON-FUNCTIONAL — the rich-presence server data doesn't resolve, so it never shows.
+/// What works today: clearer online/offline status and sorting online friends to the top.
+/// Don't surface server-location in UI/settings copy until this is fixed.
 ///
 /// Toggle via <see cref="Enable"/> / <see cref="Disable"/>. Will eventually be driven
-/// by a QoL config option; for now the call site in Plugin.cs decides.
+/// by a settings config option; for now the call site in Plugin.cs decides.
 /// </summary>
 public static class BetterFriendsList
 {
