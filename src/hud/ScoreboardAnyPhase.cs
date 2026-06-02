@@ -22,7 +22,7 @@ internal static class ScoreboardAnyPhase
 {
     private static bool ShouldHandle()
     {
-        var cfg = SettingsRunner.Instance?.Config;
+        var cfg = Settings.Current;
         if (cfg == null || !cfg.enableScoreboardAnyInGamePhase) return false;
         var ui = MonoBehaviourSingleton<UIManager>.Instance;
         if (ui == null) return false;

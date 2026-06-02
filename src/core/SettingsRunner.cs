@@ -1,14 +1,11 @@
-// MonoBehaviour shell for the QoL feature surface. Responsibilities:
-//   - holds the in-memory SettingsConfig
-//   - bridges read/write against SettingsStorage (two side-car files in
-//     reskinprofiles/: QoL.json + ServerPrefs.json), independent of the
-//     visual reskin profile so reskin profiles can be shared cleanly
-//   - bootstraps DevConsole
-//   - exposes the small surface that DevConsole calls back into
-//   - listens for ESC to close base-game secondary menus
+// MonoBehaviour shell for the runtime feature surface. Config now lives in the
+// static Settings holder; remaining responsibilities:
+//   - bootstraps DevConsole + PositionSelectFreeLook and the Initialize() batch
+//   - per-frame tick: ScoreboardPolish + ESC-to-close-secondary-menus
+//   - SendChatMessage (the DevConsole / send-from-mod chat entry)
 //
-// Class/namespace names are leftover from the PoncePlayerInput port; kept
-// because every other QoL file references them.
+// Slated to dissolve fully (ticks -> a TickDriver, SendChatMessage -> a chat
+// helper); see docs/settings-runtime-refactor-plan.md.
 
 using System;
 using UnityEngine;
@@ -28,9 +25,6 @@ public sealed class SettingsRunner : MonoBehaviour
 {
     internal static SettingsRunner _instance;
     public static SettingsRunner Instance => _instance;
-
-    private SettingsConfig _config = new SettingsConfig();
-    public SettingsConfig Config => _config;
 
     public static SettingsRunner Bootstrap()
     {
@@ -55,8 +49,8 @@ public sealed class SettingsRunner : MonoBehaviour
         _instance = this;
         // DisplaySettingsMigration runs standalone earlier in Plugin.OnEnable (before the reskin
         // profile can be re-saved), so it's intentionally not called here.
-        try { ReloadFromProfile(); }
-        catch (Exception e) { Debug.LogError("[QoL] ReloadFromProfile failed: " + e); }
+        try { Settings.Load(); }
+        catch (Exception e) { Debug.LogError("[QoL] Settings.Load failed: " + e); }
         try { SavedServerPasswords.Initialize(); }
         catch (Exception e) { Debug.LogError("[QoL] SavedServerPasswords.Initialize failed: " + e); }
         try { ToasterReskinLoader.serverbrowser.ServerSlotQueue.Initialize(); }
@@ -86,7 +80,7 @@ public sealed class SettingsRunner : MonoBehaviour
         // the period clock keeps interpolating milliseconds during play.
         try { ScoreboardPolish.Tick(); } catch { }
 
-        if (_config == null || !_config.enableEscCloseMenus) return;
+        if (!Settings.Current.enableEscCloseMenus) return;
         if (DevConsole.Instance != null && DevConsole.Instance.IsOpen) return;
 
         var root = ToasterReskinLoader.ui.ReskinManagerMenu.rootContainer;
@@ -103,24 +97,6 @@ public sealed class SettingsRunner : MonoBehaviour
         }
     }
 
-
-    public void ReloadFromProfile()
-    {
-        _config = SettingsStorage.Load();
-    }
-
-    public void SaveAndRefresh()
-    {
-        try
-        {
-            SettingsStorage.Save(_config);
-        }
-        catch (Exception e) { Debug.LogError("[QoL] SaveAndRefresh failed: " + e); }
-    }
-
-    // DevConsole calls these by name.
-    public void SaveConfigsAndRefresh() => SaveAndRefresh();
-    public void DoReload() => ReloadFromProfile();
 
     // DevConsole / send-from-mod entry. Goes through the b310+ ChatManager
     // path; falls back silently if it isn't reachable.

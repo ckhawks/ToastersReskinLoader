@@ -72,7 +72,7 @@ public static class PatchMinimapRotation
 
         private static void Postfix(UIMinimap __instance)
         {
-            var cfg = SettingsRunner.Instance?.Config;
+            var cfg = Settings.Current;
             if (cfg == null) return;
 
             string mode = cfg.minimapRotationMode;

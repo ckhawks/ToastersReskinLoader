@@ -14,8 +14,8 @@ namespace ToasterReskinLoader.ui.sections;
 
 public static class MinimapSection
 {
-    private static SettingsConfig Cfg => SettingsRunner.Instance?.Config;
-    private static void SaveQoL() => SettingsRunner.Instance?.SaveAndRefresh();
+    private static SettingsConfig Cfg => Settings.Current;
+    private static void SaveQoL() => Settings.Save();
 
     private static void ResetMinimapToDefault()
     {
@@ -38,11 +38,10 @@ public static class MinimapSection
     {
         var cfg = SettingsUI.RequireConfig(root, "Minimap colors, icon scale, refresh rate, and behavior.");
         if (cfg == null) return;
-        var runner = SettingsRunner.Instance;
 
         // ── Behavior (spectator + rotation, formerly on the General page) ──
         SettingsUI.ToggleRow(root, "Show minimap while spectating or watching replays", cfg.enableSpectatorMinimap,
-            v => { cfg.enableSpectatorMinimap = v; runner.SaveAndRefresh(); });
+            v => { cfg.enableSpectatorMinimap = v; Settings.Save(); });
 
         {
             var row = UITools.CreateConfigurationRow();
@@ -56,7 +55,7 @@ public static class MinimapSection
                 var idx = labels.IndexOf(evt.newValue);
                 if (idx < 0) idx = 0;
                 cfg.minimapRotationMode = values[idx];
-                runner.SaveAndRefresh();
+                Settings.Save();
             });
             row.Add(dd);
             root.Add(row);

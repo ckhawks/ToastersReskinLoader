@@ -42,7 +42,7 @@ namespace ToasterReskinLoader.serverbrowser;
 internal static class ServerPreviewCachePatches
 {
     private static bool Enabled =>
-        SettingsRunner.Instance?.Config?.enableServerPreviewCache ?? false;
+        Settings.Current?.enableServerPreviewCache ?? false;
 
     // Endpoints currently showing cached-only data (no live ping response
     // received yet this refresh wave). Populated by the UpdateEndPoints
@@ -155,7 +155,7 @@ internal static class ServerPreviewCachePatches
             // Fast scan off → let vanilla do its sequential ping wave; the
             // postfix below still seeds from cache so cached rows appear
             // immediately.
-            if (!(SettingsRunner.Instance?.Config?.enableFastServerBrowserScanning ?? false)) return true;
+            if (!(Settings.Current?.enableFastServerBrowserScanning ?? false)) return true;
             if (_removeAllServers == null || _addServer == null || _pingServer == null
                 || _filterServers == null || _sortServers == null || _setPreview == null
                 || _styleServer == null || _filterServer == null)
@@ -182,7 +182,7 @@ internal static class ServerPreviewCachePatches
                 SeedFromCache(__instance, endPoints);
 
                 // --- Bounded-parallel ping wave ----------------------------
-                var cfg = SettingsRunner.Instance?.Config;
+                var cfg = Settings.Current;
                 int concurrency = Math.Max(1, cfg?.serverBrowserPingConcurrency ?? 16);
                 int connectTimeout = Math.Max(50, cfg?.serverBrowserPingConnectTimeoutMs ?? 1000);
                 int responseTimeout = Math.Max(50, cfg?.serverBrowserPingResponseTimeoutMs ?? 1000);
@@ -206,7 +206,7 @@ internal static class ServerPreviewCachePatches
         static void Postfix(UIServerBrowser __instance, EndPoint[] endPoints)
         {
             if (!Enabled || endPoints == null) return;
-            if (SettingsRunner.Instance?.Config?.enableFastServerBrowserScanning ?? false)
+            if (Settings.Current?.enableFastServerBrowserScanning ?? false)
             {
                 // Prefix handled it (or chose to fall back, in which case
                 // delegate bindings are missing and SeedFromCache can't run

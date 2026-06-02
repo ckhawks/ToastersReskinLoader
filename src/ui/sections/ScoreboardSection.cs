@@ -11,13 +11,12 @@ public static class ScoreboardSection
     {
         var cfg = SettingsUI.RequireConfig(root, "Scoreboard visibility and clock polish.");
         if (cfg == null) return;
-        var runner = SettingsRunner.Instance;
 
         SettingsUI.ToggleRow(root, "Enable scoreboard in any in-game phase", cfg.enableScoreboardAnyInGamePhase,
-            v => { cfg.enableScoreboardAnyInGamePhase = v; runner.SaveAndRefresh(); });
+            v => { cfg.enableScoreboardAnyInGamePhase = v; Settings.Save(); });
         SettingsUI.ToggleRow(root, "Clock shows milliseconds", cfg.enableScoreboardMilliseconds,
-            v => { cfg.enableScoreboardMilliseconds = v; runner.SaveAndRefresh(); });
+            v => { cfg.enableScoreboardMilliseconds = v; Settings.Save(); });
         SettingsUI.ToggleRow(root, "Clock turns amber then red in the final 30 seconds", cfg.enableScoreboardClockColor,
-            v => { cfg.enableScoreboardClockColor = v; runner.SaveAndRefresh(); });
+            v => { cfg.enableScoreboardClockColor = v; Settings.Save(); });
     }
 }

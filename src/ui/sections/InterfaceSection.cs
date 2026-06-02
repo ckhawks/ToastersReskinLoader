@@ -13,21 +13,20 @@ public static class InterfaceSection
     {
         var cfg = SettingsUI.RequireConfig(root, "Menu behavior and global UI/text fixes.");
         if (cfg == null) return;
-        var runner = SettingsRunner.Instance;
 
         SettingsUI.ToggleRow(root, "Close secondary menus with ESC", cfg.enableEscCloseMenus,
-            v => { cfg.enableEscCloseMenus = v; runner.SaveAndRefresh(); });
+            v => { cfg.enableEscCloseMenus = v; Settings.Save(); });
         SettingsUI.ToggleRow(root, "Show player count on team select buttons", cfg.enableTeamButtonPlayerCount,
-            v => { cfg.enableTeamButtonPlayerCount = v; runner.SaveAndRefresh(); });
+            v => { cfg.enableTeamButtonPlayerCount = v; Settings.Save(); });
         SettingsUI.ToggleRow(root, "Text drop-shadow on all game UI", cfg.enableUiTextShadow,
             v =>
             {
                 cfg.enableUiTextShadow = v;
-                runner.SaveAndRefresh();
+                Settings.Save();
                 UiTextShadow.RefreshForCurrentState();
             });
         SettingsUI.ToggleRow(root, "Use enhanced mod menu (search, sort, badges, update checker)", cfg.enableEnhancedModMenu,
-            v => { cfg.enableEnhancedModMenu = v; runner.SaveAndRefresh(); });
+            v => { cfg.enableEnhancedModMenu = v; Settings.Save(); });
         SettingsUI.Note(root,
             "Restart the game for an off→on toggle to take full effect; changes apply to the next mod menu open.");
 
@@ -35,7 +34,7 @@ public static class InterfaceSection
             v =>
             {
                 cfg.enableVanillaUIRetheme = v;
-                runner.SaveAndRefresh();
+                Settings.Save();
                 if (v) VanillaUIRetheme.Enable();
                 else   VanillaUIRetheme.Disable();
             });

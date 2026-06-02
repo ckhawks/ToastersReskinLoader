@@ -15,10 +15,9 @@ public static class DeveloperSection
         var cfg = SettingsUI.RequireConfig(root,
             "Tools intended for development and debugging. Safe to ignore as a regular player.");
         if (cfg == null) return;
-        var runner = SettingsRunner.Instance;
 
         SettingsUI.ToggleRow(root, "Enable in-game dev console", cfg.enableDevConsole,
-            v => { cfg.enableDevConsole = v; runner.SaveAndRefresh(); });
+            v => { cfg.enableDevConsole = v; Settings.Save(); });
 
         SettingsUI.ToggleRow(root,
             "Enable frame profiler overlay (F4 cycles mode, F5 toggles CSV log)",
@@ -26,7 +25,7 @@ public static class DeveloperSection
             v =>
             {
                 cfg.enableFrameProfiler = v;
-                runner.SaveAndRefresh();
+                Settings.Save();
                 if (v) FrameProfiler.Enable(); else FrameProfiler.Disable();
             });
 
@@ -36,7 +35,7 @@ public static class DeveloperSection
             v =>
             {
                 cfg.enableFrameProfilerModInstrumentation = v;
-                runner.SaveAndRefresh();
+                Settings.Save();
                 // If the profiler is currently running, cycle it so the
                 // per-mod patches get applied (or removed) immediately
                 // instead of waiting for next startup.
@@ -56,7 +55,7 @@ public static class DeveloperSection
             if (!cfg.enableDevConsole)
             {
                 cfg.enableDevConsole = true;
-                runner.SaveAndRefresh();
+                Settings.Save();
             }
             DevConsole.Instance?.Open();
         }) { text = "Open dev console" };

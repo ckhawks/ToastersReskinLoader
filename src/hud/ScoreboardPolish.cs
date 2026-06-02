@@ -33,7 +33,7 @@ namespace ToasterReskinLoader.hud;
 
 internal static class ScoreboardPolish
 {
-    private static SettingsConfig Cfg => SettingsRunner.Instance?.Config;
+    private static SettingsConfig Cfg => Settings.Current;
 
     // Cached labels (looked up via reflection on the first SetTick).
     private static Label _timeLabel;

@@ -76,14 +76,14 @@ internal static class ServerBrowserSort
     private const string GlyphLockSaved = "🔒︎";
 
     private static bool FavoritesEnabled =>
-        SettingsRunner.Instance?.Config?.enableServerFavorites ?? false;
+        Settings.Current?.enableServerFavorites ?? false;
     private static bool BlocksEnabled =>
-        SettingsRunner.Instance?.Config?.enableServerBlocks ?? false;
+        Settings.Current?.enableServerBlocks ?? false;
     // The saved-password lock badge rides on its own independent toggle —
     // it must be able to render even when favorites and blocks are both
     // off (which is the default config, where savedServerPasswords is on).
     private static bool SavedPasswordsEnabled =>
-        SettingsRunner.Instance?.Config?.enableSavedServerPasswords ?? false;
+        Settings.Current?.enableSavedServerPasswords ?? false;
     // The baseline sort/ratio tweaks — reset to PLAYERS%-descending on
     // open, the ratio-based PLAYERS% column, and the favorites-first sort
     // tier — ride on their OWN default-on flag, independent of the
@@ -91,7 +91,7 @@ internal static class ServerBrowserSort
     // QoL the file header describes; gating it on favorites/blocks (which
     // default off) silently disabled it.
     private static bool SortTweaksEnabled =>
-        SettingsRunner.Instance?.Config?.enableServerBrowserSortTweaks ?? true;
+        Settings.Current?.enableServerBrowserSortTweaks ?? true;
     // The favorites/blocks scaffolding: ★ button, right-click context
     // menu, block-row hiding. The finer-grained gates inside (star button
     // visibility, block-row hiding) check FavoritesEnabled / BlocksEnabled
@@ -218,9 +218,9 @@ internal static class ServerBrowserSort
     }
 
     private static readonly ServerKeyStore _favorites =
-        new ServerKeyStore(() => SettingsRunner.Instance?.Config?.favoriteServers);
+        new ServerKeyStore(() => Settings.Current?.favoriteServers);
     private static readonly ServerKeyStore _blocked =
-        new ServerKeyStore(() => SettingsRunner.Instance?.Config?.blockedServers);
+        new ServerKeyStore(() => Settings.Current?.blockedServers);
 
     // ──────────────────────────── favorites API ───────────────────────────
 
@@ -236,7 +236,7 @@ internal static class ServerBrowserSort
         if (s == null) return;
         if (s.ContainsKey(key)) s.Remove(key);
         else                    s[key] = cachedName ?? "";
-        SettingsRunner.Instance?.SaveAndRefresh();
+        Settings.Save();
     }
 
     public static List<string> SnapshotFavoriteKeys() => _favorites.SnapshotKeys();
@@ -245,12 +245,12 @@ internal static class ServerBrowserSort
 
     public static void RemoveFavorite(string key)
     {
-        if (_favorites.Remove(key)) SettingsRunner.Instance?.SaveAndRefresh();
+        if (_favorites.Remove(key)) Settings.Save();
     }
 
     public static void RemoveAllFavorites()
     {
-        if (_favorites.Clear()) SettingsRunner.Instance?.SaveAndRefresh();
+        if (_favorites.Clear()) Settings.Save();
     }
 
     // ──────────────────────────── blocking API ────────────────────────────
@@ -274,7 +274,7 @@ internal static class ServerBrowserSort
             b[key] = cachedName ?? "";
             _favorites.Raw?.Remove(key);
         }
-        SettingsRunner.Instance?.SaveAndRefresh();
+        Settings.Save();
     }
 
     public static List<string> SnapshotBlockedKeys() => _blocked.SnapshotKeys();
@@ -283,12 +283,12 @@ internal static class ServerBrowserSort
 
     public static void RemoveBlock(string key)
     {
-        if (_blocked.Remove(key)) SettingsRunner.Instance?.SaveAndRefresh();
+        if (_blocked.Remove(key)) Settings.Save();
     }
 
     public static void RemoveAllBlocks()
     {
-        if (_blocked.Clear()) SettingsRunner.Instance?.SaveAndRefresh();
+        if (_blocked.Clear()) Settings.Save();
     }
 
     // ─────────────────────────── reflection helpers ───────────────────────
@@ -739,7 +739,7 @@ internal static class ServerBrowserSort
                 // starred the row.
                 if (previewData != null && !string.IsNullOrEmpty(previewData.name) && IsFavorite(key))
                 {
-                    var s = SettingsRunner.Instance?.Config?.favoriteServers;
+                    var s = Settings.Current?.favoriteServers;
                     if (s != null && (!s.TryGetValue(key, out var cur) || cur != previewData.name))
                     {
                         s[key] = previewData.name;
@@ -778,7 +778,7 @@ internal static class ServerBrowserSort
                 // vanilla USS, so anchoring our unlock to NameLabel's
                 // sibling-after-position puts 🔓 directly left of the
                 // wrench — matching how the vanilla 🔒 + 🛠 cluster.
-                bool willAutoFill = (SettingsRunner.Instance?.Config?.enableSavedServerPasswords ?? false)
+                bool willAutoFill = (Settings.Current?.enableSavedServerPasswords ?? false)
                                     && HasSavedPasswordFor(key);
                 var unlock = serverRow.Q<Label>(UnlockBadgeName);
                 if (willAutoFill)
@@ -836,7 +836,7 @@ internal static class ServerBrowserSort
 
     private static bool HasSavedPasswordFor(string key)
     {
-        var store = SettingsRunner.Instance?.Config?.savedServerPasswords;
+        var store = Settings.Current?.savedServerPasswords;
         return store != null && !string.IsNullOrEmpty(key) && store.ContainsKey(key);
     }
 

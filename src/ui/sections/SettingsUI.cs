@@ -108,16 +108,15 @@ internal static class SettingsUI
         description.style.whiteSpace = WhiteSpace.Normal;
         parent.Add(description);
 
-        var runner = ToasterReskinLoader.core.SettingsRunner.Instance;
-        if (runner == null)
+        if (!ToasterReskinLoader.core.Settings.Loaded)
         {
             var warn = UITools.CreateConfigurationLabel(
-                "Settings runtime is not initialized yet. Reopen this menu after the game finishes loading.");
+                "Settings are not loaded yet. Reopen this menu after the game finishes loading.");
             warn.style.color = new Color(1f, 0.7f, 0.4f);
             warn.style.whiteSpace = WhiteSpace.Normal;
             parent.Add(warn);
             return null;
         }
-        return runner.Config;
+        return ToasterReskinLoader.core.Settings.Current;
     }
 }

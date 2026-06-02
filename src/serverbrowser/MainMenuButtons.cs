@@ -178,7 +178,7 @@ internal static class MainMenuButtons
 
     private static void RebuildButtons(UIMainMenu menu)
     {
-        var cfg = SettingsRunner.Instance?.Config;
+        var cfg = Settings.Current;
         if (cfg == null)
         {
             Plugin.Log("[QoL] MainMenuButtons.RebuildButtons: no config yet, skipping");
@@ -388,7 +388,7 @@ internal static class MainMenuButtons
             var map = ServerBrowserSort.GetMap(browser);
             if (map == null) return list;
 
-            var cfg = SettingsRunner.Instance?.Config ?? new SettingsConfig();
+            var cfg = Settings.Current ?? new SettingsConfig();
 
             foreach (var kv in map)
             {
@@ -469,7 +469,7 @@ internal static class MainMenuButtons
             // Pull the saved password (if SavedServerPasswords has one);
             // empty string is fine for unlocked servers.
             string key = best.IpAddress + ":" + best.Port;
-            string password = SettingsRunner.Instance?.Config?.savedServerPasswords?.TryGetValue(key, out var pw) == true ? pw : "";
+            string password = Settings.Current?.savedServerPasswords?.TryGetValue(key, out var pw) == true ? pw : "";
 
             var cm = MonoBehaviourSingleton<ConnectionManager>.Instance;
             if (cm == null)

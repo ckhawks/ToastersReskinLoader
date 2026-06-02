@@ -42,7 +42,7 @@ internal static class MissingModsPopupSuppression
     private const string ToggleName = "ToasterMissingModsDontShow";
 
     private static Dictionary<string, string> Store =>
-        SettingsRunner.Instance?.Config?.trustedServerMods;
+        Settings.Current?.trustedServerMods;
 
     // ─────────────────────── management UI surface ────────────────────────
 
@@ -66,19 +66,17 @@ internal static class MissingModsPopupSuppression
     internal static void Remove(string key)
     {
         if (string.IsNullOrEmpty(key)) return;
-        var runner = SettingsRunner.Instance;
-        var s = runner?.Config?.trustedServerMods;
+        var s = Settings.Current?.trustedServerMods;
         if (s == null) return;
-        if (s.Remove(key)) runner.SaveAndRefresh();
+        if (s.Remove(key)) Settings.Save();
     }
 
     internal static void RemoveAll()
     {
-        var runner = SettingsRunner.Instance;
-        var s = runner?.Config?.trustedServerMods;
+        var s = Settings.Current?.trustedServerMods;
         if (s == null || s.Count == 0) return;
         s.Clear();
-        runner.SaveAndRefresh();
+        Settings.Save();
     }
 
     // ─────────────────────────── helpers ──────────────────────────────────
@@ -104,7 +102,7 @@ internal static class MissingModsPopupSuppression
     }
 
     private static bool FeatureEnabled =>
-        SettingsRunner.Instance?.Config?.enableTrustedModLists ?? true;
+        Settings.Current?.enableTrustedModLists ?? true;
 
     private static bool IsTrustedForCurrentServer(string[] requiredModIds)
     {
@@ -119,23 +117,21 @@ internal static class MissingModsPopupSuppression
 
     private static void RememberTrust(string[] requiredModIds)
     {
-        var runner = SettingsRunner.Instance;
-        var store = runner?.Config?.trustedServerMods;
+        var store = Settings.Current?.trustedServerMods;
         if (store == null) return;
         string key = CurrentEndpointKey();
         if (string.IsNullOrEmpty(key)) return;
         store[key] = FingerprintModIds(requiredModIds);
-        runner.SaveAndRefresh();
+        Settings.Save();
     }
 
     private static void ForgetTrust()
     {
-        var runner = SettingsRunner.Instance;
-        var store = runner?.Config?.trustedServerMods;
+        var store = Settings.Current?.trustedServerMods;
         if (store == null) return;
         string key = CurrentEndpointKey();
         if (string.IsNullOrEmpty(key)) return;
-        if (store.Remove(key)) runner.SaveAndRefresh();
+        if (store.Remove(key)) Settings.Save();
     }
 
     // Emulates the OK-click branch of UIPopupManagerController.Event_OnPopupClickOk

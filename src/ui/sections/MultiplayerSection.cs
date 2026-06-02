@@ -16,13 +16,12 @@ public static class MultiplayerSection
         var cfg = SettingsUI.RequireConfig(root,
             "Optional enhancements for friends, parties, and matchmaking.");
         if (cfg == null) return;
-        var runner = SettingsRunner.Instance;
 
         SettingsUI.ToggleRow(root, "Use enhanced friends list", cfg.enableBetterFriendsList,
             v =>
             {
                 cfg.enableBetterFriendsList = v;
-                runner.SaveAndRefresh();
+                Settings.Save();
                 if (v) BetterFriendsList.Enable();
                 else   BetterFriendsList.Disable();
             });
@@ -32,7 +31,7 @@ public static class MultiplayerSection
             v =>
             {
                 cfg.enablePartyLineup = v;
-                runner.SaveAndRefresh();
+                Settings.Save();
                 PartyLineup.RefreshFromConfig();
             });
 
@@ -40,7 +39,7 @@ public static class MultiplayerSection
             v =>
             {
                 cfg.enableBeaconPing = v;
-                runner.SaveAndRefresh();
+                Settings.Save();
                 if (v) BeaconPing.Enable();
                 else   BeaconPing.Disable();
             });
@@ -50,7 +49,7 @@ public static class MultiplayerSection
             v =>
             {
                 cfg.enableAutoConnectMatchmaking = v;
-                runner.SaveAndRefresh();
+                Settings.Save();
                 if (v) AutoConnectMatchmaking.Enable();
                 else   AutoConnectMatchmaking.Disable();
             });

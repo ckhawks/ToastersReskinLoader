@@ -21,7 +21,7 @@ public static class MinimapSwapper
     // Minimap settings live in the QoL profile now (HUD). Non-null fallback so the per-frame
     // tinting code can't NRE before the QoL runner has bootstrapped.
     private static readonly SettingsConfig _fallback = new SettingsConfig();
-    private static SettingsConfig Cfg => SettingsRunner.Instance?.Config ?? _fallback;
+    private static SettingsConfig Cfg => Settings.Current ?? _fallback;
 
     private static readonly FieldInfo PlayerMapField = typeof(UIMinimap)
         .GetField("playerBodyVisualElementMap", BindingFlags.Instance | BindingFlags.NonPublic);

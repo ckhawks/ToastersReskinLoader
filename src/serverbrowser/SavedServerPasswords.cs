@@ -64,10 +64,10 @@ internal static class SavedServerPasswords
     private static readonly Dictionary<string, string> _serverNameCache = new Dictionary<string, string>();
 
     private static bool Enabled =>
-        SettingsRunner.Instance?.Config?.enableSavedServerPasswords ?? false;
+        Settings.Current?.enableSavedServerPasswords ?? false;
 
     private static Dictionary<string, string> Store =>
-        SettingsRunner.Instance?.Config?.savedServerPasswords;
+        Settings.Current?.savedServerPasswords;
 
     // Called once from SettingsRunner.Awake — registers our EventManager
     // listeners. Harmony patches in the nested classes are picked up
@@ -127,7 +127,7 @@ internal static class SavedServerPasswords
         if (string.IsNullOrEmpty(key)) return;
         var store = Store;
         if (store == null) return;
-        if (store.Remove(key)) SettingsRunner.Instance?.SaveAndRefresh();
+        if (store.Remove(key)) Settings.Save();
     }
 
     internal static void RemoveAll()
@@ -135,7 +135,7 @@ internal static class SavedServerPasswords
         var store = Store;
         if (store == null || store.Count == 0) return;
         store.Clear();
-        SettingsRunner.Instance?.SaveAndRefresh();
+        Settings.Save();
     }
 
     // Snapshot used by the management UI in ServerBrowserSection.
@@ -260,7 +260,7 @@ internal static class SavedServerPasswords
             {
                 store.Remove(key);
             }
-            SettingsRunner.Instance?.SaveAndRefresh();
+            Settings.Save();
 
             // Reset per-attempt state on a finalized success.
             _alreadyTriedSavedFor.Remove(key);

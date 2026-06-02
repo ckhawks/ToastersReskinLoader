@@ -15,43 +15,42 @@ namespace ToasterReskinLoader.ui.sections;
 
 public static class ChatSection
 {
-    private static SettingsConfig Cfg => SettingsRunner.Instance?.Config;
+    private static SettingsConfig Cfg => Settings.Current;
 
     public static void CreateSection(VisualElement root)
     {
         var cfg = SettingsUI.RequireConfig(root, "Chat behavior and appearance.");
         if (cfg == null) return;
-        var runner = SettingsRunner.Instance;
 
         // ── Behavior ──
         SettingsUI.ToggleRow(root, "Open chat in any in-game phase", cfg.enableChatAnyInGamePhase,
-            v => { cfg.enableChatAnyInGamePhase = v; runner.SaveAndRefresh(); });
+            v => { cfg.enableChatAnyInGamePhase = v; Settings.Save(); });
         SettingsUI.ToggleRow(root, "Drag-highlight and copy lines", cfg.enableChatDragSelect,
-            v => { cfg.enableChatDragSelect = v; runner.SaveAndRefresh(); });
+            v => { cfg.enableChatDragSelect = v; Settings.Save(); });
         SettingsUI.ToggleRow(root, "Hide when inactive", cfg.enableHideInactiveChat,
-            v => { cfg.enableHideInactiveChat = v; runner.SaveAndRefresh(); HideInactiveChat.RefreshVisualState(); });
+            v => { cfg.enableHideInactiveChat = v; Settings.Save(); HideInactiveChat.RefreshVisualState(); });
         SettingsUI.ToggleRow(root, "Don't fade out old messages", cfg.enableChatNoFade,
-            v => { cfg.enableChatNoFade = v; runner.SaveAndRefresh(); HideInactiveChat.RefreshVisualState(); });
+            v => { cfg.enableChatNoFade = v; Settings.Save(); HideInactiveChat.RefreshVisualState(); });
         SettingsUI.ToggleRow(root, "Prefix player names with jersey number", cfg.enableNumberedNames,
-            v => { cfg.enableNumberedNames = v; runner.SaveAndRefresh(); });
+            v => { cfg.enableNumberedNames = v; Settings.Save(); });
 
         SettingsUI.Separator(root);
         SettingsUI.Header(root, "Appearance");
 
         SettingsUI.SliderRow(root, "Chat Height", 200f, 1300f, cfg.chatHeight,
-            val => { cfg.chatHeight = val; runner.SaveAndRefresh(); ApplyChatHeight(val); });
+            val => { cfg.chatHeight = val; Settings.Save(); ApplyChatHeight(val); });
 
         SettingsUI.ToggleRow(root, "Chat Background", cfg.chatBackground,
-            v => { cfg.chatBackground = v; runner.SaveAndRefresh(); ApplyChatBackground(v); });
+            v => { cfg.chatBackground = v; Settings.Save(); ApplyChatBackground(v); });
         SettingsUI.ToggleRow(root, "Render All Emojis in Chat", cfg.chatRenderAllEmojis,
-            v => { cfg.chatRenderAllEmojis = v; runner.SaveAndRefresh(); });
+            v => { cfg.chatRenderAllEmojis = v; Settings.Save(); });
         SettingsUI.Note(root,
             "Lets emoji and other special Unicode characters appear in chat instead of being stripped by the game's text filter.");
 
         SettingsUI.SliderRow(root, "Quick Chat Menu X Position", 0f, 100f, cfg.quickChatX,
-            val => { cfg.quickChatX = val; runner.SaveAndRefresh(); ApplyQuickChatPosition(); });
+            val => { cfg.quickChatX = val; Settings.Save(); ApplyQuickChatPosition(); });
         SettingsUI.SliderRow(root, "Quick Chat Menu Y Position", 0f, 100f, cfg.quickChatY,
-            val => { cfg.quickChatY = val; runner.SaveAndRefresh(); ApplyQuickChatPosition(); });
+            val => { cfg.quickChatY = val; Settings.Save(); ApplyQuickChatPosition(); });
     }
 
     // ── Apply helpers (called from Plugin / SwapperManager) ──────────────

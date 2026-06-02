@@ -13,13 +13,12 @@ public static class InputCameraSection
         var cfg = SettingsUI.RequireConfig(root,
             "Controller handling and the position-select free-look camera.");
         if (cfg == null) return;
-        var runner = SettingsRunner.Instance;
 
         SettingsUI.ToggleRow(root, "Disable controller / gamepad input", cfg.disableControllerInput,
             v =>
             {
                 cfg.disableControllerInput = v;
-                runner.SaveAndRefresh();
+                Settings.Save();
                 DisableControllerInput.Apply(v);
             });
         SettingsUI.Note(root,
@@ -33,7 +32,7 @@ public static class InputCameraSection
         SettingsUI.Separator(root);
 
         SettingsUI.ToggleRow(root, "Free-look camera in position select", cfg.enablePositionSelectFreeLook,
-            v => { cfg.enablePositionSelectFreeLook = v; runner.SaveAndRefresh(); });
+            v => { cfg.enablePositionSelectFreeLook = v; Settings.Save(); });
         SettingsUI.Note(root,
             "Right-click to fly around like a spectator while picking a position; right-click or Esc to return.");
     }

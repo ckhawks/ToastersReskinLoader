@@ -93,7 +93,7 @@ public class Plugin : IPuckPlugin
                 ReskinManagerMenuAccessButtons.Setup();
                 AppearanceAPI.Initialize(MonoBehaviourSingleton<UIManager>.Instance);
                 PlayerCustomizationSection.SubscribeToServerLoad();
-                ChatSection.ApplyChatHeight(core.SettingsRunner.Instance?.Config?.chatHeight ?? 300f);
+                ChatSection.ApplyChatHeight(core.Settings.Current?.chatHeight ?? 300f);
                 ChatSection.ApplyQuickChatPosition();
                 MinimapSwapper.ApplyRefreshRate();
                 ToasterReskinLoader.diagnostics.WorkshopUpdateChecker.Initialize();
@@ -104,31 +104,31 @@ public class Plugin : IPuckPlugin
                 // Player QoL runtime (ported from PoncePlayerInput)
                 ToasterReskinLoader.core.SettingsRunner.Bootstrap();
 
-                if (ToasterReskinLoader.core.SettingsRunner.Instance?.Config?.enableEnhancedModMenu ?? true)
+                if (ToasterReskinLoader.core.Settings.Current?.enableEnhancedModMenu ?? true)
                     ModMenuEnhancer.RegisterEvents();
 
                 // Restore Unicode glyph coverage lost in b323 (sort arrows, etc.).
                 // Gated on the QoL toggle; defaults on. Must run after SettingsRunner.Bootstrap
                 // so Instance/Config are populated.
-                if (ToasterReskinLoader.core.SettingsRunner.Instance?.Config?.enableUnicodeFontFallback ?? true)
+                if (ToasterReskinLoader.core.Settings.Current?.enableUnicodeFontFallback ?? true)
                     ToasterReskinLoader.ui.UnicodeFontFallback.Apply();
 
-                if (ToasterReskinLoader.core.SettingsRunner.Instance?.Config?.enableBetterFriendsList ?? true)
+                if (ToasterReskinLoader.core.Settings.Current?.enableBetterFriendsList ?? true)
                     BetterFriendsList.Enable();
 
-                if (ToasterReskinLoader.core.SettingsRunner.Instance?.Config?.enableBeaconPing ?? true)
+                if (ToasterReskinLoader.core.Settings.Current?.enableBeaconPing ?? true)
                     ToasterReskinLoader.social.beacon.BeaconPing.Enable();
 
-                if (ToasterReskinLoader.core.SettingsRunner.Instance?.Config?.enableVanillaUIRetheme ?? true)
+                if (ToasterReskinLoader.core.Settings.Current?.enableVanillaUIRetheme ?? true)
                     ToasterReskinLoader.ui.VanillaUIRetheme.Enable();
 
-                if (ToasterReskinLoader.core.SettingsRunner.Instance?.Config?.enableAutoConnectMatchmaking ?? false)
+                if (ToasterReskinLoader.core.Settings.Current?.enableAutoConnectMatchmaking ?? false)
                     ToasterReskinLoader.serverbrowser.AutoConnectMatchmaking.Enable();
 
-                if (ToasterReskinLoader.core.SettingsRunner.Instance?.Config?.disableControllerInput ?? false)
+                if (ToasterReskinLoader.core.Settings.Current?.disableControllerInput ?? false)
                     ToasterReskinLoader.input.DisableControllerInput.Enable();
 
-                if (ToasterReskinLoader.core.SettingsRunner.Instance?.Config?.enableFrameProfiler ?? false)
+                if (ToasterReskinLoader.core.Settings.Current?.enableFrameProfiler ?? false)
                     ToasterReskinLoader.diagnostics.profiler.FrameProfiler.Enable();
 
                 ToasterReskinLoader.serverbrowser.ServerPreviewCache.Initialize();

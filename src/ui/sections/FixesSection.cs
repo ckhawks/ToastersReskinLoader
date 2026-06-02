@@ -12,10 +12,9 @@ public static class FixesSection
     {
         var cfg = SettingsUI.RequireConfig(root, "Corrections for vanilla rendering bugs. Safe to leave on.");
         if (cfg == null) return;
-        var runner = SettingsRunner.Instance;
 
         SettingsUI.ToggleRow(root, "Fix shared player country flags", cfg.enableFlagMaterialFix,
-            v => { cfg.enableFlagMaterialFix = v; runner.SaveAndRefresh(); });
+            v => { cfg.enableFlagMaterialFix = v; Settings.Save(); });
         SettingsUI.Note(root,
             "Vanilla bug: every player's helmet flag shares one material, so everyone ends up showing the same flag. "
             + "Takes effect as players (re)spawn.");
@@ -24,7 +23,7 @@ public static class FixesSection
             v =>
             {
                 cfg.enableUnicodeFontFallback = v;
-                runner.SaveAndRefresh();
+                Settings.Save();
                 if (v) UnicodeFontFallback.Apply();
                 else   UnicodeFontFallback.Disable();
             });

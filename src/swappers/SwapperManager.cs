@@ -217,7 +217,7 @@ public static class SwapperManager
 
             // Entering a game scene — fetch appearances for all players on the server
             AppearanceAPI.FetchAllPlayersOnServer();
-            ui.sections.ChatSection.ApplyChatBackground(core.SettingsRunner.Instance?.Config?.chatBackground ?? false);
+            ui.sections.ChatSection.ApplyChatBackground(core.Settings.Current?.chatBackground ?? false);
             MinimapSwapper.ApplyRefreshRate();
         }
 

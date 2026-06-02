@@ -46,7 +46,7 @@ internal static class FlagMaterialFix
             // Default on; only skip when explicitly disabled. (Config may be null
             // for the brief window before SettingsRunner bootstraps -- default to
             // applying the fix in that case, which is the correct behavior.)
-            if (!(SettingsRunner.Instance?.Config?.enableFlagMaterialFix ?? true)) return;
+            if (!(Settings.Current?.enableFlagMaterialFix ?? true)) return;
             if (_materialField == null || _isInstantiatedField == null) return;
 
             try

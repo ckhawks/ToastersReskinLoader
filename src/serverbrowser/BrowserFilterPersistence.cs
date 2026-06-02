@@ -35,7 +35,7 @@ internal static class BrowserFilterPersistence
     private static void ApplyAndHook(UIServerBrowser browser)
     {
         if (browser == null) return;
-        var cfg = SettingsRunner.Instance?.Config;
+        var cfg = Settings.Current;
         if (cfg == null || !cfg.enableBrowserFilterPersistence) return;
 
         try
@@ -91,8 +91,7 @@ internal static class BrowserFilterPersistence
 
     private static void Save(Action<SettingsConfig> mutate)
     {
-        var runner = SettingsRunner.Instance;
-        var cfg = runner?.Config;
+        var cfg = Settings.Current;
         // Also short-circuit when the feature is off — registered
         // callbacks linger across toggle flips, and we don't want them
         // writing back when the user has disabled persistence.
@@ -100,7 +99,7 @@ internal static class BrowserFilterPersistence
         try
         {
             mutate(cfg);
-            runner.SaveAndRefresh();
+            Settings.Save();
         }
         catch (Exception e) { Debug.LogWarning("[QoL] BrowserFilterPersistence save failed: " + e.Message); }
     }

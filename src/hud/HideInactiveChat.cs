@@ -42,7 +42,7 @@ namespace ToasterReskinLoader.hud;
 internal static class HideInactiveChat
 {
     private static bool Enabled =>
-        SettingsRunner.Instance?.Config?.enableHideInactiveChat ?? false;
+        Settings.Current?.enableHideInactiveChat ?? false;
 
     // How long after a re-show we keep snapping every
     // SmoothScrollToVerticalPosition. Sized to cover typical burst
@@ -132,7 +132,7 @@ internal static class HideInactiveChat
     //   * cfg.enableHideInactiveChat → the original hide-when-all-blurred
     //                                  logic.
     private static bool WantNoFade =>
-        SettingsRunner.Instance?.Config?.enableChatNoFade ?? false;
+        Settings.Current?.enableChatNoFade ?? false;
 
     // Single source of truth for the per-toggle visuals. Called from
     // the ChatSection toggle handlers so flips take effect live,

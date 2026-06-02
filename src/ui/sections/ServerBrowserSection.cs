@@ -18,25 +18,24 @@ public static class ServerBrowserSection
         var cfg = SettingsUI.RequireConfig(root,
             "Server browser sorting, filtering, and saved server data.");
         if (cfg == null) return;
-        var runner = SettingsRunner.Instance;
 
         SettingsUI.ToggleRow(root, "Show filters inline", cfg.enableInlineServerBrowserFilters,
             v =>
             {
                 cfg.enableInlineServerBrowserFilters = v;
-                runner.SaveAndRefresh();
+                Settings.Save();
                 if (v) InlineServerBrowserFilters.ReapplyInlineFiltersForCurrent();
                 else   InlineServerBrowserFilters.UndoInlineFiltersForCurrent();
             });
         SettingsUI.ToggleRow(root, "Remember filters between sessions", cfg.enableBrowserFilterPersistence,
-            v => { cfg.enableBrowserFilterPersistence = v; runner.SaveAndRefresh(); });
+            v => { cfg.enableBrowserFilterPersistence = v; Settings.Save(); });
         SettingsUI.ToggleRow(root, "Auto-queue when joining a full server", cfg.enableServerSlotQueue,
-            v => { cfg.enableServerSlotQueue = v; runner.SaveAndRefresh(); });
+            v => { cfg.enableServerSlotQueue = v; Settings.Save(); });
         SettingsUI.ToggleRow(root, "Title-screen Quick Join button", cfg.enableMainMenuQuickJoin,
             v =>
             {
                 cfg.enableMainMenuQuickJoin = v;
-                runner.SaveAndRefresh();
+                Settings.Save();
                 MainMenuButtons.RefreshForCurrentMenu();
             });
         SettingsUI.Note(root,
@@ -45,15 +44,15 @@ public static class ServerBrowserSection
             v =>
             {
                 cfg.enableMainMenuServerBrowser = v;
-                runner.SaveAndRefresh();
+                Settings.Save();
                 MainMenuButtons.RefreshForCurrentMenu();
             });
         SettingsUI.ToggleRow(root, "Cache server browser between opens", cfg.enableServerPreviewCache,
-            v => { cfg.enableServerPreviewCache = v; runner.SaveAndRefresh(); });
+            v => { cfg.enableServerPreviewCache = v; Settings.Save(); });
         SettingsUI.Note(root,
             "Shows the last-seen server list instantly when you open the browser, then fills in live pings as they arrive.");
         SettingsUI.ToggleRow(root, "Fast server browser scanning (parallel pings)", cfg.enableFastServerBrowserScanning,
-            v => { cfg.enableFastServerBrowserScanning = v; runner.SaveAndRefresh(); });
+            v => { cfg.enableFastServerBrowserScanning = v; Settings.Save(); });
         SettingsUI.Note(root,
             "Pings many servers at once instead of one at a time — a 50-server refresh drops from ~50s to a few seconds.");
 
@@ -73,7 +72,7 @@ public static class ServerBrowserSection
             v =>
             {
                 cfg.enableSavedServerPasswords = v;
-                runner.SaveAndRefresh();
+                Settings.Save();
                 // Re-style open browser rows so the 🔓 auto-fill badge
                 // appears/disappears live (the badge rides this toggle,
                 // independent of favorites/blocks).
@@ -92,7 +91,7 @@ public static class ServerBrowserSection
             v =>
             {
                 cfg.enableServerFavorites = v;
-                runner.SaveAndRefresh();
+                Settings.Save();
                 ServerBrowserSort.RefreshForCurrentBrowser();
                 RebuildFavoritesList(favoritesList);
             },
@@ -108,7 +107,7 @@ public static class ServerBrowserSection
             v =>
             {
                 cfg.enableServerBlocks = v;
-                runner.SaveAndRefresh();
+                Settings.Save();
                 ServerBrowserSort.RefreshForCurrentBrowser();
                 RebuildBlockedList(blockedList);
             },
@@ -124,7 +123,7 @@ public static class ServerBrowserSection
             v =>
             {
                 cfg.enableTrustedModLists = v;
-                runner.SaveAndRefresh();
+                Settings.Save();
                 RebuildTrustedServersList(trustedList);
             },
             trustedList,
@@ -295,7 +294,7 @@ public static class ServerBrowserSection
     private static void RebuildSavedPasswordsList(VisualElement container)
         => RebuildStoreList(container, new StoreListSpec
         {
-            Gate         = () => SettingsRunner.Instance?.Config?.enableSavedServerPasswords ?? false,
+            Gate         = () => Settings.Current?.enableSavedServerPasswords ?? false,
             GetKeys      = SavedServerPasswords.SnapshotKeys,
             EmptyMessage = "No saved passwords yet.",
             Labels       = key =>

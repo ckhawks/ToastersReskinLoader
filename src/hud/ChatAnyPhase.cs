@@ -30,7 +30,7 @@ internal static class ChatAnyPhase
     // vanilla Phase == Playing rule).
     private static bool ShouldHandle()
     {
-        var cfg = SettingsRunner.Instance?.Config;
+        var cfg = Settings.Current;
         if (cfg == null) return false;
         var ui = MonoBehaviourSingleton<UIManager>.Instance;
         if (ui == null) return false;

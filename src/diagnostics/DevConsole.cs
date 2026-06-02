@@ -180,7 +180,7 @@ public sealed class DevConsole : MonoBehaviour
 
     private void Update()
     {
-        var cfg = SettingsRunner.Instance?.Config;
+        var cfg = Settings.Current;
         if (cfg == null || !cfg.enableDevConsole) { if (_open) Close(); return; }
 
         // Pull any new lines that landed in Puck.log since last tick.
@@ -296,7 +296,7 @@ public sealed class DevConsole : MonoBehaviour
         _root = ui?.UIDocument?.rootVisualElement;
         if (_root == null) return;
 
-        var cfg = SettingsRunner.Instance?.Config;
+        var cfg = Settings.Current;
         float x = cfg?.devConsoleX ?? 40f;
         float y = cfg?.devConsoleY ?? 40f;
         float w = Mathf.Max(420f, cfg?.devConsoleW ?? 900f);
@@ -566,7 +566,7 @@ public sealed class DevConsole : MonoBehaviour
     {
         try
         {
-            var cfg = SettingsRunner.Instance?.Config;
+            var cfg = Settings.Current;
             if (cfg == null) return;
             cfg.devConsoleX = _panel.style.left.value.value;
             cfg.devConsoleY = _panel.style.top.value.value;
@@ -781,21 +781,21 @@ public sealed class DevConsole : MonoBehaviour
     private void CmdSet(string[] parts)
     {
         if (parts.Length < 3) { Print("Usage: set <field> <value>", LogType.Warning); return; }
-        var cfg = SettingsRunner.Instance?.Config;
+        var cfg = Settings.Current;
         var field = FindField(parts[1]);
         if (cfg == null || field == null) { Print($"No such field: {parts[1]}", LogType.Warning); return; }
         object converted;
         try { converted = ConvertValue(string.Join(" ", parts.Skip(2)), field.FieldType); }
         catch (Exception e) { Print($"Bad value for {field.Name} ({field.FieldType.Name}): {e.Message}", LogType.Warning); return; }
         field.SetValue(cfg, converted);
-        SettingsRunner.Instance?.SaveConfigsAndRefresh();
+        Settings.Save();
         Print($"set {field.Name} = {converted}");
     }
 
     private void CmdGet(string[] parts)
     {
         if (parts.Length < 2) { Print("Usage: get <field>", LogType.Warning); return; }
-        var cfg = SettingsRunner.Instance?.Config;
+        var cfg = Settings.Current;
         var field = FindField(parts[1]);
         if (cfg == null || field == null) { Print($"No such field: {parts[1]}", LogType.Warning); return; }
         Print($"{field.Name} = {field.GetValue(cfg)}");
@@ -804,12 +804,12 @@ public sealed class DevConsole : MonoBehaviour
     private void CmdToggle(string[] parts)
     {
         if (parts.Length < 2) { Print("Usage: toggle <field>", LogType.Warning); return; }
-        var cfg = SettingsRunner.Instance?.Config;
+        var cfg = Settings.Current;
         var field = FindField(parts[1]);
         if (cfg == null || field == null || field.FieldType != typeof(bool)) { Print($"No bool field: {parts[1]}", LogType.Warning); return; }
         bool cur = (bool)field.GetValue(cfg);
         field.SetValue(cfg, !cur);
-        SettingsRunner.Instance?.SaveConfigsAndRefresh();
+        Settings.Save();
         Print($"{field.Name} = {!cur}");
     }
 
@@ -828,13 +828,13 @@ public sealed class DevConsole : MonoBehaviour
 
     private void CmdSave()
     {
-        SettingsRunner.Instance?.SaveConfigsAndRefresh();
+        Settings.Save();
         Print("Config saved.");
     }
 
     private void CmdReload()
     {
-        SettingsRunner.Instance?.DoReload();
+        Settings.Reload();
         Print("Config reloaded.");
     }
 

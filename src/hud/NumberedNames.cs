@@ -78,7 +78,7 @@ internal static class NumberedNames
         private static void Prefix(ChatMessage chatMessage)
         {
             _pendingPlayer = null;
-            if (!(SettingsRunner.Instance?.Config?.enableNumberedNames ?? false)) return;
+            if (!(Settings.Current?.enableNumberedNames ?? false)) return;
             try
             {
                 if (chatMessage == null) return;

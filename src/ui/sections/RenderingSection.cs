@@ -16,8 +16,8 @@ namespace ToasterReskinLoader.ui.sections;
 
 public static class RenderingSection
 {
-    private static SettingsConfig Cfg => SettingsRunner.Instance?.Config;
-    private static void Save() => SettingsRunner.Instance?.SaveAndRefresh();
+    private static SettingsConfig Cfg => Settings.Current;
+    private static void Save() => Settings.Save();
 
     public static void CreateSection(VisualElement root)
     {
