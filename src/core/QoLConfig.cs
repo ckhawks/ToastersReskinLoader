@@ -8,6 +8,8 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
+using ToasterReskinLoader.input;
+
 namespace ToasterReskinLoader.core;
 
 [Serializable]

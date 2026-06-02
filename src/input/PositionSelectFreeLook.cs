@@ -68,7 +68,7 @@ using ToasterReskinLoader.core;
 
 using ToasterReskinLoader.diagnostics;
 
-namespace ToasterReskinLoader.qol;
+namespace ToasterReskinLoader.input;
 
 internal sealed class PositionSelectFreeLook : MonoBehaviour
 {

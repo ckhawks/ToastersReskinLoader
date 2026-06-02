@@ -18,6 +18,8 @@ using ToasterReskinLoader.diagnostics;
 
 using ToasterReskinLoader.diagnostics.profiler;
 
+using ToasterReskinLoader.input;
+
 namespace ToasterReskinLoader;
 
 public class Plugin : IPuckPlugin
@@ -123,7 +125,7 @@ public class Plugin : IPuckPlugin
                     ToasterReskinLoader.serverbrowser.AutoConnectMatchmaking.Enable();
 
                 if (ToasterReskinLoader.core.QoLRunner.Instance?.Config?.disableControllerInput ?? false)
-                    ToasterReskinLoader.qol.DisableControllerInput.Enable();
+                    ToasterReskinLoader.input.DisableControllerInput.Enable();
 
                 if (ToasterReskinLoader.core.QoLRunner.Instance?.Config?.enableFrameProfiler ?? false)
                     ToasterReskinLoader.diagnostics.profiler.FrameProfiler.Enable();
@@ -158,7 +160,7 @@ public class Plugin : IPuckPlugin
             ToasterReskinLoader.social.beacon.BeaconPing.Disable();
             ToasterReskinLoader.qol.VanillaUIRetheme.Disable();
             ToasterReskinLoader.serverbrowser.AutoConnectMatchmaking.Disable();
-            ToasterReskinLoader.qol.DisableControllerInput.Disable();
+            ToasterReskinLoader.input.DisableControllerInput.Disable();
             ToasterReskinLoader.diagnostics.profiler.FrameProfiler.Disable();
             harmony.UnpatchSelf();
             AppearanceAPI.Cleanup();

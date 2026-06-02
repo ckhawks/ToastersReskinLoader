@@ -9,6 +9,8 @@ using UnityEngine;
 
 using ToasterReskinLoader.serverbrowser;
 
+using ToasterReskinLoader.input;
+
 namespace ToasterReskinLoader.core;
 
 public class QoLProfile

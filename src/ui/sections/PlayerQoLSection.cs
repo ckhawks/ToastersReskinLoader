@@ -21,6 +21,8 @@ using ToasterReskinLoader.diagnostics;
 
 using ToasterReskinLoader.diagnostics.profiler;
 
+using ToasterReskinLoader.input;
+
 namespace ToasterReskinLoader.ui.sections;
 
 public static class PlayerQoLSection
