@@ -20,6 +20,8 @@ using ToasterReskinLoader.diagnostics.profiler;
 
 using ToasterReskinLoader.input;
 
+using ToasterReskinLoader.display;
+
 namespace ToasterReskinLoader;
 
 public class Plugin : IPuckPlugin

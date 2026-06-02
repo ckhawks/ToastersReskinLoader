@@ -3,7 +3,9 @@ using ToasterReskinLoader.qol;
 using ToasterReskinLoader.core;
 using UnityEngine;
 
-namespace ToasterReskinLoader.swappers;
+using ToasterReskinLoader.swappers;
+
+namespace ToasterReskinLoader.display;
 
 /// <summary>
 /// Adjusts material smoothness / roughness on URP Lit and glTF-PBR materials in the scene

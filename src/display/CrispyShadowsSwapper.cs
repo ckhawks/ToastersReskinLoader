@@ -5,7 +5,9 @@ using ToasterReskinLoader.core;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
 
-namespace ToasterReskinLoader.swappers;
+using ToasterReskinLoader.swappers;
+
+namespace ToasterReskinLoader.display;
 
 public static class CrispyShadowsSwapper
 {

@@ -7,7 +7,9 @@ using ToasterReskinLoader.core;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace ToasterReskinLoader.swappers;
+using ToasterReskinLoader.swappers;
+
+namespace ToasterReskinLoader.display;
 
 /// <summary>
 /// Customizes minimap appearance: player number text color (per-team),

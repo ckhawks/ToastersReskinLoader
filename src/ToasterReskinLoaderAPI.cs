@@ -1,6 +1,8 @@
 using System;
 using UnityEngine;
 
+using ToasterReskinLoader.display;
+
 namespace ToasterReskinLoader;
 
 /// <summary>
@@ -93,8 +95,8 @@ public static class ToasterReskinLoaderAPI
     {
         try
         {
-            swappers.MinimapSwapper.RefreshAll();
-            swappers.MinimapSwapper.ApplyRefreshRate();
+            display.MinimapSwapper.RefreshAll();
+            display.MinimapSwapper.ApplyRefreshRate();
             OnMinimapSettingsChanged?.Invoke();
         }
         catch (Exception e)

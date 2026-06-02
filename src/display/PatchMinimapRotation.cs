@@ -17,7 +17,9 @@ using ToasterReskinLoader.qol;
 using ToasterReskinLoader.core;
 using UnityEngine.UIElements;
 
-namespace ToasterReskinLoader.qol;
+using ToasterReskinLoader.swappers;
+
+namespace ToasterReskinLoader.display;
 
 public static class PatchMinimapRotation
 {

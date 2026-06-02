@@ -14,7 +14,9 @@ using ToasterReskinLoader.qol;
 using ToasterReskinLoader.core;
 using UnityEngine;
 
-namespace ToasterReskinLoader.qol;
+using ToasterReskinLoader.swappers;
+
+namespace ToasterReskinLoader.display;
 
 public static class ArenaVisualsToggle
 {

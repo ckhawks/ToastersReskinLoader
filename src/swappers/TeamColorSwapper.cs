@@ -5,6 +5,8 @@ using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UIElements;
 
+using ToasterReskinLoader.display;
+
 namespace ToasterReskinLoader.swappers;
 
 /// <summary>

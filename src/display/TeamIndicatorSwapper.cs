@@ -3,7 +3,11 @@ using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace ToasterReskinLoader.swappers;
+using ToasterReskinLoader.swappers;
+
+using ToasterReskinLoader.core;
+
+namespace ToasterReskinLoader.display;
 
 public static class TeamIndicatorSwapper
 {

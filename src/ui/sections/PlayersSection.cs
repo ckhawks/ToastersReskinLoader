@@ -5,6 +5,8 @@ using ToasterReskinLoader.swappers;
 using UnityEngine;
 using UnityEngine.UIElements;
 
+using ToasterReskinLoader.display;
+
 namespace ToasterReskinLoader.ui.sections;
 
 /// <summary>

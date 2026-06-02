@@ -2,7 +2,11 @@ using System;
 using HarmonyLib;
 using UnityEngine;
 
-namespace ToasterReskinLoader.swappers;
+using ToasterReskinLoader.swappers;
+
+using ToasterReskinLoader.core;
+
+namespace ToasterReskinLoader.display;
 
 /// <summary>
 /// Throttles the local player's stamina bar updates to the minimap refresh rate,
