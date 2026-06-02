@@ -26,6 +26,7 @@ public static class MultiplayerSection
                 if (v) BetterFriendsList.Enable();
                 else   BetterFriendsList.Disable();
             });
+        SettingsUI.Note(root, "Shows clearer online/offline status and sorts online friends to the top.");
 
         SettingsUI.ToggleRow(root, "Show party members in locker room", cfg.enablePartyLineup,
             v =>
@@ -43,6 +44,7 @@ public static class MultiplayerSection
                 if (v) BeaconPing.Enable();
                 else   BeaconPing.Disable();
             });
+        SettingsUI.Note(root, "Adds a panel to the Play menu listing community servers with live ping.");
 
         SettingsUI.ToggleRow(root, "Auto-connect to matchmaking matches", cfg.enableAutoConnectMatchmaking,
             v =>

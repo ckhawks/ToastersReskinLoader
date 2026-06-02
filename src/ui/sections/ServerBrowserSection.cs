@@ -39,6 +39,8 @@ public static class ServerBrowserSection
                 runner.SaveAndRefresh();
                 MainMenuButtons.RefreshForCurrentMenu();
             });
+        SettingsUI.Note(root,
+            "Refreshes the list and connects to the best-populated server matching your saved filters.");
         SettingsUI.ToggleRow(root, "Title-screen Server Browser button", cfg.enableMainMenuServerBrowser,
             v =>
             {
@@ -48,8 +50,12 @@ public static class ServerBrowserSection
             });
         SettingsUI.ToggleRow(root, "Cache server browser between opens", cfg.enableServerPreviewCache,
             v => { cfg.enableServerPreviewCache = v; runner.SaveAndRefresh(); });
+        SettingsUI.Note(root,
+            "Shows the last-seen server list instantly when you open the browser, then fills in live pings as they arrive.");
         SettingsUI.ToggleRow(root, "Fast server browser scanning (parallel pings)", cfg.enableFastServerBrowserScanning,
             v => { cfg.enableFastServerBrowserScanning = v; runner.SaveAndRefresh(); });
+        SettingsUI.Note(root,
+            "Pings many servers at once instead of one at a time — a 50-server refresh drops from ~50s to a few seconds.");
 
         // ── Server browser stores (compact rows) ──────────────────────────
         // Each store has its own enable toggle + expandable entry list.

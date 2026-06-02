@@ -45,6 +45,8 @@ public static class ChatSection
             v => { cfg.chatBackground = v; runner.SaveAndRefresh(); ApplyChatBackground(v); });
         SettingsUI.ToggleRow(root, "Render All Emojis in Chat", cfg.chatRenderAllEmojis,
             v => { cfg.chatRenderAllEmojis = v; runner.SaveAndRefresh(); });
+        SettingsUI.Note(root,
+            "Lets emoji and other special Unicode characters appear in chat instead of being stripped by the game's text filter.");
 
         SettingsUI.SliderRow(root, "Quick Chat Menu X Position", 0f, 100f, cfg.quickChatX,
             val => { cfg.quickChatX = val; runner.SaveAndRefresh(); ApplyQuickChatPosition(); });
