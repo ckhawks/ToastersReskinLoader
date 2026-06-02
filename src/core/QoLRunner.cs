@@ -13,7 +13,6 @@
 using System;
 using UnityEngine;
 
-using ToasterReskinLoader.qol;
 
 using ToasterReskinLoader.serverbrowser;
 

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
-using ToasterReskinLoader.qol;
 using ToasterReskinLoader.core;
 using UnityEngine;
 using UnityEngine.UIElements;

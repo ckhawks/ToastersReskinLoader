@@ -26,7 +26,7 @@ using UnityEngine.UIElements;
 
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol;
+namespace ToasterReskinLoader.ui;
 
 public static class VanillaUIRetheme
 {

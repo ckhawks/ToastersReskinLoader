@@ -11,6 +11,8 @@ using UnityEngine.UIElements;
 
 using ToasterReskinLoader.core;
 
+using ToasterReskinLoader.ui;
+
 namespace ToasterReskinLoader.social;
 
 /// <summary>
@@ -349,7 +351,7 @@ public static class FriendsListHelper
         field.style.fontSize = 16;
         field.RegisterCallback<AttachToPanelEvent>(_ =>
         {
-            ToasterReskinLoader.qol.VanillaUIRetheme.RecolorTree(field);
+            ToasterReskinLoader.ui.VanillaUIRetheme.RecolorTree(field);
             var input = field.Q(className: "unity-base-text-field__input");
             if (input != null)
             {

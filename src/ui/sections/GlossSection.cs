@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using ToasterReskinLoader.qol;
 using ToasterReskinLoader.core;
 using ToasterReskinLoader.swappers;
 using UnityEngine;

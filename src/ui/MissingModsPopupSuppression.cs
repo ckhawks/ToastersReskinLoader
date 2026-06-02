@@ -34,7 +34,7 @@ using UnityEngine.UIElements;
 
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol;
+namespace ToasterReskinLoader.ui;
 
 internal static class MissingModsPopupSuppression
 {

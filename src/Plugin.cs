@@ -2,7 +2,6 @@
 using System.Linq;
 using HarmonyLib;
 using ToasterReskinLoader.api;
-using ToasterReskinLoader.qol;
 using ToasterReskinLoader.core;
 using ToasterReskinLoader.swappers;
 using ToasterReskinLoader.ui;
@@ -112,7 +111,7 @@ public class Plugin : IPuckPlugin
                 // Gated on the QoL toggle; defaults on. Must run after QoLRunner.Bootstrap
                 // so Instance/Config are populated.
                 if (ToasterReskinLoader.core.QoLRunner.Instance?.Config?.enableUnicodeFontFallback ?? true)
-                    ToasterReskinLoader.qol.UnicodeFontFallback.Apply();
+                    ToasterReskinLoader.ui.UnicodeFontFallback.Apply();
 
                 if (ToasterReskinLoader.core.QoLRunner.Instance?.Config?.enableBetterFriendsList ?? true)
                     BetterFriendsList.Enable();
@@ -121,7 +120,7 @@ public class Plugin : IPuckPlugin
                     ToasterReskinLoader.social.beacon.BeaconPing.Enable();
 
                 if (ToasterReskinLoader.core.QoLRunner.Instance?.Config?.enableVanillaUIRetheme ?? true)
-                    ToasterReskinLoader.qol.VanillaUIRetheme.Enable();
+                    ToasterReskinLoader.ui.VanillaUIRetheme.Enable();
 
                 if (ToasterReskinLoader.core.QoLRunner.Instance?.Config?.enableAutoConnectMatchmaking ?? false)
                     ToasterReskinLoader.serverbrowser.AutoConnectMatchmaking.Enable();
@@ -160,7 +159,7 @@ public class Plugin : IPuckPlugin
             Plugin.Log($"Disabling...");
             BetterFriendsList.Disable();
             ToasterReskinLoader.social.beacon.BeaconPing.Disable();
-            ToasterReskinLoader.qol.VanillaUIRetheme.Disable();
+            ToasterReskinLoader.ui.VanillaUIRetheme.Disable();
             ToasterReskinLoader.serverbrowser.AutoConnectMatchmaking.Disable();
             ToasterReskinLoader.input.DisableControllerInput.Disable();
             ToasterReskinLoader.diagnostics.profiler.FrameProfiler.Disable();
