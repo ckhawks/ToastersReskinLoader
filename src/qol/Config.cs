@@ -115,15 +115,10 @@ public class QoLConfig
     //     ScoreboardPolish).
     public bool enableScoreboardMilliseconds = false;
     public bool enableScoreboardClockColor   = true;
-    // Chat visual options, each independent so a user can mix-and-match.
-    //   * enableChatNoFade → expired messages stay at full opacity
-    //     instead of fading to the .blurred USS state. Default off — the
-    //     vanilla fade keeps stale chatter from piling up on screen.
-    //   * enableChatTransparentContainer → chat container background
-    //     is forced to fully transparent (overrides vanilla's dark
-    //     panel USS).
-    public bool enableChatNoFade               = false;
-    public bool enableChatTransparentContainer = true;
+    // Chat visual option: expired messages stay at full opacity instead
+    // of fading to the .blurred USS state. Default off — the vanilla fade
+    // keeps stale chatter from piling up on screen.
+    public bool enableChatNoFade = false;
     public bool enableEnhancedModMenu = true;
     public bool enableAutoConnectMatchmaking = false;
     // Disable all connected game controllers (gamepads/joysticks) at the

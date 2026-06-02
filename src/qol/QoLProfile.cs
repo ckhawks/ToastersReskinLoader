@@ -105,8 +105,6 @@ public class QoLProfile
     // saves that merely inherited the old default-on don't keep "true".
     [JsonProperty("enableChatNoFadeV2")]
     public bool EnableChatNoFade { get; set; } = false;
-    [JsonProperty("enableChatTransparentContainer")]
-    public bool EnableChatTransparentContainer { get; set; } = true;
     [JsonProperty("enableEnhancedModMenu")]
     public bool EnableEnhancedModMenu { get; set; } = true;
     [JsonProperty("enableAutoConnectMatchmaking")]
@@ -248,7 +246,6 @@ public class QoLProfile
             enableScoreboardMilliseconds = EnableScoreboardMilliseconds,
             enableScoreboardClockColor   = EnableScoreboardClockColor,
             enableChatNoFade               = EnableChatNoFade,
-            enableChatTransparentContainer = EnableChatTransparentContainer,
             enableEnhancedModMenu = EnableEnhancedModMenu,
             enableAutoConnectMatchmaking = EnableAutoConnectMatchmaking,
             disableControllerInput = DisableControllerInput,
@@ -338,7 +335,6 @@ public class QoLProfile
         EnableScoreboardMilliseconds = c.enableScoreboardMilliseconds;
         EnableScoreboardClockColor   = c.enableScoreboardClockColor;
         EnableChatNoFade               = c.enableChatNoFade;
-        EnableChatTransparentContainer = c.enableChatTransparentContainer;
         EnableEnhancedModMenu = c.enableEnhancedModMenu;
         EnableAutoConnectMatchmaking = c.enableAutoConnectMatchmaking;
         DisableControllerInput = c.disableControllerInput;

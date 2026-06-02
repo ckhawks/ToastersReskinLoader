@@ -120,13 +120,6 @@ public static class PlayerQoLSection
                 runner.SaveAndRefresh();
                 HideInactiveChat.RefreshVisualState();
             });
-        ToggleRow(contentScrollViewContent, "Invisible container", cfg.enableChatTransparentContainer,
-            v =>
-            {
-                cfg.enableChatTransparentContainer = v;
-                runner.SaveAndRefresh();
-                HideInactiveChat.RefreshVisualState();
-            });
 
 
         ToggleRow(contentScrollViewContent, "Clock shows milliseconds", cfg.enableScoreboardMilliseconds,

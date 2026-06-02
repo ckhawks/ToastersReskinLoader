@@ -89,6 +89,13 @@ internal static class EscClosesMenus
                 if (cfg == null || !cfg.enableEscCloseMenus) return;
                 if (__instance == null) return;
 
+                // Chat input wins ESC. The OnPauseActionPerformed_SkipIfChatFocused
+                // prefix returns false to skip vanilla while chat is focused, but
+                // Harmony still runs this postfix — so without this guard the first
+                // ESC would close the chat AND open the pause menu in non-Playing
+                // phases (the Phase==Playing early-return below only covers Playing).
+                if (__instance.Chat != null && __instance.Chat.IsFocused) return;
+
                 if (DevConsole.Instance != null && DevConsole.Instance.IsOpen) return;
                 var trlRoot = ToasterReskinLoader.ui.ReskinMenu.rootContainer;
                 if (trlRoot != null && trlRoot.style.display == DisplayStyle.Flex) return;

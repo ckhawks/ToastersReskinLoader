@@ -1039,7 +1039,11 @@ internal static class ServerBrowserSort
         try
         {
             if (_openMenuRoot != null && _openMenuOutsideHandler != null)
-                _openMenuRoot.UnregisterCallback(_openMenuOutsideHandler);
+                // Must match the TrickleDown phase the handler was
+                // registered with in ShowContextMenu — UnregisterCallback
+                // keys on phase, so the default (NoTrickleDown) would leave
+                // the handler attached and leak one per context-menu open.
+                _openMenuRoot.UnregisterCallback(_openMenuOutsideHandler, TrickleDown.TrickleDown);
             _openMenu?.RemoveFromHierarchy();
         }
         catch { }

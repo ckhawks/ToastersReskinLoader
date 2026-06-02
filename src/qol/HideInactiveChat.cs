@@ -1,14 +1,13 @@
-// Chat panel QoL — three independent toggles:
+// Chat panel QoL — two independent toggles:
 //
 //   * enableHideInactiveChat         hide the whole container once
 //                                    every message has blurred.
 //   * enableChatNoFade               keep blurred messages at full
 //                                    opacity (defeats the per-row
 //                                    fade-out).
-//   * enableChatTransparentContainer force the chat panel's bg fully
-//                                    transparent. Captures the
-//                                    original USS-painted bg on first
-//                                    touch and restores it on flip-off.
+//
+// (Chat background is handled separately by the reskin's "Chat
+// Background" setting — UISection.ApplyChatBackground.)
 //
 // Vanilla adds a "blurred" USS class to expired messages; we still rely
 // on that as the "all messages blurred → hide container" signal but
@@ -86,65 +85,6 @@ internal static class HideInactiveChat
     // re-show is "waking up" from a hide vs. an idempotent show.
     private static bool _chatWasHidden;
 
-    // Descendants we've ever written background overrides to. Tracked
-    // so a live flip-off reverts every previously-touched element even
-    // though their resolvedStyle.backgroundColor is now (0,0,0,0) (the
-    // value WE wrote). Without this the descendant-discovery filter
-    // ("only override visible backgrounds") would skip them on revert
-    // and the dark backdrop would stay gone — but also never come back.
-    private static readonly System.Collections.Generic.HashSet<VisualElement> _touchedDescendants
-        = new System.Collections.Generic.HashSet<VisualElement>();
-
-    // Original (pre-modification) bg styles per element. Captured the
-    // first time we observe a non-empty resolvedStyle so a live flip-OFF
-    // can write back exactly what vanilla painted. StyleKeyword.Null
-    // would be simpler but doesn't work reliably here — the very first
-    // capture in UIChat.Show happens BEFORE USS resolves, so we have to
-    // hold the inline values we read post-resolution.
-    private struct OriginalBg
-    {
-        public StyleColor color;
-        public StyleBackground image;
-    }
-    private static readonly System.Collections.Generic.Dictionary<VisualElement, OriginalBg> _originalBg
-        = new System.Collections.Generic.Dictionary<VisualElement, OriginalBg>();
-
-    // The chat View we last populated the caches against. A scene reload
-    // rebuilds UIChat's tree, orphaning every element in the two caches
-    // above; without dropping them we'd pin those dead VisualElements for
-    // the rest of the session. Compared on each transparency pass.
-    private static VisualElement _lastChatView;
-
-    private static void CaptureOriginalBg(VisualElement v)
-    {
-        if (v == null) return;
-        if (_originalBg.ContainsKey(v)) return;
-        try
-        {
-            // Only commit once styles have actually resolved — a
-            // pre-resolution read returns (0,0,0,0) + empty image even
-            // when vanilla USS will paint something on the next layout
-            // pass. Caching that empty value would permanently restore
-            // to nothing. Skipping leaves the slot empty and lets the
-            // next call retry once styles settle.
-            var c = v.resolvedStyle.backgroundColor;
-            var b = v.resolvedStyle.backgroundImage;
-            bool hasColor = c.a > 0.001f;
-            bool hasImage = b.texture != null
-                         || b.sprite != null
-                         || b.vectorImage != null
-                         || b.renderTexture != null;
-            if (!hasColor && !hasImage) return;
-
-            _originalBg[v] = new OriginalBg
-            {
-                color = new StyleColor(c),
-                image = new StyleBackground(b),
-            };
-        }
-        catch { }
-    }
-
     private static VisualElement GetChatContainer(UIChat chat)
     {
         if (chat == null) return null;
@@ -182,22 +122,15 @@ internal static class HideInactiveChat
 
     // ─────────────────────── visual styling ──────────────────────────────
 
-    // Three independent visual toggles per the QoL settings page:
-    //   * cfg.enableChatNoFade               → expired messages stay
-    //                                          opaque (overrides the
-    //                                          .blurred USS fade).
-    //   * cfg.enableChatTransparentContainer → chat container's dark
-    //                                          USS backdrop forced to
-    //                                          fully transparent.
-    //   * cfg.enableUiTextShadow             → handled globally by
-    //                                          UiTextShadow.cs;
-    //                                          nothing to do here.
-    //   * cfg.enableHideInactiveChat         → the original hide-when-
-    //                                          all-blurred logic.
+    // Visual toggles per the QoL settings page:
+    //   * cfg.enableChatNoFade       → expired messages stay opaque
+    //                                  (overrides the .blurred USS fade).
+    //   * cfg.enableUiTextShadow     → handled globally by
+    //                                  UiTextShadow.cs; nothing to do here.
+    //   * cfg.enableHideInactiveChat → the original hide-when-all-blurred
+    //                                  logic.
     private static bool WantNoFade =>
-        QoLRunner.Instance?.Config?.enableChatNoFade ?? true;
-    private static bool WantTransparentContainer =>
-        QoLRunner.Instance?.Config?.enableChatTransparentContainer ?? true;
+        QoLRunner.Instance?.Config?.enableChatNoFade ?? false;
 
     // Single source of truth for the per-toggle visuals. Called from
     // the PlayerQoLSection toggle handlers so flips take effect live,
@@ -211,7 +144,6 @@ internal static class HideInactiveChat
             // Force-show first so flipping hide-inactive OFF resurfaces
             // a previously-collapsed panel before we re-paint it.
             ShowChatContainer(chat);
-            ApplyContainerTransparency(chat);
             ApplyAllMessageOpacity(chat);
         }
         catch (Exception e) { Debug.LogWarning("[QoL] hide-inactive-chat RefreshVisualState failed: " + e.Message); }
@@ -227,121 +159,6 @@ internal static class HideInactiveChat
             var lbl = messages[i]?.VisualElement?.Q<Label>();
             if (lbl == null) continue;
             try { lbl.style.opacity = opacity; }
-            catch { }
-        }
-    }
-
-    // Override the chat panel's bg to fully transparent (toggle ON) or
-    // restore vanilla (toggle OFF). Vanilla can paint via background
-    // color, background-image sprite, or both, on any of: outer
-    // ChatView, inner Chat element, ScrollView, scroll content, scroll
-    // viewport, plus any themed descendant. We hit the named five
-    // unconditionally and also sweep descendants under ChatView so
-    // theme USS rules we don't know by name still get covered.
-    //
-    // Restore relies on a captured original — not StyleKeyword.Null —
-    // because the first sweep on UIChat.Show runs before USS has
-    // resolved on the panel; see CaptureOriginalBg for details.
-    //
-    // Skips the text input (textField + its inner input element) so
-    // the user can still see where they're typing.
-    private static void ApplyContainerTransparency(UIChat chat)
-    {
-        // Drop caches keyed off a previous chat-view instance (scene
-        // reload rebuilds the tree) before we touch anything, so we never
-        // hold strong refs to orphaned elements.
-        var currentView = chat?.View;
-        if (!ReferenceEquals(currentView, _lastChatView))
-        {
-            _touchedDescendants.Clear();
-            _originalBg.Clear();
-            _lastChatView = currentView;
-        }
-
-        bool on = WantTransparentContainer;
-        StyleColor transparentColor = new StyleColor(new Color(0f, 0f, 0f, 0f));
-
-        void Set(VisualElement v)
-        {
-            if (v == null) return;
-            CaptureOriginalBg(v);
-            try
-            {
-                if (on)
-                {
-                    v.style.backgroundColor = transparentColor;
-                    v.style.backgroundImage = new StyleBackground(StyleKeyword.None);
-                }
-                else if (_originalBg.TryGetValue(v, out var orig))
-                {
-                    v.style.backgroundColor = orig.color;
-                    v.style.backgroundImage = orig.image;
-                }
-            }
-            catch { }
-        }
-
-        var view = chat?.View;
-        Set(view);
-        Set(GetChatContainer(chat));
-
-        if (_fiScrollView == null) _fiScrollView = AccessTools.Field(typeof(UIChat), "scrollView");
-        if (_fiScrollView?.GetValue(chat) is ScrollView scrollView)
-        {
-            Set(scrollView);
-            Set(scrollView.contentContainer);
-            Set(scrollView.contentViewport);
-        }
-
-        // Two-pass descendant sweep:
-        //   1) discover anything that paints a visible bg (color or
-        //      image), record it.
-        //   2) re-apply current state to every element we've ever
-        //      recorded. The persistent set is required because once
-        //      we've cleared bg on flip-ON, the discovery filter would
-        //      skip those same elements on flip-OFF and vanilla
-        //      styling would never come back.
-        var tf = GetTextField(chat);
-        var inputInner = tf?.Q(className: "unity-base-text-field__input");
-        if (view != null)
-        {
-            foreach (var ve in view.Query<VisualElement>().Build())
-            {
-                if (ve == null) continue;
-                if (ve == tf || ve == inputInner) continue;
-                if (tf != null && tf.Contains(ve)) continue;
-                if (_touchedDescendants.Contains(ve)) continue;
-
-                var bg = ve.resolvedStyle.backgroundColor;
-                bool hasBgColor = bg.a > 0.001f;
-                var bi = ve.resolvedStyle.backgroundImage;
-                bool hasBgImage = bi.texture != null
-                               || bi.sprite != null
-                               || bi.vectorImage != null
-                               || bi.renderTexture != null;
-
-                if (!hasBgColor && !hasBgImage) continue;
-                CaptureOriginalBg(ve);
-                _touchedDescendants.Add(ve);
-            }
-        }
-
-        foreach (var ve in _touchedDescendants)
-        {
-            if (ve == null) continue;
-            try
-            {
-                if (on)
-                {
-                    ve.style.backgroundColor = transparentColor;
-                    ve.style.backgroundImage = new StyleBackground(StyleKeyword.None);
-                }
-                else if (_originalBg.TryGetValue(ve, out var orig))
-                {
-                    ve.style.backgroundColor = orig.color;
-                    ve.style.backgroundImage = orig.image;
-                }
-            }
             catch { }
         }
     }
@@ -470,13 +287,11 @@ internal static class HideInactiveChat
     {
         private static void Postfix(UIChat __instance)
         {
-            // Apply every visual override once on show so the first
-            // paint already reflects whatever the user has toggled.
-            // Each helper internally checks its own flag and is a
-            // no-op when off.
+            // Apply the message-opacity override once on show so the
+            // first paint already reflects whatever the user has toggled.
+            // The helper internally checks its flag and is a no-op when off.
             try
             {
-                ApplyContainerTransparency(__instance);
                 ApplyAllMessageOpacity(__instance);
             }
             catch (Exception e) { Debug.LogWarning("[QoL] hide-inactive-chat show apply failed: " + e.Message); }
