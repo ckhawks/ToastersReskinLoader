@@ -41,7 +41,7 @@ public static class MinimapSection
         var runner = SettingsRunner.Instance;
 
         // ── Behavior (spectator + rotation, formerly on the General page) ──
-        SettingsUI.ToggleRow(root, "Show minimap for spectators", cfg.enableSpectatorMinimap,
+        SettingsUI.ToggleRow(root, "Show minimap while spectating or watching replays", cfg.enableSpectatorMinimap,
             v => { cfg.enableSpectatorMinimap = v; runner.SaveAndRefresh(); });
 
         {
@@ -65,13 +65,13 @@ public static class MinimapSection
         SettingsUI.Separator(root);
         SettingsUI.Header(root, "Colors");
 
-        var blueNumberColor = UITools.CreateColorConfigurationRow("Blue Number Text Color",
+        var blueNumberColor = UITools.CreateColorConfigurationRow("Blue Player Number Color",
             cfg.blueMinimapNumberColor, false,
             newColor => { cfg.blueMinimapNumberColor = newColor; ToasterReskinLoaderAPI.NotifyMinimapSettingsChanged(); },
             () => SaveQoL());
         root.Add(blueNumberColor);
 
-        var redNumberColor = UITools.CreateColorConfigurationRow("Red Number Text Color",
+        var redNumberColor = UITools.CreateColorConfigurationRow("Red Player Number Color",
             cfg.redMinimapNumberColor, false,
             newColor => { cfg.redMinimapNumberColor = newColor; ToasterReskinLoaderAPI.NotifyMinimapSettingsChanged(); },
             () => SaveQoL());

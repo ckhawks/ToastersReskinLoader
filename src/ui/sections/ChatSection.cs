@@ -30,7 +30,7 @@ public static class ChatSection
             v => { cfg.enableChatDragSelect = v; runner.SaveAndRefresh(); });
         SettingsUI.ToggleRow(root, "Hide when inactive", cfg.enableHideInactiveChat,
             v => { cfg.enableHideInactiveChat = v; runner.SaveAndRefresh(); HideInactiveChat.RefreshVisualState(); });
-        SettingsUI.ToggleRow(root, "Keep expired messages at full opacity", cfg.enableChatNoFade,
+        SettingsUI.ToggleRow(root, "Don't fade out old messages", cfg.enableChatNoFade,
             v => { cfg.enableChatNoFade = v; runner.SaveAndRefresh(); HideInactiveChat.RefreshVisualState(); });
         SettingsUI.ToggleRow(root, "Prefix player names with jersey number", cfg.enableNumberedNames,
             v => { cfg.enableNumberedNames = v; runner.SaveAndRefresh(); });

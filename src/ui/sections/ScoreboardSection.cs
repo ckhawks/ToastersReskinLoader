@@ -17,7 +17,7 @@ public static class ScoreboardSection
             v => { cfg.enableScoreboardAnyInGamePhase = v; runner.SaveAndRefresh(); });
         SettingsUI.ToggleRow(root, "Clock shows milliseconds", cfg.enableScoreboardMilliseconds,
             v => { cfg.enableScoreboardMilliseconds = v; runner.SaveAndRefresh(); });
-        SettingsUI.ToggleRow(root, "Clock turns red in final 30s", cfg.enableScoreboardClockColor,
+        SettingsUI.ToggleRow(root, "Clock turns amber then red in the final 30 seconds", cfg.enableScoreboardClockColor,
             v => { cfg.enableScoreboardClockColor = v; runner.SaveAndRefresh(); });
     }
 }

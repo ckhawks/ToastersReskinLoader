@@ -217,7 +217,7 @@ public static class RenderingSection
         root.Add(enableRow);
 
         var smoothRow = UITools.CreateConfigurationRow();
-        smoothRow.Add(UITools.CreateConfigurationLabel("Gloss"));
+        smoothRow.Add(UITools.CreateConfigurationLabel("Gloss amount"));
         var smoothSlider = UITools.CreateConfigurationSlider(0f, 1f, cfg.glossSmoothness, 300);
         smoothSlider.RegisterCallback<ChangeEvent<float>>(evt =>
         {
