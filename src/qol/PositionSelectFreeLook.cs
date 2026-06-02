@@ -288,7 +288,7 @@ internal sealed class PositionSelectFreeLook : MonoBehaviour
         }
         catch { }
 
-        var root = ToasterReskinLoader.ui.ReskinMenu.rootContainer;
+        var root = ToasterReskinLoader.ui.ReskinManagerMenu.rootContainer;
         if (root != null && root.style.display == UnityEngine.UIElements.DisplayStyle.Flex) return true;
 
         if (DevConsole.Instance != null && DevConsole.Instance.IsOpen) return true;

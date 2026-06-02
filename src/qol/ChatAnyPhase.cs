@@ -107,7 +107,7 @@ internal static class ChatAnyPhase
 
             // Toaster's own reskin menu: not part of UIManager's view list,
             // so check the root container's display state directly.
-            var trlRoot = ToasterReskinLoader.ui.ReskinMenu.rootContainer;
+            var trlRoot = ToasterReskinLoader.ui.ReskinManagerMenu.rootContainer;
             if (trlRoot != null && trlRoot.style.display.value == UnityEngine.UIElements.DisplayStyle.Flex)
                 return true;
         }

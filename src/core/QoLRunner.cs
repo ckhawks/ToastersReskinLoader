@@ -82,7 +82,7 @@ public sealed class QoLRunner : MonoBehaviour
         if (_config == null || !_config.enableEscCloseMenus) return;
         if (DevConsole.Instance != null && DevConsole.Instance.IsOpen) return;
 
-        var root = ToasterReskinLoader.ui.ReskinMenu.rootContainer;
+        var root = ToasterReskinLoader.ui.ReskinManagerMenu.rootContainer;
         if (root != null && root.style.display == UnityEngine.UIElements.DisplayStyle.Flex) return;
 
         var kb = UnityEngine.InputSystem.Keyboard.current;

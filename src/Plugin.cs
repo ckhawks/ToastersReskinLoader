@@ -79,7 +79,7 @@ public class Plugin : IPuckPlugin
                 SwapperManager.Setup();
                 PuckFXSwapper.ApplyAll();
                 ChangingRoomHelper.Scan();
-                ReskinMenuAccessButtons.Setup();
+                ReskinManagerMenuAccessButtons.Setup();
                 AppearanceAPI.Initialize(MonoBehaviourSingleton<UIManager>.Instance);
                 PlayerCustomizationSection.SubscribeToServerLoad();
                 HudSection.ApplyChatHeight(core.QoLRunner.Instance?.Config?.chatHeight ?? 300f);

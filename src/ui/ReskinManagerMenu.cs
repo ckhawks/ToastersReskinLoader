@@ -13,7 +13,7 @@ using Object = UnityEngine.Object;
 
 namespace ToasterReskinLoader.ui;
 
-public static class ReskinMenu
+public static class ReskinManagerMenu
 {
     public static VisualElement rootContainer;
     public static VisualElement mainContainer;

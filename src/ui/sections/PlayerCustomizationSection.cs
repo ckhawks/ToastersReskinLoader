@@ -60,14 +60,14 @@ public static class PlayerCustomizationSection
             if (currentLevel != lastKnownLevel && lastKnownLevel > 0)
             {
                 lastKnownLevel = currentLevel;
-                if (ReskinMenu.rootContainer != null && ReskinMenu.rootContainer.visible)
-                    ReskinMenu.Hide();
+                if (ReskinManagerMenu.rootContainer != null && ReskinManagerMenu.rootContainer.visible)
+                    ReskinManagerMenu.Hide();
                 return;
             }
             lastKnownLevel = currentLevel;
 
-            if (ReskinMenu.sections[ReskinMenu.selectedSectionIndex] == "Appearance")
-                ReskinMenu.CreateContentForSection(ReskinMenu.selectedSectionIndex);
+            if (ReskinManagerMenu.sections[ReskinManagerMenu.selectedSectionIndex] == "Appearance")
+                ReskinManagerMenu.CreateContentForSection(ReskinManagerMenu.selectedSectionIndex);
         };
     }
 

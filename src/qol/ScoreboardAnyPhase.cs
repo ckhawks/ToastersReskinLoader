@@ -44,7 +44,7 @@ internal static class ScoreboardAnyPhase
         if (ui.Play != null && ui.Play.IsVisible) return false;
 
         // Toaster's own reskin menu — also a modal-ish UI.
-        var trlRoot = ToasterReskinLoader.ui.ReskinMenu.rootContainer;
+        var trlRoot = ToasterReskinLoader.ui.ReskinManagerMenu.rootContainer;
         if (trlRoot != null && trlRoot.style.display.value == UnityEngine.UIElements.DisplayStyle.Flex)
             return false;
 

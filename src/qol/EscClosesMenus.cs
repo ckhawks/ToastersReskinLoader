@@ -99,7 +99,7 @@ internal static class EscClosesMenus
                 if (__instance.Chat != null && __instance.Chat.IsFocused) return;
 
                 if (DevConsole.Instance != null && DevConsole.Instance.IsOpen) return;
-                var trlRoot = ToasterReskinLoader.ui.ReskinMenu.rootContainer;
+                var trlRoot = ToasterReskinLoader.ui.ReskinManagerMenu.rootContainer;
                 if (trlRoot != null && trlRoot.style.display == DisplayStyle.Flex) return;
 
                 if (__instance.MainMenu != null && __instance.MainMenu.IsVisible) return;

@@ -4,7 +4,7 @@ using UnityEngine.UIElements;
 
 namespace ToasterReskinLoader.ui;
 
-public static class ReskinMenuAccessButtons
+public static class ReskinManagerMenuAccessButtons
 {
     public static UIMainMenu mainMenu;
     public static Button mainMenuSettingsButton;
@@ -22,7 +22,7 @@ public static class ReskinMenuAccessButtons
         .GetField("settingsButton",
             BindingFlags.Instance | BindingFlags.NonPublic);
 
-    private static void AddReskinMenuButtonToPauseMenu(UIPauseMenu pauseMenu)
+    private static void AddReskinManagerMenuButtonToPauseMenu(UIPauseMenu pauseMenu)
     {
         VisualElement containerVisualElement = pauseMenuSettingsButton.parent;
 
@@ -32,11 +32,11 @@ public static class ReskinMenuAccessButtons
             return;
         }
 
-        Button reskinMenuButton = CreateReskinMenuButton(pauseMenuSettingsButton);
+        Button reskinMenuButton = CreateReskinManagerMenuButton(pauseMenuSettingsButton);
         containerVisualElement.Insert(1, reskinMenuButton);
     }
 
-    private static void AddReskinMenuButtonToMainMenu(UIMainMenu mainMenu)
+    private static void AddReskinManagerMenuButtonToMainMenu(UIMainMenu mainMenu)
     {
         // Follow QuickChatPlus pattern: find button container from a known button
         Button exitGameButton = (Button)_mainMenuExitGameButtonField?.GetValue(mainMenu);
@@ -48,7 +48,7 @@ public static class ReskinMenuAccessButtons
             return;
         }
 
-        Button reskinMenuButton = CreateReskinMenuButton(mainMenuSettingsButton);
+        Button reskinMenuButton = CreateReskinManagerMenuButton(mainMenuSettingsButton);
 
         // Insert before exit game button if possible
         if (exitGameButton != null)
@@ -73,7 +73,7 @@ public static class ReskinMenuAccessButtons
         }
     }
 
-    private static Button CreateReskinMenuButton(Button referenceButton)
+    private static Button CreateReskinManagerMenuButton(Button referenceButton)
     {
         Button button = new Button();
         button.text = "RESKIN MANAGER";
@@ -93,20 +93,20 @@ public static class ReskinMenuAccessButtons
 
         void MainMenuOpenReskinManagerClickHandler(ClickEvent evt)
         {
-            ReskinMenu.Show();
+            ReskinManagerMenu.Show();
         }
     }
 
     public static void Setup()
     {
-        Plugin.Log($"ReskinMenuAccessButtons::Setup()");
+        Plugin.Log($"ReskinManagerMenuAccessButtons::Setup()");
         var uiManager = MonoBehaviourSingleton<UIManager>.Instance;
         mainMenu = uiManager.MainMenu;
-        ReskinMenu.uiMainMenu = mainMenu;
+        ReskinManagerMenu.uiMainMenu = mainMenu;
 
         LocateReferenceButtons();
-        AddReskinMenuButtonToPauseMenu(uiManager.PauseMenu);
-        AddReskinMenuButtonToMainMenu(mainMenu);
+        AddReskinManagerMenuButtonToPauseMenu(uiManager.PauseMenu);
+        AddReskinManagerMenuButtonToMainMenu(mainMenu);
     }
 
     private static void LocateReferenceButtons()
