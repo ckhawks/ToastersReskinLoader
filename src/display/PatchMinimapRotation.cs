@@ -48,9 +48,19 @@ public static class PatchMinimapRotation
 
     private static readonly Rotate _identityRotate = new Rotate(new Angle(0f, AngleUnit.Degree));
 
+    // followPlayer pans/rotates the map past the minimap's frame, but the minimap (and a
+    // parent above it) clip with overflow:hidden, so the off-frame part vanishes. We turn
+    // clipping off up the whole ancestor chain while following, saving each element's
+    // original overflow so it can be restored when follow mode is switched off.
+    private static readonly Dictionary<VisualElement, StyleEnum<Overflow>> _savedOverflow = new();
+
     // Drop references to UIMinimap instances destroyed by a scene change so the
     // tracking set doesn't accumulate stale entries.
-    public static void ResetTracking() => PatchUIMinimapUpdate._rotated.Clear();
+    public static void ResetTracking()
+    {
+        PatchUIMinimapUpdate._rotated.Clear();
+        _savedOverflow.Clear();
+    }
 
     [HarmonyPatch(typeof(UIMinimap), "Update")]
     private class PatchUIMinimapUpdate
@@ -80,7 +90,9 @@ public static class PatchMinimapRotation
                 // Pan + rotate the map layers around the local player; leave `minimap`
                 // alone so its screen-placement transform (SetPosition) is preserved.
                 minimap.style.rotate = _identityRotate;
-                minimap.style.overflow = Overflow.Hidden; // clip the map bleeding past the window
+                // Let the panned/rotated map show outside the minimap's frame instead of
+                // being clipped by it (or a clipping parent).
+                SetChainOverflowVisible(minimap);
                 ApplyLayerTransform(content, deg, translate, origin);
                 ApplyLayerTransform(background, deg, translate, origin);
                 ApplyLayerTransform(foreground, deg, translate, origin);
@@ -95,7 +107,7 @@ public static class PatchMinimapRotation
                 ResetLayerTransform(content);
                 ResetLayerTransform(background);
                 ResetLayerTransform(foreground);
-                minimap.style.overflow = Overflow.Visible;
+                RestoreChainOverflow();
                 minimap.style.rotate = new Rotate(new Angle(-90f, AngleUnit.Degree));
                 CounterRotateLabels(__instance, -90f);
                 _rotated.Add(__instance);
@@ -107,7 +119,7 @@ public static class PatchMinimapRotation
             ResetLayerTransform(background);
             ResetLayerTransform(foreground);
             minimap.style.rotate = _identityRotate;
-            minimap.style.overflow = Overflow.Visible;
+            RestoreChainOverflow();
             CounterRotateLabels(__instance, 0f);
             _rotated.Remove(__instance);
         }
@@ -185,6 +197,27 @@ public static class PatchMinimapRotation
                 if (label != null)
                     label.style.rotate = new Rotate(new Angle(-deg, AngleUnit.Degree));
             }
+        }
+
+        // Walk from the minimap up to the panel root, turning off clipping so the map can
+        // render outside its frame. Each element's original overflow is saved once so
+        // RestoreChainOverflow can put it back exactly.
+        private static void SetChainOverflowVisible(VisualElement from)
+        {
+            for (var el = from; el != null; el = el.parent)
+            {
+                if (!_savedOverflow.ContainsKey(el))
+                    _savedOverflow[el] = el.style.overflow;
+                el.style.overflow = Overflow.Visible;
+            }
+        }
+
+        private static void RestoreChainOverflow()
+        {
+            if (_savedOverflow.Count == 0) return;
+            foreach (var kvp in _savedOverflow)
+                kvp.Key.style.overflow = kvp.Value;
+            _savedOverflow.Clear();
         }
     }
 }
