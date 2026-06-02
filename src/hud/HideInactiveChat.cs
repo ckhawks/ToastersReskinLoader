@@ -37,7 +37,7 @@ using UnityEngine.UIElements;
 
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol;
+namespace ToasterReskinLoader.hud;
 
 internal static class HideInactiveChat
 {

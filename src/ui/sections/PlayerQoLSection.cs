@@ -25,6 +25,8 @@ using ToasterReskinLoader.input;
 
 using ToasterReskinLoader.display;
 
+using ToasterReskinLoader.hud;
+
 namespace ToasterReskinLoader.ui.sections;
 
 public static class PlayerQoLSection

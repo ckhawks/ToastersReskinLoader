@@ -8,6 +8,8 @@ using ToasterReskinLoader.swappers;
 
 using ToasterReskinLoader.display;
 
+using ToasterReskinLoader.hud;
+
 namespace ToasterReskinLoader.swappers;
 
 public static class SwapperManager
@@ -195,7 +197,7 @@ public static class SwapperManager
         Plugin.Log($"OnSceneLoaded: {scene.name}");
         ToasterReskinLoader.display.ArenaVisualsToggle.InvalidateCache();
         ToasterReskinLoader.display.PatchMinimapRotation.ResetTracking();
-        ToasterReskinLoader.qol.PatchPlayerUsernameColors.ResetTracking();
+        ToasterReskinLoader.hud.PatchPlayerUsernameColors.ResetTracking();
         GlossSwapper.ResetScanScheduled();
         if (scene.name.Equals("locker_room"))
         {

@@ -21,6 +21,8 @@ using ToasterReskinLoader.diagnostics;
 
 using ToasterReskinLoader.input;
 
+using ToasterReskinLoader.hud;
+
 namespace ToasterReskinLoader.core;
 
 public sealed class QoLRunner : MonoBehaviour

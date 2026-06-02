@@ -21,7 +21,7 @@ using ToasterReskinLoader.core;
 
 using ToasterReskinLoader.diagnostics;
 
-namespace ToasterReskinLoader.qol;
+namespace ToasterReskinLoader.hud;
 
 internal static class ChatAnyPhase
 {

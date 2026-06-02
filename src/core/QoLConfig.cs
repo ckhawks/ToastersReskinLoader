@@ -10,6 +10,8 @@ using UnityEngine;
 
 using ToasterReskinLoader.input;
 
+using ToasterReskinLoader.hud;
+
 namespace ToasterReskinLoader.core;
 
 [Serializable]

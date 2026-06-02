@@ -19,7 +19,7 @@ using UnityEngine;
 
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol;
+namespace ToasterReskinLoader.hud;
 
 [HarmonyPatch(typeof(UIManagerController), "Event_Everyone_OnPlayerGameStateChanged")]
 internal static class SpectatorMinimap_Postfix

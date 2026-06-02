@@ -14,7 +14,7 @@ using UnityEngine.UIElements;
 
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol;
+namespace ToasterReskinLoader.hud;
 
 public static class PatchPlayerUsernameColors
 {
