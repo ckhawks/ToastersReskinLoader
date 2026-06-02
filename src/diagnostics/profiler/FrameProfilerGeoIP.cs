@@ -7,7 +7,7 @@ using UnityEngine.Networking;
 
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol;
+namespace ToasterReskinLoader.diagnostics.profiler;
 
 // GeoIP lookup for the currently-connected server endpoint. Uses
 // ip-api.com (free, HTTP-only, 45 req/min limit). We only query once

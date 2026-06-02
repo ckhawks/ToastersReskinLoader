@@ -4,7 +4,7 @@ using System.Linq;
 using Steamworks;
 using UnityEngine;
 
-namespace ToasterReskinLoader.qol
+namespace ToasterReskinLoader.diagnostics
 {
     // Forces Steam to re-check workshop items for updates by issuing a UGC details
     // query directly (the game's GetItemDetails path drops m_rtimeUpdated). Compares

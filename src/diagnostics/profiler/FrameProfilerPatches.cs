@@ -6,7 +6,7 @@ using UnityEngine;
 
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol;
+namespace ToasterReskinLoader.diagnostics.profiler;
 
 // Harmony patches that instrument suspected stutter sources. Tracks both
 // time AND allocation per call to find GC pressure sources. Uses manual

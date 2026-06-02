@@ -6,7 +6,7 @@ using UnityEngine;
 
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol;
+namespace ToasterReskinLoader.diagnostics.profiler;
 
 // Client-side network instrumentation. Patches the server→client sync RPC
 // (Server_SynchronizeObjectsRpc on SynchronizedObjectManager) to capture

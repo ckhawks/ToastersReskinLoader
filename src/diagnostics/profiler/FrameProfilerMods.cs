@@ -9,7 +9,7 @@ using UnityEngine;
 
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol;
+namespace ToasterReskinLoader.diagnostics.profiler;
 
 // Cross-mod instrumentation. Discovers every loaded mod assembly
 // (anything containing an IPuckPlugin implementation), enumerates its

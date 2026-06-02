@@ -17,6 +17,10 @@ using ToasterReskinLoader.serverbrowser;
 
 using ToasterReskinLoader.social;
 
+using ToasterReskinLoader.diagnostics;
+
+using ToasterReskinLoader.diagnostics.profiler;
+
 namespace ToasterReskinLoader.ui.sections;
 
 public static class PlayerQoLSection

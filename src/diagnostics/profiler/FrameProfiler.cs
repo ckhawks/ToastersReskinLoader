@@ -5,7 +5,7 @@ using UnityEngine.Rendering;
 
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol;
+namespace ToasterReskinLoader.diagnostics.profiler;
 
 // Frame timing / stutter profiler. Ported from the standalone
 // ToasterFrameProfiler mod and gated behind QoL.enableFrameProfiler in the

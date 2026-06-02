@@ -3,7 +3,7 @@ using UnityEngine;
 
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol;
+namespace ToasterReskinLoader.diagnostics.profiler;
 
 // A baked graph: instead of issuing N GUI.DrawTexture calls per frame to
 // draw N bars, we paint the bars into a pixel buffer at low frequency

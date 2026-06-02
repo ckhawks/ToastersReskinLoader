@@ -22,7 +22,7 @@ using ToasterReskinLoader.core;
 
 using ToasterReskinLoader.serverbrowser;
 
-namespace ToasterReskinLoader.qol;
+namespace ToasterReskinLoader.diagnostics;
 
 public sealed class DevConsole : MonoBehaviour
 {

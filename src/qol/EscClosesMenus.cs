@@ -23,6 +23,8 @@ using UnityEngine.UIElements;
 
 using ToasterReskinLoader.core;
 
+using ToasterReskinLoader.diagnostics;
+
 namespace ToasterReskinLoader.qol;
 
 internal static class EscClosesMenus

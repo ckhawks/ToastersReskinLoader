@@ -8,6 +8,8 @@ using ToasterReskinLoader.core;
 using UnityEngine;
 using UnityEngine.UIElements;
 
+using ToasterReskinLoader.diagnostics;
+
 namespace ToasterReskinLoader.swappers
 {
     public static class ModMenuEnhancer

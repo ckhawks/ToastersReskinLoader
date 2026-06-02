@@ -17,6 +17,8 @@ using ToasterReskinLoader.qol;
 
 using ToasterReskinLoader.serverbrowser;
 
+using ToasterReskinLoader.diagnostics;
+
 namespace ToasterReskinLoader.core;
 
 public sealed class QoLRunner : MonoBehaviour

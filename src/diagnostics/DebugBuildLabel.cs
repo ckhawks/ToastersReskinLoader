@@ -2,7 +2,7 @@ using HarmonyLib;
 
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol;
+namespace ToasterReskinLoader.diagnostics;
 
 [HarmonyPatch(typeof(UIDebug), nameof(UIDebug.SetBuild))]
 internal static class DebugBuildLabelPatch

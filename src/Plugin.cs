@@ -14,6 +14,10 @@ using ToasterReskinLoader.serverbrowser;
 
 using ToasterReskinLoader.social;
 
+using ToasterReskinLoader.diagnostics;
+
+using ToasterReskinLoader.diagnostics.profiler;
+
 namespace ToasterReskinLoader;
 
 public class Plugin : IPuckPlugin
@@ -89,7 +93,7 @@ public class Plugin : IPuckPlugin
                 HudSection.ApplyChatHeight(core.QoLRunner.Instance?.Config?.chatHeight ?? 300f);
                 HudSection.ApplyQuickChatPosition();
                 MinimapSwapper.ApplyRefreshRate();
-                ToasterReskinLoader.qol.WorkshopUpdateChecker.Initialize();
+                ToasterReskinLoader.diagnostics.WorkshopUpdateChecker.Initialize();
                 SwapperManager.SetupMatchmakingListeners();
                 PartyLineup.Initialize();
                 ToothbrushFilter.ResetIfActive();
@@ -122,7 +126,7 @@ public class Plugin : IPuckPlugin
                     ToasterReskinLoader.qol.DisableControllerInput.Enable();
 
                 if (ToasterReskinLoader.core.QoLRunner.Instance?.Config?.enableFrameProfiler ?? false)
-                    ToasterReskinLoader.qol.FrameProfiler.Enable();
+                    ToasterReskinLoader.diagnostics.profiler.FrameProfiler.Enable();
 
                 ToasterReskinLoader.serverbrowser.ServerPreviewCache.Initialize();
 
@@ -155,7 +159,7 @@ public class Plugin : IPuckPlugin
             ToasterReskinLoader.qol.VanillaUIRetheme.Disable();
             ToasterReskinLoader.serverbrowser.AutoConnectMatchmaking.Disable();
             ToasterReskinLoader.qol.DisableControllerInput.Disable();
-            ToasterReskinLoader.qol.FrameProfiler.Disable();
+            ToasterReskinLoader.diagnostics.profiler.FrameProfiler.Disable();
             harmony.UnpatchSelf();
             AppearanceAPI.Cleanup();
             PartyLineup.Cleanup();

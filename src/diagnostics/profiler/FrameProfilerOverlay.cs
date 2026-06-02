@@ -9,7 +9,7 @@ using UnityEngine.Profiling;
 
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol;
+namespace ToasterReskinLoader.diagnostics.profiler;
 
 // IMGUI overlay that tracks frame times, detects spikes, and helps isolate
 // stutter sources. F4 = cycle display mode, F5 = toggle CSV logging.

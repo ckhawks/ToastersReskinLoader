@@ -3,7 +3,7 @@ using Unity.Profiling;
 
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol;
+namespace ToasterReskinLoader.diagnostics.profiler;
 
 // Subscribes to a curated set of Unity's built-in profiler markers via
 // ProfilerRecorder so the Top Calls view can finger-point microstutters
