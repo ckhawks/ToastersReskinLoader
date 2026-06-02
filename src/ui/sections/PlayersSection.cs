@@ -166,11 +166,25 @@ public static class PlayersSection
             ReskinProfileManager.SaveProfile);
         _root.Add(colorRow);
 
-        // Gray out / disable the color picker unless the custom-color checkbox is on.
+        var resetColorBtn = new Button(() =>
+        {
+            if (blue) profile.blueTeamColor = Defaults.blueTeamColor;
+            else      profile.redTeamColor  = Defaults.redTeamColor;
+            RefreshTeamColors();
+            Render();
+        })
+        { text = "Reset this team's color to default" };
+        UITools.StyleConfigButton(resetColorBtn);
+        resetColorBtn.style.marginTop = 4;
+        _root.Add(resetColorBtn);
+
+        // Gray out / disable the color picker (and its reset) unless the custom-color checkbox is on.
         // (The enable toggle re-renders the section, so this reflects the current state.)
         bool colorEnabled = blue ? profile.blueTeamColorEnabled : profile.redTeamColorEnabled;
         colorRow.SetEnabled(colorEnabled);
         colorRow.style.opacity = colorEnabled ? 1f : 0.5f;
+        resetColorBtn.SetEnabled(colorEnabled);
+        resetColorBtn.style.opacity = colorEnabled ? 1f : 0.5f;
     }
 
     private static void RefreshTeamColors()
