@@ -6,7 +6,7 @@ using UnityEngine;
 
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol.serverbrowser;
+namespace ToasterReskinLoader.serverbrowser;
 
 /// Persists the last successful ServerPreviewData per endpoint so the
 /// server browser can render rows immediately on open (with maxPlayers

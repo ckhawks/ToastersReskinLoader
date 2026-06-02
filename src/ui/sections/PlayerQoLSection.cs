@@ -13,6 +13,8 @@ using ToasterReskinLoader.qol.beacon;
 using UnityEngine;
 using UnityEngine.UIElements;
 
+using ToasterReskinLoader.serverbrowser;
+
 namespace ToasterReskinLoader.ui.sections;
 
 public static class PlayerQoLSection

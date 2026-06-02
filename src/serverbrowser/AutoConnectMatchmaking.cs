@@ -21,7 +21,7 @@ using System.Collections.Generic;
 
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol;
+namespace ToasterReskinLoader.serverbrowser;
 
 public static class AutoConnectMatchmaking
 {

@@ -15,6 +15,8 @@ using UnityEngine;
 
 using ToasterReskinLoader.qol;
 
+using ToasterReskinLoader.serverbrowser;
+
 namespace ToasterReskinLoader.core;
 
 public sealed class QoLRunner : MonoBehaviour
@@ -52,7 +54,7 @@ public sealed class QoLRunner : MonoBehaviour
         catch (Exception e) { Debug.LogError("[QoL] ReloadFromProfile failed: " + e); }
         try { SavedServerPasswords.Initialize(); }
         catch (Exception e) { Debug.LogError("[QoL] SavedServerPasswords.Initialize failed: " + e); }
-        try { ToasterReskinLoader.qol.serverbrowser.ServerSlotQueue.Initialize(); }
+        try { ToasterReskinLoader.serverbrowser.ServerSlotQueue.Initialize(); }
         catch (Exception e) { Debug.LogError("[QoL] ServerSlotQueue.Initialize failed: " + e); }
         try { MainMenuButtons.Initialize(); }
         catch (Exception e) { Debug.LogError("[QoL] MainMenuButtons.Initialize failed: " + e); }
@@ -65,7 +67,7 @@ public sealed class QoLRunner : MonoBehaviour
     private void OnDestroy()
     {
         try { SavedServerPasswords.Teardown(); } catch { }
-        try { ToasterReskinLoader.qol.serverbrowser.ServerSlotQueue.Teardown(); } catch { }
+        try { ToasterReskinLoader.serverbrowser.ServerSlotQueue.Teardown(); } catch { }
         try { MainMenuButtons.Teardown(); } catch { }
         if (_instance == this) _instance = null;
     }

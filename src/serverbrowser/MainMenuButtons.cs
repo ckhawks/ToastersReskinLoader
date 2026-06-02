@@ -32,13 +32,13 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using HarmonyLib;
-using ToasterReskinLoader.qol.serverbrowser;
+using ToasterReskinLoader.serverbrowser;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol;
+namespace ToasterReskinLoader.serverbrowser;
 
 internal static class MainMenuButtons
 {

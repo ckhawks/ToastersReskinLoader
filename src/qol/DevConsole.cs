@@ -20,6 +20,8 @@ using UITK = UnityEngine.UIElements;
 
 using ToasterReskinLoader.core;
 
+using ToasterReskinLoader.serverbrowser;
+
 namespace ToasterReskinLoader.qol;
 
 public sealed class DevConsole : MonoBehaviour

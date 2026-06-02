@@ -10,6 +10,8 @@ using ToasterReskinLoader.ui.sections;
 using UnityEngine;
 using UnityEngine.Rendering;
 
+using ToasterReskinLoader.serverbrowser;
+
 namespace ToasterReskinLoader;
 
 public class Plugin : IPuckPlugin
@@ -112,7 +114,7 @@ public class Plugin : IPuckPlugin
                     ToasterReskinLoader.qol.VanillaUIRetheme.Enable();
 
                 if (ToasterReskinLoader.core.QoLRunner.Instance?.Config?.enableAutoConnectMatchmaking ?? false)
-                    ToasterReskinLoader.qol.AutoConnectMatchmaking.Enable();
+                    ToasterReskinLoader.serverbrowser.AutoConnectMatchmaking.Enable();
 
                 if (ToasterReskinLoader.core.QoLRunner.Instance?.Config?.disableControllerInput ?? false)
                     ToasterReskinLoader.qol.DisableControllerInput.Enable();
@@ -120,7 +122,7 @@ public class Plugin : IPuckPlugin
                 if (ToasterReskinLoader.core.QoLRunner.Instance?.Config?.enableFrameProfiler ?? false)
                     ToasterReskinLoader.qol.FrameProfiler.Enable();
 
-                ToasterReskinLoader.qol.serverbrowser.ServerPreviewCache.Initialize();
+                ToasterReskinLoader.serverbrowser.ServerPreviewCache.Initialize();
 
                 // The locker room scene is already loaded before the mod loads,
                 // so OnSceneLoaded won't fire - apply everything here
@@ -149,7 +151,7 @@ public class Plugin : IPuckPlugin
             BetterFriendsList.Disable();
             ToasterReskinLoader.qol.beacon.BeaconPing.Disable();
             ToasterReskinLoader.qol.VanillaUIRetheme.Disable();
-            ToasterReskinLoader.qol.AutoConnectMatchmaking.Disable();
+            ToasterReskinLoader.serverbrowser.AutoConnectMatchmaking.Disable();
             ToasterReskinLoader.qol.DisableControllerInput.Disable();
             ToasterReskinLoader.qol.FrameProfiler.Disable();
             harmony.UnpatchSelf();

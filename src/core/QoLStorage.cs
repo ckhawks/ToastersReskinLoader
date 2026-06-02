@@ -18,6 +18,8 @@ using UnityEngine;
 
 using ToasterReskinLoader.qol;
 
+using ToasterReskinLoader.serverbrowser;
+
 namespace ToasterReskinLoader.core;
 
 internal static class QoLStorage

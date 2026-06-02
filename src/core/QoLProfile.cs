@@ -7,6 +7,8 @@
 using Newtonsoft.Json;
 using UnityEngine;
 
+using ToasterReskinLoader.serverbrowser;
+
 namespace ToasterReskinLoader.core;
 
 public class QoLProfile

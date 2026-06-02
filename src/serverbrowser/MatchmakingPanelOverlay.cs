@@ -20,7 +20,7 @@ using UnityEngine.UIElements;
 
 using ToasterReskinLoader.core;
 
-namespace ToasterReskinLoader.qol.serverbrowser;
+namespace ToasterReskinLoader.serverbrowser;
 
 internal static class MatchmakingPanelOverlay
 {
