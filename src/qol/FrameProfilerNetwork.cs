@@ -102,6 +102,13 @@ public static class FrameProfilerNetwork
             // On the client, the transport tracks RTT keyed by the *peer*
             // we're connected to — which is the server (ServerClientId = 0).
             // Calling GetCurrentRtt(LocalClientId) returns 0.
+            //
+            // Caveat: the game only refreshes this transport RTT when the
+            // player is actively sending input — it's measured off the
+            // client→server packets the netcode emits on input. When the
+            // player is idle (no movement/inputs), the value goes stale and
+            // can read low/flat. This is another reason the always-on ICMP
+            // probe is useful: it keeps measuring the wire even while idle.
             ulong rtt = nm.NetworkConfig.NetworkTransport.GetCurrentRtt(NetworkManager.ServerClientId);
             // Fallback: if the transport returns 0, use the server-published
             // Player.Ping NetworkVariable (slower, ~1Hz, but available).
