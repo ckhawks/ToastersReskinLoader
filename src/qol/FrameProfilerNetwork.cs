@@ -37,6 +37,10 @@ public static class FrameProfilerNetwork
     public static readonly float[] rttMs = new float[RTT_RING];
     public static readonly float[] rttTimes = new float[RTT_RING];
     public static readonly float[] lossPct = new float[RTT_RING];
+    // Network-layer ICMP RTT snapshotted at the same cadence as the game RTT
+    // so the two share the RTT graph's X axis. -1 = no ICMP reading for that
+    // sample (target blocks ICMP, or none yet); the overlay skips negatives.
+    public static readonly float[] icmpMs = new float[RTT_RING];
     public static int rttIndex = 0;
     public static int rttTotal = 0;
 
@@ -110,6 +114,9 @@ public static class FrameProfilerNetwork
             rttMs[rttIndex] = rtt;
             rttTimes[rttIndex] = Time.unscaledTime;
             lossPct[rttIndex] = ComputeRollingLossPct(1f);
+            // Hold the latest background ICMP reading (-1 when unavailable) so
+            // it reads as a step line under the cyan game RTT.
+            icmpMs[rttIndex] = FrameProfilerIcmp.currentIcmpMs;
             rttIndex = (rttIndex + 1) % RTT_RING;
             if (rttTotal < RTT_RING) rttTotal++;
             currentRttMs = rtt;
@@ -269,6 +276,7 @@ public static class FrameProfilerNetwork
         currentLossPct = 0f;
         Array.Clear(sampleGap, 0, sampleGap.Length);
         Array.Clear(lossPct, 0, lossPct.Length);
+        Array.Clear(icmpMs, 0, icmpMs.Length);
     }
 
     public static class Patch_SyncRpcReceived

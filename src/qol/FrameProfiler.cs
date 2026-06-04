@@ -60,6 +60,7 @@ public static class FrameProfiler
         {
             harmony.UnpatchSelf();
             FrameProfilerNetwork.Reset();
+            FrameProfilerIcmp.Reset();
             FrameProfilerMods.Reset();
             if (overlayHost != null)
             {

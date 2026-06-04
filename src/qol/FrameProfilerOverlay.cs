@@ -247,6 +247,9 @@ public class FrameProfilerOverlay : MonoBehaviour
 
         if (Time.frameCount % RTT_SAMPLE_INTERVAL_FRAMES == 0)
             FrameProfilerNetwork.SampleRtt();
+        // Kick a background ICMP probe to the connected server when due.
+        // Cheap no-op until SetTarget gives it an IP (done in the stat refresh).
+        FrameProfilerIcmp.Poll();
 
         frameIndex = (frameIndex + 1) % FRAME_HISTORY;
         totalFrames++;
@@ -464,6 +467,8 @@ public class FrameProfilerOverlay : MonoBehaviour
             }
         }
         catch { }
+        // Point the ICMP prober at the live server IP (null clears it).
+        FrameProfilerIcmp.SetTarget(serverIp);
         if (string.IsNullOrEmpty(serverEndpoint))
         {
             cachedServerLine = "Server: (offline)";
@@ -549,6 +554,7 @@ public class FrameProfilerOverlay : MonoBehaviour
     static readonly Color C_REF_LINE   = new Color(0.5f, 0.5f, 0.5f, 0.4f);
     static readonly Color C_SPIKE_LINE = new Color(1f, 0f, 0f, 0.5f);
     static readonly Color C_LOSS       = new Color(1f, 0.3f, 0.3f, 0.95f);
+    static readonly Color C_ICMP_LINE  = new Color(1f, 0.6f, 0.1f, 1f);     // orange = network-layer ICMP RTT
     static readonly Color C_DROP       = new Color(1f, 0.2f, 0.2f, 0.35f);
     static readonly Color C_BACKLOG    = new Color(0.7f, 0.4f, 1f, 0.95f);  // purple cap = server backlog burst
 
@@ -673,6 +679,24 @@ public class FrameProfilerOverlay : MonoBehaviour
             v = Mathf.Min(v, rttMax);
             int y = Mathf.RoundToInt(v / rttMax * g.H);
             g.Dot(i * barPx, Mathf.Clamp(y, 0, g.H - 2), barPx, 2, C_FPS_LINE);
+        }
+        // Pass 3: orange ICMP line (network-layer RTT) — held between probes,
+        // so it reads as a step line under the cyan game RTT. The vertical gap
+        // between the two is the server/queueing overhead. Negative samples
+        // (ICMP blocked / no reply) are skipped, leaving a gap in the line.
+        for (int i = 0; i < barCount; i++)
+        {
+            float v = -1f;
+            for (int j = 0; j < stride; j++)
+            {
+                int idx = (rttStart + (rttCount - barCount * stride) + i * stride + j) % FrameProfilerNetwork.RTT_RING;
+                float s = FrameProfilerNetwork.icmpMs[idx];
+                if (s >= 0f && s > v) v = s;
+            }
+            if (v < 0f) continue;
+            v = Mathf.Min(v, rttMax);
+            int y = Mathf.RoundToInt(v / rttMax * g.H);
+            g.Dot(i * barPx, Mathf.Clamp(y, 0, g.H - 2), barPx, 2, C_ICMP_LINE);
         }
         g.Apply();
     }
@@ -864,7 +888,7 @@ public class FrameProfilerOverlay : MonoBehaviour
         float rttMax = FrameProfilerNetwork.rttAxisMaxMs;
         const float LOSS_MAX = 100f;
         GUI.Label(new Rect(graphX, rttY - 20, graphW, 18),
-            "RTT ms (cyan) + Packet loss % (red, 0-100%)",
+            "RTT ms — game (cyan) vs ICMP (orange) + Packet loss % (red, 0-100%)",
             graphTitleStyle);
         if (bakedRtt != null) GUI.DrawTexture(new Rect(graphX, rttY, graphW, rttH), bakedRtt.Tex);
         GUI.Label(new Rect(graphX + graphW + 2, rttY - 2,         60, 18), $"{rttMax:F0}ms",  rttMaxLabelStyle);
@@ -956,8 +980,15 @@ public class FrameProfilerOverlay : MonoBehaviour
         }
 
         // Network summary lines
+        float icmp = FrameProfilerIcmp.currentIcmpMs;
+        // Δ = game RTT − ICMP ≈ server/processing + send-buffer overhead.
+        // Only meaningful when we actually got an ICMP reply; otherwise show
+        // why (blocked, timeout, …) since many hosts drop echo requests.
+        string icmpStr = icmp >= 0f
+            ? $"ICMP {icmp:F0}ms  Δ {(FrameProfilerNetwork.currentRttMs - icmp):+0;-0;0}ms"
+            : $"ICMP {FrameProfilerIcmp.StatusText()}";
         GUI.Label(new Rect(x + 10, ly, panelW, 18),
-            $"RTT {FrameProfilerNetwork.currentRttMs:F0}ms  Ticks {FrameProfilerNetwork.currentTickRateHz:F1}Hz/100  Jitter {FrameProfilerNetwork.jitterMs:F1}ms",
+            $"RTT {FrameProfilerNetwork.currentRttMs:F0}ms  {icmpStr}  Ticks {FrameProfilerNetwork.currentTickRateHz:F1}Hz/100  Jitter {FrameProfilerNetwork.jitterMs:F1}ms",
             labelStyle); ly += 18;
         GUI.Label(new Rect(x + 10, ly, panelW, 18),
             $"Loss {FrameProfilerNetwork.currentLossPct:F1}%  Net {FormatBytes((long)FrameProfilerNetwork.currentBytesPerSec)}/s  Dropped +{FrameProfilerNetwork.droppedInWindow}/s (total {FrameProfilerNetwork.droppedTickCount})",
