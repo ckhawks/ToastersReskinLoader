@@ -60,14 +60,14 @@ public static class PlayerCustomizationSection
             if (currentLevel != lastKnownLevel && lastKnownLevel > 0)
             {
                 lastKnownLevel = currentLevel;
-                if (ReskinMenu.rootContainer != null && ReskinMenu.rootContainer.visible)
-                    ReskinMenu.Hide();
+                if (ReskinManagerMenu.rootContainer != null && ReskinManagerMenu.rootContainer.visible)
+                    ReskinManagerMenu.Hide();
                 return;
             }
             lastKnownLevel = currentLevel;
 
-            if (ReskinMenu.sections[ReskinMenu.selectedSectionIndex] == "Appearance")
-                ReskinMenu.CreateContentForSection(ReskinMenu.selectedSectionIndex);
+            if (ReskinManagerMenu.sections[ReskinManagerMenu.selectedSectionIndex] == "Appearance")
+                ReskinManagerMenu.CreateContentForSection(ReskinManagerMenu.selectedSectionIndex);
         };
     }
 
@@ -286,6 +286,17 @@ public static class PlayerCustomizationSection
         showSkinRow.Add(showSkinToggle);
         contentScrollViewContent.Add(showSkinRow);
         dependentControls.Add(showSkinRow);
+
+        VisualElement levelUpRow = UITools.CreateConfigurationRow();
+        levelUpRow.Add(UITools.CreateConfigurationLabel("Show Level Up Notifications"));
+        Toggle levelUpToggle = UITools.CreateConfigurationCheckbox(Plugin.modSettings.ShowLevelUpNotifications);
+        levelUpToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
+        {
+            Plugin.modSettings.ShowLevelUpNotifications = evt.newValue;
+            Plugin.modSettings.Save();
+        });
+        levelUpRow.Add(levelUpToggle);
+        contentScrollViewContent.Add(levelUpRow);
 
         UITools.UpdateDependentControlsState(dependentControls, Plugin.modSettings.ShowPersonalization);
     }

@@ -8,7 +8,7 @@ https://github.com/ckhawks/ToastersReskinLoader/wiki/Making-a-Reskin-Pack
 https://github.com/ckhawks/ToastersReskinLoader/wiki/Current-and-Planned-Features
 
 ## For Help
-If you need assistance using Toaster's Reskin Loader, please join the [Toaster's Rink / Puck Modding Discord server](http://discord.puckstats.io/).
+If you need assistance using Toaster's Reskin Loader, please join the [Toaster's Rink / Puck Modding Discord server](https://discord.gg/mCmX5dwzsj).
 
 ## Supporting Development
 If you would like to support Toaster in being able to work on this mod and others, you may [donate on the Ko-fi page](https://ko-fi.com/stellaric).

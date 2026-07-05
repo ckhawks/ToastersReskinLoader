@@ -3,9 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using HarmonyLib;
-using ToasterReskinLoader.qol;
+using ToasterReskinLoader.core;
 using UnityEngine;
 using UnityEngine.UIElements;
+
+using ToasterReskinLoader.diagnostics;
+
+using ToasterReskinLoader.ui;
 
 namespace ToasterReskinLoader.swappers
 {
@@ -77,7 +81,7 @@ namespace ToasterReskinLoader.swappers
         // renders untouched. Toggling at runtime only affects future menu opens;
         // controls already injected in this session stay until game restart.
         private static bool IsEnabled() =>
-            ToasterReskinLoader.qol.QoLRunner.Instance?.Config?.enableEnhancedModMenu ?? true;
+            ToasterReskinLoader.core.Settings.Current?.enableEnhancedModMenu ?? true;
 
         // Snapshot of all entry→element pairs from both maps.
         // Keys are either Mod or Plugin instances.
@@ -389,7 +393,7 @@ namespace ToasterReskinLoader.swappers
             descToggle.style.fontSize = 14;
             descToggle.RegisterCallback<AttachToPanelEvent>(_ =>
             {
-                ToasterReskinLoader.qol.VanillaUIRetheme.RecolorTree(descToggle);
+                ToasterReskinLoader.ui.VanillaUIRetheme.RecolorTree(descToggle);
                 // Force [checkbox] [label] order with breathing room between them.
                 descToggle.style.flexDirection = FlexDirection.Row;
                 var input = descToggle.Q(className: "unity-toggle__input");

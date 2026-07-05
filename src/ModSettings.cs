@@ -10,6 +10,7 @@ public class ModSettings
     public bool ShowPersonalization { get; set; } = true;
     public bool ShowOtherPlayersHats { get; set; } = true;
     public bool ShowNonNaturalSkinTones { get; set; } = true;
+    public bool ShowLevelUpNotifications { get; set; } = true;
 
     static string ConfigurationFileName = $"{Plugin.MOD_NAME}.json";
 

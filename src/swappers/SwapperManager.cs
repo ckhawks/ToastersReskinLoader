@@ -6,6 +6,10 @@ using UnityEngine.UIElements;
 using ToasterReskinLoader.api;
 using ToasterReskinLoader.swappers;
 
+using ToasterReskinLoader.display;
+
+using ToasterReskinLoader.hud;
+
 namespace ToasterReskinLoader.swappers;
 
 public static class SwapperManager
@@ -191,9 +195,9 @@ public static class SwapperManager
     public static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         Plugin.Log($"OnSceneLoaded: {scene.name}");
-        ToasterReskinLoader.qol.ArenaVisuals.InvalidateCache();
-        ToasterReskinLoader.qol.PatchMinimapRotation.ResetTracking();
-        ToasterReskinLoader.qol.PatchPlayerUsernameColors.ResetTracking();
+        ToasterReskinLoader.display.ArenaVisualsToggle.InvalidateCache();
+        ToasterReskinLoader.display.PatchMinimapRotation.ResetTracking();
+        ToasterReskinLoader.hud.PatchPlayerUsernameColors.ResetTracking();
         GlossSwapper.ResetScanScheduled();
         if (scene.name.Equals("locker_room"))
         {
@@ -205,7 +209,7 @@ public static class SwapperManager
             HatSwapper.ClearHats();
             GenderSwapper.ClearCache();
             AppearanceAPI.ClearCache();
-            ui.sections.UISection.ApplyChatBackground(false);
+            ui.sections.ChatSection.ApplyChatBackground(false);
             Plugin.Log($"Local player caches reset from switching to locker room");
         }
         else
@@ -213,7 +217,7 @@ public static class SwapperManager
 
             // Entering a game scene — fetch appearances for all players on the server
             AppearanceAPI.FetchAllPlayersOnServer();
-            ui.sections.UISection.ApplyChatBackground(qol.QoLRunner.Instance?.Config?.chatBackground ?? false);
+            ui.sections.ChatSection.ApplyChatBackground(core.Settings.Current?.chatBackground ?? false);
             MinimapSwapper.ApplyRefreshRate();
         }
 
