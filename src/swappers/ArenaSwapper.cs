@@ -11,9 +11,7 @@ namespace ToasterReskinLoader.swappers;
 public static class ArenaSwapper
 {
     private static List<GameObject> hiddenOutdoorObjects = new List<GameObject>();
-    private static List<GameObject> hiddenCrowdObjects = new List<GameObject>();
     private static List<GameObject> hiddenScoreboardObjects = new List<GameObject>();
-    private static List<GameObject> hiddenGlassObjects = new List<GameObject>();
 
     public static void UpdateCrowdState()
     {
@@ -106,12 +104,6 @@ public static class ArenaSwapper
         "Hangar"
     };
 
-    private static string[] namesOfGlassObjects = new[]
-    {
-        "Pillars",
-        "Glass",
-    };
-
     private static string[] namesOfScoreboardObjects = new[]
     {
         "scoreboard",
@@ -122,13 +114,6 @@ public static class ArenaSwapper
         "Period",
         "Minute",
         "Second"
-    };
-
-    private static string[] namesOfCrowdObjects = new[]
-    {
-        "Crowd Member",
-        "Crowd Member(Clone)",
-        "Crowd Booth"
     };
 
     /// <summary>
@@ -186,11 +171,39 @@ public static class ArenaSwapper
             r.enabled = enabled;
     }
 
-    private static void HideCrowdObjects() =>
-        HideObjectsByName(namesOfCrowdObjects, hiddenCrowdObjects);
+    private static readonly List<GameObject> hiddenCrowdMembers = new List<GameObject>();
+    private static readonly List<MeshRenderer> hiddenBoothRenderers = new List<MeshRenderer>();
 
-    private static void ShowCrowdObjects() =>
-        ShowTrackedObjects(hiddenCrowdObjects);
+    // Bleacher / booth (stands) materials — from the crowd_booth model. The booth
+    // nodes aren't reliably named, so we hide them by material instead.
+    private static readonly string[] namesOfBoothMaterials =
+        { "Base", "Railing", "Seat", "Step Trim", "Wood Cover" };
+
+    private static void HideCrowdObjects()
+    {
+        // Crowd people via the CrowdManager/CrowdMember system.
+        foreach (var member in Object.FindObjectsByType<CrowdMember>(FindObjectsSortMode.None))
+        {
+            if (member != null && member.gameObject.activeSelf)
+            {
+                member.gameObject.SetActive(false);
+                hiddenCrowdMembers.Add(member.gameObject);
+            }
+        }
+        // Bleachers / booth located by their distinctive materials.
+        foreach (var mr in FindRenderersByMaterial(namesOfBoothMaterials))
+        {
+            if (mr.enabled) { mr.enabled = false; hiddenBoothRenderers.Add(mr); }
+        }
+    }
+
+    private static void ShowCrowdObjects()
+    {
+        foreach (var go in hiddenCrowdMembers) if (go != null) go.SetActive(true);
+        hiddenCrowdMembers.Clear();
+        foreach (var mr in hiddenBoothRenderers) if (mr != null) mr.enabled = true;
+        hiddenBoothRenderers.Clear();
+    }
 
     public static void HideOutdoorObjects() =>
         HideObjectsByName(namesOfOutdoorObjects, hiddenOutdoorObjects,
@@ -214,13 +227,23 @@ public static class ArenaSwapper
             go.GetComponent<Scoreboard>()?.TurnOn();
         });
 
-    public static void HideGlassObjects() =>
-        HideObjectsByName(namesOfGlassObjects, hiddenGlassObjects,
-            go => SetMeshRendererEnabled(go, false));
+    private static readonly List<MeshRenderer> hiddenGlassRenderers = new List<MeshRenderer>();
 
-    public static void ShowGlassObjects() =>
-        ShowTrackedObjects(hiddenGlassObjects,
-            go => SetMeshRendererEnabled(go, true));
+    public static void HideGlassObjects()
+    {
+        // The "hide glass" toggle removes the barrier glass and its pillars.
+        foreach (var mr in FindRenderersByMaterial("Glass", "Pillars"))
+        {
+            if (mr.enabled) { mr.enabled = false; hiddenGlassRenderers.Add(mr); }
+        }
+    }
+
+    public static void ShowGlassObjects()
+    {
+        foreach (var mr in hiddenGlassRenderers)
+            if (mr != null) mr.enabled = true;
+        hiddenGlassRenderers.Clear();
+    }
 
     [HarmonyPatch(typeof(CrowdManager), nameof(CrowdManager.RegisterCrowdPosition))]
     public static class CrowdManagerRegisterCrowdPosition
@@ -232,33 +255,66 @@ public static class ArenaSwapper
         }
     }
 
-    private static void SetGameObjectColor(string gameObjectName, Color color)
+    // ── Material-based arena lookup ──────────────────────────────────────
+    //
+    // B1117 rebuilt the rink model (the barrier glass is generated dynamically),
+    // renaming/nesting the mesh nodes so GameObject.Find("Glass"/"Pillars"/…) no
+    // longer resolves. The MATERIAL names are stable (Glass, Pillars, Barrier,
+    // Barrier Top, Barrier Bottom, Ice Bottom/Top), so we locate arena surfaces by
+    // material instead — resilient to the node restructure.
+
+    private static List<MeshRenderer> FindRenderersByMaterial(params string[] materialNames)
     {
-        GameObject go = GameObject.Find(gameObjectName);
-        if (go == null)
+        var result = new List<MeshRenderer>();
+        foreach (var mr in Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
         {
-            Plugin.LogError($"Could not locate {gameObjectName} GameObject.");
+            if (mr == null) continue;
+            var mats = mr.sharedMaterials;
+            if (mats == null) continue;
+            foreach (var m in mats)
+            {
+                if (m != null && MaterialNameMatchesAny(m.name, materialNames)) { result.Add(mr); break; }
+            }
+        }
+        return result;
+    }
+
+    private static bool MaterialNameMatchesAny(string actual, string[] targets)
+    {
+        if (string.IsNullOrEmpty(actual)) return false;
+        int idx = actual.IndexOf(" (Instance)", StringComparison.Ordinal);
+        if (idx >= 0) actual = actual.Substring(0, idx);
+        actual = actual.Trim();
+        foreach (var t in targets)
+            if (actual.Equals(t, StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
+    }
+
+    private static void SetSurfaceColorByMaterial(string materialName, Color color)
+    {
+        var renderers = FindRenderersByMaterial(materialName);
+        if (renderers.Count == 0)
+        {
+            Plugin.LogWarning($"Arena: no renderer found with material '{materialName}'.");
             return;
         }
-
-        MeshRenderer mr = go.GetComponent<MeshRenderer>();
-        if (mr == null)
+        foreach (var mr in renderers)
         {
-            Plugin.LogError($"No MeshRenderer found on GameObject {gameObjectName}.");
-            return;
+            var mat = mr.material; // instanced so we don't tint the shared asset globally
+            if (mat == null) continue;
+            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
+            if (mat.HasProperty("_Color")) mat.SetColor("_Color", color);
         }
-
-        mr.material.SetColor("_BaseColor", color);
-        mr.material.SetColor("_Color", color);
     }
 
     public static void UpdateBoards()
     {
         try
         {
-            SetGameObjectColor("Barrier", ReskinProfileManager.currentProfile.boardsMiddleColor);
-            SetGameObjectColor("Barrier Top", ReskinProfileManager.currentProfile.boardsBorderTopColor);
-            SetGameObjectColor("Barrier Bottom", ReskinProfileManager.currentProfile.boardsBorderBottomColor);
+            var p = ReskinProfileManager.currentProfile;
+            SetSurfaceColorByMaterial("Barrier", p.boardsMiddleColor);
+            SetSurfaceColorByMaterial("Barrier Top", p.boardsBorderTopColor);
+            SetSurfaceColorByMaterial("Barrier Bottom", p.boardsBorderBottomColor);
         }
         catch (Exception e)
         {
@@ -270,41 +326,18 @@ public static class ArenaSwapper
     {
         try
         {
-            GameObject glassGameObject = GameObject.Find("Glass");
-            if (glassGameObject == null)
+            var p = ReskinProfileManager.currentProfile;
+
+            // Glass smoothness — every renderer using the Glass material.
+            foreach (var mr in FindRenderersByMaterial("Glass"))
             {
-                Plugin.LogError($"Could not locate Glass GameObject.");
-                return;
+                var mat = mr.material;
+                if (mat != null && mat.HasProperty("_Smoothness"))
+                    mat.SetFloat("_Smoothness", p.glassSmoothness);
             }
 
-            MeshRenderer glassMeshRenderer = glassGameObject.GetComponent<MeshRenderer>();
-
-            if (glassMeshRenderer == null)
-            {
-                Plugin.LogError("No MeshRenderer found on GameObject Glass.");
-                return;
-            }
-
-            glassMeshRenderer.material.SetFloat("_Smoothness", ReskinProfileManager.currentProfile.glassSmoothness);
-
-            GameObject pillarsGameObject = GameObject.Find("Pillars");
-            if (pillarsGameObject == null)
-            {
-                Plugin.LogError($"Could not locate Pillars GameObject.");
-                return;
-            }
-
-            MeshRenderer pillarsMeshRenderer = pillarsGameObject.GetComponent<MeshRenderer>();
-
-            if (pillarsMeshRenderer == null)
-            {
-                Plugin.LogError("No MeshRenderer found on GameObject Pillars.");
-                return;
-            }
-
-            pillarsMeshRenderer.material.SetColor("_BaseColor", ReskinProfileManager.currentProfile.pillarsColor);
-            pillarsMeshRenderer.material.SetColor("_Color", ReskinProfileManager.currentProfile.pillarsColor);
-            return;
+            // Pillars color.
+            SetSurfaceColorByMaterial("Pillars", p.pillarsColor);
         }
         catch (Exception e)
         {
