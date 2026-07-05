@@ -95,12 +95,11 @@ public static class ArenaSwapper
     {
         "hangar",
         "Rafter",
-        "Rafter Edge",
 
         "Doors",
         "Small Roof Rafters",
         "Small Side Rafters",
-        "Window Borders",
+        "Window Frames",
         "Windows",
 
         "Side Rafter Ties",
@@ -127,9 +126,9 @@ public static class ArenaSwapper
 
     private static string[] namesOfCrowdObjects = new[]
     {
-        "Spectator",
-        "Spectator(Clone)",
-        "spectator_booth"
+        "Crowd Member",
+        "Crowd Member(Clone)",
+        "Crowd Booth"
     };
 
     /// <summary>
@@ -258,8 +257,8 @@ public static class ArenaSwapper
         try
         {
             SetGameObjectColor("Barrier", ReskinProfileManager.currentProfile.boardsMiddleColor);
-            SetGameObjectColor("Barrier Top Border", ReskinProfileManager.currentProfile.boardsBorderTopColor);
-            SetGameObjectColor("Barrier Bottom Border", ReskinProfileManager.currentProfile.boardsBorderBottomColor);
+            SetGameObjectColor("Barrier Top", ReskinProfileManager.currentProfile.boardsBorderTopColor);
+            SetGameObjectColor("Barrier Bottom", ReskinProfileManager.currentProfile.boardsBorderBottomColor);
         }
         catch (Exception e)
         {
@@ -382,12 +381,12 @@ public static class ArenaSwapper
                     continue;
                 }
 
-                if (gameObject.name.Equals("Net"))
+                if (gameObject.name.Equals("Net Cloth"))
                 {
                     SkinnedMeshRenderer netMeshRenderer = gameObject.GetComponent<SkinnedMeshRenderer>();
                     if (netMeshRenderer == null)
                     {
-                        Debug.LogError("No SkinnedMeshRenderer found on GameObject Net.");
+                        Debug.LogError("No SkinnedMeshRenderer found on GameObject Net Cloth.");
                         return;
                     }
 
@@ -429,10 +428,12 @@ public static class ArenaSwapper
             foreach (Object obj in goals)
             {
                 Goal goal = (Goal)obj;
-                Transform frameTransform = goal.transform.Find("Frame");
-                if (frameTransform == null) continue;
 
-                MeshRenderer mr = frameTransform.GetComponent<MeshRenderer>();
+                // B1117 renamed/restructured the goal frame node (was a direct "Frame"
+                // child). Locate the frame renderer by its team-colored material instead
+                // ("Blue Goal" / "Red Goal") so we're resilient to the node name.
+                MeshRenderer mr = goal.GetComponentsInChildren<MeshRenderer>(true)
+                    .FirstOrDefault(r => r.sharedMaterial != null && r.sharedMaterial.name.Contains("Goal"));
                 if (mr == null) continue;
 
                 bool isBlue = goal.gameObject.name.Contains("Blue");

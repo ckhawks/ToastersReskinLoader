@@ -150,92 +150,21 @@ public static class PuckFXSwapper
     }
 
     /// <summary>
-    /// Applies puck trail settings to a spawned puck.
-    /// Called from Harmony postfix on PuckManager.AddPuck().
+    /// Puck trail customization. Called from a Harmony postfix on PuckManager.AddPuck().
+    ///
+    /// STUBBED for B1117: the base game removed the puck's vanilla trail entirely — the
+    /// puck prefab no longer has a "Trail" child or a TrailRenderer — so there is nothing
+    /// to configure. The puckFXTrail* profile fields and their UI are intentionally kept
+    /// so no saved user settings are lost.
+    ///
+    /// TODO (fast-follow, non-critical): re-add the trail ourselves by attaching a
+    /// TrailRenderer to the puck on spawn and driving it from the existing puckFXTrail*
+    /// profile fields (needs a URP-compatible trail material + component lifecycle). The
+    /// original configuration logic is preserved in git history at the pre-B1117 revision.
     /// </summary>
     public static void UpdatePuckTrail(Puck puck)
     {
-        try
-        {
-            var profile = ReskinProfileManager.currentProfile;
-
-            if (puck == null)
-            {
-                Plugin.LogError("PuckFX: Spawned puck is null.");
-                return;
-            }
-
-            if (IsPHLServer && profile.puckFXTrailEnabled)
-            {
-                // Ensure trail is off on PHL servers
-                GameObject puckRoot = puck.gameObject;
-                Transform trailTransform = puckRoot.transform.Find("Trail");
-                if (trailTransform != null)
-                {
-                    TrailRenderer tr = trailTransform.gameObject.GetComponent<TrailRenderer>();
-                    if (tr != null)
-                    {
-                        tr.enabled = false;
-                        tr.emitting = false;
-                    }
-                }
-                return;
-            }
-
-            GameObject puckRootGameObject = puck.gameObject;
-            Transform trailGameObjectTransform = puckRootGameObject.transform.Find("Trail");
-            if (trailGameObjectTransform == null)
-            {
-                Plugin.LogError("PuckFX: Could not find Trail child transform.");
-                return;
-            }
-
-            TrailRenderer trailRenderer = trailGameObjectTransform.gameObject.GetComponent<TrailRenderer>();
-            if (trailRenderer == null)
-            {
-                Plugin.LogError("PuckFX: Could not find TrailRenderer component.");
-                return;
-            }
-
-            trailRenderer.enabled = profile.puckFXTrailEnabled;
-            trailRenderer.emitting = profile.puckFXTrailEnabled;
-
-            if (!profile.puckFXTrailEnabled)
-                return;
-
-            trailRenderer.material.color = new Color(
-                profile.puckFXTrailColor.r,
-                profile.puckFXTrailColor.g,
-                profile.puckFXTrailColor.b,
-                1f);
-
-            trailRenderer.time = profile.puckFXTrailLifetime;
-            trailRenderer.startWidth = profile.puckFXTrailStartWidth;
-            trailRenderer.endWidth = profile.puckFXTrailEndWidth;
-
-            trailRenderer.colorGradient = new Gradient
-            {
-                colorKeys = new[]
-                {
-                    new GradientColorKey(Color.white, 0f),
-                    new GradientColorKey(Color.white, 1f)
-                },
-                alphaKeys = new[]
-                {
-                    new GradientAlphaKey(profile.puckFXTrailStartAlpha, 0f),
-                    new GradientAlphaKey(profile.puckFXTrailEndAlpha, 1f)
-                }
-            };
-
-            // Experimental: TrailRenderer has additional properties that could be exposed:
-            //   trailRenderer.minVertexDistance  - lower = smoother trail, more perf cost
-            //   trailRenderer.numCornerVertices  - rounded corners between segments
-            //   trailRenderer.numCapVertices     - rounded endpoints
-        }
-        catch (Exception e)
-        {
-            Plugin.LogError($"Error updating puck trail: {e.Message}");
-        }
+        // No-op: the vanilla puck trail was removed in B1117. See the TODO above.
     }
 
     /// <summary>
