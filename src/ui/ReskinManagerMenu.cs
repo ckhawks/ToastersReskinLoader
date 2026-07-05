@@ -312,7 +312,13 @@ public static class ReskinManagerMenu
         sidebarContainer.style.height = new StyleLength(new Length(100, LengthUnit.Percent));
         pageContainer.Add(sidebarContainer);
         
-        sidebarScrollView = new ScrollView();
+        sidebarScrollView = new ScrollView(ScrollViewMode.Vertical);
+        // B1117's scrollbars sit beside content instead of overlapping, which shrinks
+        // the content width and can spawn a phantom horizontal scrollbar (the "extra
+        // space"). Force vertical-only and trim the content-container's default padding.
+        sidebarScrollView.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
+        sidebarScrollView.contentContainer.style.paddingRight = 0;
+        sidebarScrollView.contentContainer.style.paddingLeft = 0;
         sidebarScrollView.style.backgroundColor = new StyleColor(new Color(64f / 255f, 64f / 255f, 64f / 255f, 1));
         sidebarContainer.Add(sidebarScrollView);
         PopulateSidebar();

@@ -26,7 +26,7 @@ public static class InterfaceSection
         SettingsUI.Note(root,
             "Restart the game for an off→on toggle to take full effect; changes apply to the next mod menu open.");
 
-        SettingsUI.ToggleRow(root, "Darken vanilla checkbox/input backgrounds", cfg.enableVanillaUIRetheme,
+        SettingsUI.ToggleRow(root, "Restyle vanilla dropdown menus", cfg.enableVanillaUIRetheme,
             v =>
             {
                 cfg.enableVanillaUIRetheme = v;
