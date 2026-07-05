@@ -36,7 +36,6 @@ public class SettingsConfig
     // PositionSelect, Spectate, etc.) — vanilla only shows it during Play.
     public bool enableScoreboardAnyInGamePhase = true;
     public bool enableChatDragSelect = true;
-    public bool enableInlineServerBrowserFilters = true;
     public bool enableHideInactiveChat = false;
     public bool enableSpectatorMinimap = true;
     // Minimap rotation mode. Mutually exclusive — only one applies at a time.

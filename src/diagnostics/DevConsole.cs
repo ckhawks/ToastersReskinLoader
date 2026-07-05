@@ -598,12 +598,12 @@ public sealed class DevConsole : MonoBehaviour
         t.style.marginRight = 10;
         var lab = t.Q<Label>(className: "unity-toggle__label");
         if (lab != null) { lab.style.color = labelColor; lab.style.unityFontStyleAndWeight = FontStyle.Bold; lab.style.fontSize = 13; }
-        // Match the inline-filter toggles: shared BrowserInputBg so the
-        // toggle and any neighboring text field read as one family.
+        // Shared dark input background so the toggle and any neighboring text
+        // field read as one family.
         var toggleInput = t.Q(className: "unity-toggle__input");
         if (toggleInput != null)
         {
-            toggleInput.style.backgroundColor = new StyleColor(InlineServerBrowserFilters.BrowserInputBg);
+            toggleInput.style.backgroundColor = new StyleColor(InputFieldBg);
             var border = new StyleColor(new Color(0.40f, 0.40f, 0.40f, 1f));
             toggleInput.style.borderTopColor = border;
             toggleInput.style.borderBottomColor = border;
@@ -613,19 +613,22 @@ public sealed class DevConsole : MonoBehaviour
         return t;
     }
 
+    // Shared dark input background for dev-console fields and toggles.
+    private static readonly Color InputFieldBg = new Color(0.20f, 0.20f, 0.20f, 1f);
+
     // The dev console panel sits on a near-black background, so an
     // unstyled TextField (which inherits a transparent input area) is
-    // invisible. Apply BrowserInputBg to match the inline-filter inputs +
-    // toggles, plus white text + the requested font size for readability.
+    // invisible. Apply InputFieldBg plus white text + the requested font size
+    // for readability.
     private static void StyleField(TextField tf, int fontSize = 13)
     {
-        tf.style.backgroundColor = new StyleColor(InlineServerBrowserFilters.BrowserInputBg);
+        tf.style.backgroundColor = new StyleColor(InputFieldBg);
         tf.style.color = Color.white;
         tf.style.fontSize = fontSize;
         var input = tf.childCount > 0 ? tf.ElementAt(0) : null;
         if (input != null)
         {
-            input.style.backgroundColor = new StyleColor(InlineServerBrowserFilters.BrowserInputBg);
+            input.style.backgroundColor = new StyleColor(InputFieldBg);
             input.style.color = Color.white;
             input.style.paddingLeft = 6; input.style.paddingRight = 6;
             input.style.fontSize = fontSize;
