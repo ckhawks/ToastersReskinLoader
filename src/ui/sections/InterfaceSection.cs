@@ -14,8 +14,6 @@ public static class InterfaceSection
         var cfg = SettingsUI.RequireConfig(root, "Menu behavior and global UI/text fixes.");
         if (cfg == null) return;
 
-        SettingsUI.ToggleRow(root, "Close secondary menus with ESC", cfg.enableEscCloseMenus,
-            v => { cfg.enableEscCloseMenus = v; Settings.Save(); });
         SettingsUI.ToggleRow(root, "Text drop-shadow on all game UI", cfg.enableUiTextShadow,
             v =>
             {

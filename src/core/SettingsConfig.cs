@@ -27,7 +27,6 @@ public class SettingsConfig
     public float arenaAudioVolume = 0.9f;
 
     // Base-game UX patches (default on)
-    public bool enableEscCloseMenus = true;
     public bool enableChatDragSelect = true;
     public bool enableHideInactiveChat = false;
     public bool enableSpectatorMinimap = true;
