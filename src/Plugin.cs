@@ -38,7 +38,6 @@ public class Plugin : IPuckPlugin
         Plugin.Log($"Enabling {MOD_VERSION}...");
         try
         {
-            PatchStripAnsiLogs.Apply(harmony);
             if (IsDedicatedServer())
             {
                 Plugin.Log("Environment: dedicated server.");

@@ -49,7 +49,6 @@ public class SettingsConfig
     public bool enablePlayerUsernameTeamColors = false;
     public bool enableBrowserFilterPersistence = true;
     public bool enableNumberedNames = false;
-    public bool enableTeamButtonPlayerCount = true;
     public bool enablePartyLineup = true;
     public bool enableSavedServerPasswords = true;
     public bool enableServerBrowserSortTweaks = true;

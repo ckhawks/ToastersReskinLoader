@@ -16,8 +16,6 @@ public static class InterfaceSection
 
         SettingsUI.ToggleRow(root, "Close secondary menus with ESC", cfg.enableEscCloseMenus,
             v => { cfg.enableEscCloseMenus = v; Settings.Save(); });
-        SettingsUI.ToggleRow(root, "Show player count on team select buttons", cfg.enableTeamButtonPlayerCount,
-            v => { cfg.enableTeamButtonPlayerCount = v; Settings.Save(); });
         SettingsUI.ToggleRow(root, "Text drop-shadow on all game UI", cfg.enableUiTextShadow,
             v =>
             {
