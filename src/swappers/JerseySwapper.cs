@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
@@ -11,16 +11,31 @@ public static class JerseySwapper
     private static Texture originalRedGroin;
     private static Dictionary<ulong, Texture> originalBlueTorsoTextures = new Dictionary<ulong, Texture>();
     private static Dictionary<ulong, Texture> originalRedTorsoTextures = new Dictionary<ulong, Texture>();
-    
+
     static readonly FieldInfo _meshRendererTexturerTorsoField = typeof(PlayerTorso)
-        .GetField("meshRendererTexturer", 
+        .GetField("meshRendererTexturer",
             BindingFlags.Instance | BindingFlags.NonPublic);
     static readonly FieldInfo _meshRendererTexturerGroinField = typeof(PlayerGroin)
-        .GetField("meshRendererTexturer", 
+        .GetField("meshRendererTexturer",
             BindingFlags.Instance | BindingFlags.NonPublic);
+
+    // B1117 rewrote MeshRendererTexturer to apply the jersey as a per-renderer
+    // MaterialPropertyBlock override on `texturePropertyName` (default "_BaseMap")
+    // at `materialIndex` (default 0), instead of instantiating a material. A property
+    // block overrides anything written to material.mainTexture, so we must both read
+    // the vanilla jersey from — and write our reskin into — that same block, via the
+    // game's SetTexture(). We reflect the block coordinates to read the exact slot.
     static readonly FieldInfo _meshRendererField = typeof(MeshRendererTexturer)
         .GetField("meshRenderer",
             BindingFlags.Instance | BindingFlags.NonPublic);
+    static readonly FieldInfo _texturePropertyNameField = typeof(MeshRendererTexturer)
+        .GetField("texturePropertyName",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+    static readonly FieldInfo _materialIndexField = typeof(MeshRendererTexturer)
+        .GetField("materialIndex",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
+    private static readonly MaterialPropertyBlock _readBlock = new MaterialPropertyBlock();
 
     public static void ClearJerseyCache()
     {
@@ -39,36 +54,54 @@ public static class JerseySwapper
         return n != "UnityWhite" && !n.StartsWith("Default-");
     }
 
-    private static void TryCacheOriginal(Dictionary<ulong, Texture> cache, ulong id, MeshRenderer renderer)
+    // Reads the jersey texture the game currently has applied via the texturer's
+    // MaterialPropertyBlock (not material.mainTexture, which the block overrides).
+    private static Texture ReadJerseyTexture(MeshRendererTexturer texturer)
+    {
+        if (texturer == null) return null;
+        var renderer = (MeshRenderer) _meshRendererField.GetValue(texturer);
+        if (renderer == null) return null;
+
+        int idx = _materialIndexField != null ? (int) _materialIndexField.GetValue(texturer) : 0;
+        string prop = _texturePropertyNameField?.GetValue(texturer) as string ?? "_BaseMap";
+
+        renderer.GetPropertyBlock(_readBlock, idx);
+        return _readBlock.GetTexture(prop);
+    }
+
+    private static void TryCacheOriginal(Dictionary<ulong, Texture> cache, ulong id, MeshRendererTexturer texturer)
     {
         if (cache.ContainsKey(id)) return;
-        Texture current = renderer.material.mainTexture;
+        Texture current = ReadJerseyTexture(texturer);
         if (IsRealTexture(current))
             cache[id] = current;
     }
-    
+
     // Helper method to consolidate texture application logic.
     // If no reskin is configured and we have no trusted original cached, leave the
-    // material alone so the game's own texture (which may load async) is preserved.
-    private static void ApplyJerseyTexture(MeshRenderer meshRenderer, ReskinRegistry.ReskinEntry reskinEntry, Texture originalTexture)
+    // texturer alone so the game's own texture (which may load async) is preserved.
+    private static void ApplyJerseyTexture(MeshRendererTexturer texturer, ReskinRegistry.ReskinEntry reskinEntry, Texture originalTexture)
     {
+        if (texturer == null) return;
+
         if (reskinEntry == null || reskinEntry.Path == null)
         {
+            // Restore: push the cached vanilla jersey back into the property block.
             if (originalTexture != null)
-                meshRenderer.material.mainTexture = originalTexture;
+                texturer.SetTexture(originalTexture);
         }
         else
         {
             var texture = TextureManager.GetTexture(reskinEntry);
             if (texture != null)
             {
-                SwapperUtils.ApplyTextureToMaterial(meshRenderer.material, texture);
+                texturer.SetTexture(texture);
             }
             else
             {
                 Plugin.LogError($"Failed to load jersey texture for '{reskinEntry.Name}', keeping original.");
                 if (originalTexture != null)
-                    meshRenderer.material.mainTexture = originalTexture;
+                    texturer.SetTexture(originalTexture);
             }
         }
     }
@@ -90,52 +123,54 @@ public static class JerseySwapper
             Plugin.LogDebug($"Player {player.Username.Value} is missing body parts, will retry on ApplyCustomizations.");
             return;
         }
-        
+
         MeshRendererTexturer torsoMeshRendererTexturer =
             (MeshRendererTexturer) _meshRendererTexturerTorsoField.GetValue(player.PlayerBody.PlayerMesh.PlayerTorso);
         MeshRendererTexturer groinMeshRendererTexturer =
             (MeshRendererTexturer) _meshRendererTexturerGroinField.GetValue(player.PlayerBody.PlayerMesh.PlayerGroin);
-        
-        // can call torsoMeshRendererTexturer.SetTexture(Texture);
-        MeshRenderer torsoMeshRenderer = (MeshRenderer) _meshRendererField.GetValue(torsoMeshRendererTexturer);
-        MeshRenderer groinMeshRenderer = (MeshRenderer) _meshRendererField.GetValue(groinMeshRendererTexturer);
 
         if (team == PlayerTeam.Blue)
         {
-            TryCacheOriginal(originalBlueTorsoTextures, player.OwnerClientId, torsoMeshRenderer);
-            if (originalBlueGroin == null && IsRealTexture(groinMeshRenderer.material.mainTexture))
-                originalBlueGroin = groinMeshRenderer.material.mainTexture;
+            TryCacheOriginal(originalBlueTorsoTextures, player.OwnerClientId, torsoMeshRendererTexturer);
+            if (originalBlueGroin == null)
+            {
+                var g = ReadJerseyTexture(groinMeshRendererTexturer);
+                if (IsRealTexture(g)) originalBlueGroin = g;
+            }
 
             Texture torsoOrig = originalBlueTorsoTextures.TryGetValue(player.OwnerClientId, out var bt) ? bt : null;
 
             if (player.Role == PlayerRole.Goalie)
             {
-                ApplyJerseyTexture(torsoMeshRenderer, ReskinProfileManager.currentProfile.blueGoalieTorso, torsoOrig);
-                ApplyJerseyTexture(groinMeshRenderer, ReskinProfileManager.currentProfile.blueGoalieGroin, originalBlueGroin);
+                ApplyJerseyTexture(torsoMeshRendererTexturer, ReskinProfileManager.currentProfile.blueGoalieTorso, torsoOrig);
+                ApplyJerseyTexture(groinMeshRendererTexturer, ReskinProfileManager.currentProfile.blueGoalieGroin, originalBlueGroin);
             }
             else
             {
                 Plugin.LogDebug($"Setting blue skater torso to {ReskinProfileManager.currentProfile.blueSkaterTorso?.Name ?? "original"}");
-                ApplyJerseyTexture(torsoMeshRenderer, ReskinProfileManager.currentProfile.blueSkaterTorso, torsoOrig);
-                ApplyJerseyTexture(groinMeshRenderer, ReskinProfileManager.currentProfile.blueSkaterGroin, originalBlueGroin);
+                ApplyJerseyTexture(torsoMeshRendererTexturer, ReskinProfileManager.currentProfile.blueSkaterTorso, torsoOrig);
+                ApplyJerseyTexture(groinMeshRendererTexturer, ReskinProfileManager.currentProfile.blueSkaterGroin, originalBlueGroin);
             }
         } else if (team == PlayerTeam.Red)
         {
-            TryCacheOriginal(originalRedTorsoTextures, player.OwnerClientId, torsoMeshRenderer);
-            if (originalRedGroin == null && IsRealTexture(groinMeshRenderer.material.mainTexture))
-                originalRedGroin = groinMeshRenderer.material.mainTexture;
+            TryCacheOriginal(originalRedTorsoTextures, player.OwnerClientId, torsoMeshRendererTexturer);
+            if (originalRedGroin == null)
+            {
+                var g = ReadJerseyTexture(groinMeshRendererTexturer);
+                if (IsRealTexture(g)) originalRedGroin = g;
+            }
 
             Texture torsoOrig = originalRedTorsoTextures.TryGetValue(player.OwnerClientId, out var rt) ? rt : null;
 
             if (player.Role == PlayerRole.Goalie)
             {
-                ApplyJerseyTexture(torsoMeshRenderer, ReskinProfileManager.currentProfile.redGoalieTorso, torsoOrig);
-                ApplyJerseyTexture(groinMeshRenderer, ReskinProfileManager.currentProfile.redGoalieGroin, originalRedGroin);
+                ApplyJerseyTexture(torsoMeshRendererTexturer, ReskinProfileManager.currentProfile.redGoalieTorso, torsoOrig);
+                ApplyJerseyTexture(groinMeshRendererTexturer, ReskinProfileManager.currentProfile.redGoalieGroin, originalRedGroin);
             }
             else
             {
-                ApplyJerseyTexture(torsoMeshRenderer, ReskinProfileManager.currentProfile.redSkaterTorso, torsoOrig);
-                ApplyJerseyTexture(groinMeshRenderer, ReskinProfileManager.currentProfile.redSkaterGroin, originalRedGroin);
+                ApplyJerseyTexture(torsoMeshRendererTexturer, ReskinProfileManager.currentProfile.redSkaterTorso, torsoOrig);
+                ApplyJerseyTexture(groinMeshRendererTexturer, ReskinProfileManager.currentProfile.redSkaterGroin, originalRedGroin);
             }
         }
         Plugin.LogDebug($"Set jersey for {player.Username.Value.ToString()}");
