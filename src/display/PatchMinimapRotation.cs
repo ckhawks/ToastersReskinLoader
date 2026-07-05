@@ -189,11 +189,13 @@ public static class PatchMinimapRotation
         // map/widget rotation (they're descendants of the rotated element).
         private static void CounterRotateLabels(UIMinimap inst, float deg)
         {
-            if (_playerMapField?.GetValue(inst) is not IDictionary<PlayerBody, VisualElement> playerMap) return;
+            // B1117: playerBodyVisualElementMap is now a (Root, Body) tuple dict.
+            if (_playerMapField?.GetValue(inst) is not IDictionary<PlayerBody, (VisualElement Root, VisualElement Body)> playerMap) return;
             foreach (var kvp in playerMap)
             {
-                if (kvp.Value == null) continue;
-                var label = kvp.Value.Q<Label>("NumberLabel");
+                var rootEl = kvp.Value.Root;
+                if (rootEl == null) continue;
+                var label = rootEl.Q<Label>("NumberLabel");
                 if (label != null)
                     label.style.rotate = new Rotate(new Angle(-deg, AngleUnit.Degree));
             }

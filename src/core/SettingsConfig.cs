@@ -210,7 +210,7 @@ public class SettingsConfig
     public Color minimapPuckColor = new Color(0f, 0f, 0f, 1f);
     public float minimapPlayerScale = 1f;
     public float minimapPuckScale = 1f;
-    public int   minimapRefreshRate = 60;
+    public int   minimapRefreshRate = 120;
     public bool  localPlayerMinimapIconEnabled = false;
     public Color blueLocalPlayerMinimapIconColor = new Color(0f, 1f, 0f, 1f);
     public Color redLocalPlayerMinimapIconColor = new Color(0f, 1f, 0f, 1f);
