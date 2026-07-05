@@ -1,22 +1,17 @@
-// VanillaUIRetheme — applies a darker background color (#262626 vs vanilla
-// #3D3D3D) to UI Toolkit Toggle checkboxes, TextField inputs, DropdownField
-// popups, and Slider tracks across every UIDocument the game opens.
+// VanillaUIRetheme — restyles the dropdown popover (the menu that appears on
+// click) with a 2px white border and a faint divider between items, matching
+// the treatment TRL uses for its own dropdowns in UITools.StylePopover.
 //
-// Also restyles the dropdown popover (the menu that appears on click) with a
-// 2px white border and a faint divider between items — same treatment TRL
-// uses for its own dropdowns in UITools.StylePopover.
+// Note (B1117): the game reworked its UI theme to increase input-field contrast
+// and restyle dropdowns/scrollbars, so the old global background recolor (which
+// forced #262626 onto every Toggle / TextField / DropdownField / Slider) was
+// removed — it clobbered the new native look. What remains is the popover border/
+// divider (native doesn't do that) plus RecolorTree(), a targeted helper that
+// still darkens TRL's OWN injected controls (BetterFriendsList, ModMenuEnhancer).
 //
 // True runtime USS injection isn't possible from a plugin (StyleSheet is an
-// Editor-built asset), so this hooks UIDocument.OnEnable, walks the root
-// VisualElement for the relevant inner elements, and sets inline backgrounds.
-// A GeometryChangedEvent listener on each root re-applies when new controls
-// are added later (panels often populate lazily).
-//
-// Disable() explicitly writes the vanilla #3D3D3D color back rather than
-// clearing the inline style — UI Toolkit sometimes keeps an inline-overridden
-// state after StyleKeyword.Null, so an explicit revert is more reliable.
-// The popover click handlers remain registered after Disable() but no-op
-// because they check the `active` flag before running.
+// Editor-built asset), so this hooks UIDocument.OnEnable and a per-root
+// GeometryChangedEvent to catch dropdowns added lazily.
 
 using System;
 using System.Collections.Generic;
@@ -30,10 +25,9 @@ namespace ToasterReskinLoader.ui;
 
 public static class VanillaUIRetheme
 {
-    // 0x262626 → 38/255 ≈ 0.1490196
+    // 0x262626 → 38/255 ≈ 0.1490196. Used only by RecolorTree() to darken TRL's
+    // own injected controls (no longer applied globally to native elements).
     private static readonly Color DarkBg = new Color(38f / 255f, 38f / 255f, 38f / 255f);
-    // 0x3D3D3D → 61/255 ≈ 0.2392157 (vanilla default — explicit revert target)
-    private static readonly Color VanillaBg = new Color(61f / 255f, 61f / 255f, 61f / 255f);
 
     // Inner-element selectors whose background we override. The "fill" lives
     // on these inner elements (not the outer wrapper) in UI Toolkit's theme.
@@ -72,7 +66,6 @@ public static class VanillaUIRetheme
             try
             {
                 root.UnregisterCallback<GeometryChangedEvent>(OnGeometryChanged);
-                Recolor(root, VanillaBg);
             }
             catch (Exception e) { Plugin.LogError($"[VanillaUIRetheme] Revert failed: {e}"); }
         }
@@ -99,7 +92,6 @@ public static class VanillaUIRetheme
         if (root == null || !hookedRoots.Add(root)) return;
 
         root.RegisterCallback<GeometryChangedEvent>(OnGeometryChanged);
-        Recolor(root, DarkBg);
         HookPopoverFields(root);
     }
 
@@ -108,7 +100,6 @@ public static class VanillaUIRetheme
         if (!active) return;
         if (evt.target is VisualElement ve)
         {
-            Recolor(ve, DarkBg);
             HookPopoverFields(ve);
         }
     }
