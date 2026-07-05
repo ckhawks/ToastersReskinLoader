@@ -29,12 +29,6 @@ internal static class DisplaySettingsMigration
             {
                 var j = JObject.Parse(File.ReadAllText(path));
 
-                // Shadows
-                ReadBool(j, "crispyShadowsEnabled", v => cfg.crispyShadowsEnabled = v);
-                ReadInt(j, "shadowResolution", v => cfg.shadowResolution = v);
-                ReadFloat(j, "shadowDistance", v => cfg.shadowDistance = v);
-                ReadInt(j, "shadowCascadeCount", v => cfg.shadowCascadeCount = v);
-                ReadBool(j, "shadowSoftShadows", v => cfg.shadowSoftShadows = v);
 
                 // Gloss
                 ReadBool(j, "glossRemoverEnabled", v => cfg.glossRemoverEnabled = v);

@@ -298,7 +298,6 @@ public static class SwapperManager
         SkaterHelmetSwapper.OnRedHelmetsChanged();
         FullArenaSwapper.ApplyFromProfile();
         SkyboxSwapper.UpdateSkybox();
-        CrispyShadowsSwapper.Apply();
         TeamIndicatorSwapper.Refresh();
         PuckFXSwapper.ApplyAll();
         MinimapSwapper.RefreshAll();
