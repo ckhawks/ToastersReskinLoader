@@ -99,7 +99,6 @@ public class Plugin : IPuckPlugin
                 ToasterReskinLoader.diagnostics.WorkshopUpdateChecker.Initialize();
                 SwapperManager.SetupMatchmakingListeners();
                 PartyLineup.Initialize();
-                ToothbrushFilter.ResetIfActive();
 
                 // Load settings, run the runtime feature init batch (each isolated
                 // so one failure doesn't abort the rest), then start the tick host.
@@ -131,9 +130,6 @@ public class Plugin : IPuckPlugin
 
                 if (ToasterReskinLoader.core.Settings.Current?.enableAutoConnectMatchmaking ?? false)
                     ToasterReskinLoader.serverbrowser.AutoConnectMatchmaking.Enable();
-
-                if (ToasterReskinLoader.core.Settings.Current?.disableControllerInput ?? false)
-                    ToasterReskinLoader.input.DisableControllerInput.Enable();
 
                 if (ToasterReskinLoader.core.Settings.Current?.enableFrameProfiler ?? false)
                     ToasterReskinLoader.diagnostics.profiler.FrameProfiler.Enable();
@@ -168,7 +164,6 @@ public class Plugin : IPuckPlugin
             ToasterReskinLoader.social.probe.ProbePing.Disable();
             ToasterReskinLoader.ui.VanillaUIRetheme.Disable();
             ToasterReskinLoader.serverbrowser.AutoConnectMatchmaking.Disable();
-            ToasterReskinLoader.input.DisableControllerInput.Disable();
             ToasterReskinLoader.diagnostics.profiler.FrameProfiler.Disable();
             harmony.UnpatchSelf();
             AppearanceAPI.Cleanup();

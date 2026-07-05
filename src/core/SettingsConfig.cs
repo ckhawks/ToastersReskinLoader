@@ -67,9 +67,6 @@ public class SettingsConfig
     // Latin glyphs, so things like ▶/▼/★/☆ render as blank boxes
     // until we attach a system font (Segoe UI Symbol, etc.) as fallback.
     public bool enableUnicodeFontFallback = true;
-    // Fixes the vanilla bug where every player's country flag renders identical
-    // (all flag meshes share one baked material asset). See FlagMaterialFix.
-    public bool enableFlagMaterialFix = true;
 
     // Additions — opt-in QoL enhancements layered on top of vanilla
     public bool enableBetterFriendsList = true;
@@ -134,11 +131,6 @@ public class SettingsConfig
     public bool enableChatNoFade = false;
     public bool enableEnhancedModMenu = true;
     public bool enableAutoConnectMatchmaking = false;
-    // Disable all connected game controllers (gamepads/joysticks) at the
-    // Input System level. Fixes the attached-controller cursor hijack where
-    // the first click on a menu button is eaten. Default off so controller
-    // players are unaffected. See DisableControllerInput.
-    public bool disableControllerInput = false;
     // Fly the position-select bench camera around like a spectator while you've
     // joined a team but haven't claimed a position yet. Right-click toggles
     // free-look. Purely client-local (see PositionSelectFreeLook). Default on;
