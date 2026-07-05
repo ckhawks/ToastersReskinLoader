@@ -149,22 +149,99 @@ public static class PuckFXSwapper
         }
     }
 
+    private const string TrailChildName = "ToasterPuckTrail";
+    // One shared, unlit, vertex-colored material for every puck trail — the colour comes
+    // from each trail's colorGradient, so the material just carries a transparent shader.
+    private static Material _trailMaterial;
+
     /// <summary>
-    /// Puck trail customization. Called from a Harmony postfix on PuckManager.AddPuck().
+    /// Puck trail customization. Called from a Harmony postfix on PuckManager.AddPuck()
+    /// and from ApplyAll() for existing pucks.
     ///
-    /// STUBBED for B1117: the base game removed the puck's vanilla trail entirely — the
-    /// puck prefab no longer has a "Trail" child or a TrailRenderer — so there is nothing
-    /// to configure. The puckFXTrail* profile fields and their UI are intentionally kept
-    /// so no saved user settings are lost.
-    ///
-    /// TODO (fast-follow, non-critical): re-add the trail ourselves by attaching a
-    /// TrailRenderer to the puck on spawn and driving it from the existing puckFXTrail*
-    /// profile fields (needs a URP-compatible trail material + component lifecycle). The
-    /// original configuration logic is preserved in git history at the pre-B1117 revision.
+    /// B1117 removed the puck's vanilla trail (no "Trail" child / TrailRenderer on the
+    /// puck prefab), so we attach and drive our OWN TrailRenderer, configured from the
+    /// puckFXTrail* profile fields. The trail lives on a child GameObject of the puck so
+    /// it's isolated from the puck's own components and is torn down with the puck.
     /// </summary>
     public static void UpdatePuckTrail(Puck puck)
     {
-        // No-op: the vanilla puck trail was removed in B1117. See the TODO above.
+        try
+        {
+            var profile = ReskinProfileManager.currentProfile;
+            if (puck == null) return;
+
+            var puckRoot = puck.gameObject;
+            var existing = puckRoot.transform.Find(TrailChildName)?.GetComponent<TrailRenderer>();
+
+            // Off (feature disabled, or a PHL server) — silence an existing trail; don't
+            // create one just to disable it.
+            bool on = profile.puckFXTrailEnabled && !IsPHLServer;
+            if (!on)
+            {
+                if (existing != null) { existing.emitting = false; existing.enabled = false; }
+                return;
+            }
+
+            var trail = existing ?? CreatePuckTrail(puckRoot);
+            if (trail == null) return;
+
+            trail.enabled = true;
+            trail.emitting = true;
+            trail.time = profile.puckFXTrailLifetime;
+            trail.startWidth = profile.puckFXTrailStartWidth;
+            trail.endWidth = profile.puckFXTrailEndWidth;
+
+            var c = profile.puckFXTrailColor;
+            var rgb = new Color(c.r, c.g, c.b);
+            trail.colorGradient = new Gradient
+            {
+                colorKeys = new[]
+                {
+                    new GradientColorKey(rgb, 0f),
+                    new GradientColorKey(rgb, 1f),
+                },
+                alphaKeys = new[]
+                {
+                    new GradientAlphaKey(profile.puckFXTrailStartAlpha, 0f),
+                    new GradientAlphaKey(profile.puckFXTrailEndAlpha, 1f),
+                },
+            };
+        }
+        catch (Exception e) { Plugin.LogError($"Error updating puck trail: {e.Message}"); }
+    }
+
+    private static TrailRenderer CreatePuckTrail(GameObject puckRoot)
+    {
+        var go = new GameObject(TrailChildName);
+        go.transform.SetParent(puckRoot.transform, worldPositionStays: false);
+        go.transform.localPosition = Vector3.zero;
+
+        var tr = go.AddComponent<TrailRenderer>();
+        tr.material = GetTrailMaterial();
+        tr.alignment = LineAlignment.View;
+        tr.textureMode = LineTextureMode.Stretch;
+        tr.numCapVertices = 4;
+        tr.numCornerVertices = 2;
+        tr.minVertexDistance = 0.02f;
+        tr.autodestruct = false;
+        tr.receiveShadows = false;
+        tr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        tr.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+        return tr;
+    }
+
+    // Which URP shaders survive build stripping varies, so fall through a few names.
+    private static Material GetTrailMaterial()
+    {
+        if (_trailMaterial != null) return _trailMaterial;
+        var shader = Shader.Find("Universal Render Pipeline/Particles/Unlit")
+                     ?? Shader.Find("Sprites/Default")
+                     ?? Shader.Find("Universal Render Pipeline/Unlit")
+                     ?? Shader.Find("Unlit/Color");
+        if (shader == null)
+            Plugin.LogWarning("PuckFX: no trail shader found; the puck trail will be invisible.");
+        _trailMaterial = shader != null ? new Material(shader) : null;
+        return _trailMaterial;
     }
 
     /// <summary>
