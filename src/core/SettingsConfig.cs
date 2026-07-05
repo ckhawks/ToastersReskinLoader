@@ -28,13 +28,6 @@ public class SettingsConfig
 
     // Base-game UX patches (default on)
     public bool enableEscCloseMenus = true;
-    // Allow chat in any in-game phase (LockerRoom, Warmup, Playing) when
-    // connected to a server. The chat key is also blocked when typing in
-    // any text input, so this is safe at any phase.
-    public bool enableChatAnyInGamePhase = true;
-    // Allow the scoreboard hold-to-view in any in-game phase (TeamSelect,
-    // PositionSelect, Spectate, etc.) — vanilla only shows it during Play.
-    public bool enableScoreboardAnyInGamePhase = true;
     public bool enableChatDragSelect = true;
     public bool enableHideInactiveChat = false;
     public bool enableSpectatorMinimap = true;

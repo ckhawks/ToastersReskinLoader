@@ -23,8 +23,6 @@ public static class ChatSection
         if (cfg == null) return;
 
         // ── Behavior ──
-        SettingsUI.ToggleRow(root, "Open chat in any in-game phase", cfg.enableChatAnyInGamePhase,
-            v => { cfg.enableChatAnyInGamePhase = v; Settings.Save(); });
         SettingsUI.ToggleRow(root, "Drag-highlight and copy lines", cfg.enableChatDragSelect,
             v => { cfg.enableChatDragSelect = v; Settings.Save(); });
         SettingsUI.ToggleRow(root, "Hide when inactive", cfg.enableHideInactiveChat,
