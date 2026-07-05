@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -9,134 +10,91 @@ using ToasterReskinLoader.core;
 
 namespace ToasterReskinLoader.display;
 
+/// <summary>
+/// Recolors the base game's HUD team-color bar (UIHUD.teamColorBar) to the reskin
+/// profile's custom team color.
+///
+/// B1117 ships its own team-color bar in the HUD (colored via a USS team class in
+/// UIHUD.SetTeam, gated by SettingsManager.ShowTeamColorBar), so instead of adding a
+/// duplicate bar we tint the native one — but ONLY when custom team colors are
+/// enabled for that team. When they aren't, we clear our inline override so the
+/// game's own coloring shows through, and native owns the bar's visibility entirely.
+/// </summary>
 public static class TeamIndicatorSwapper
 {
-    private static VisualElement _teamColorBar;
+    private static readonly FieldInfo _teamColorBarField = typeof(UIHUD)
+        .GetField("teamColorBar", BindingFlags.Instance | BindingFlags.NonPublic);
 
-    private static readonly Color DefaultSpectator =
-        TeamColorSwapper.GetDefaultTeamColor(PlayerTeam.Spectator);
+    // Tint the native bar with the custom team color, or clear our override so the
+    // game's USS team class colors it. Only tints when custom colors are enabled.
+    private static void Apply(VisualElement bar, PlayerTeam team)
+    {
+        if (bar == null) return;
 
-    public static void Setup()
+        if ((team == PlayerTeam.Blue || team == PlayerTeam.Red) && TeamColorSwapper.IsEnabled(team))
+        {
+            var custom = TeamColorSwapper.GetOverrideColor(team);
+            if (custom.HasValue)
+            {
+                bar.style.backgroundColor = new StyleColor(custom.Value);
+                return;
+            }
+        }
+
+        // Custom colors off (or none set) — drop our inline color so vanilla wins.
+        bar.style.backgroundColor = StyleKeyword.Null;
+    }
+
+    private static UIHUD FindHud() => UnityEngine.Object.FindFirstObjectByType<UIHUD>();
+
+    /// <summary>
+    /// Re-applies the custom team color to the native bar for the local player's
+    /// current team. Call when team colors change in the reskin menu.
+    /// </summary>
+    public static void Refresh()
     {
         try
         {
-            var uiManager = MonoBehaviourSingleton<UIManager>.Instance;
-            if (uiManager == null)
-            {
-                Plugin.LogWarning("TeamIndicator: UIManager not available yet.");
-                return;
-            }
-
-            // Parent to the top-level RootVisualElement to avoid any HUD padding
-            VisualElement root = uiManager.RootVisualElement;
-            if (root == null)
-            {
-                Plugin.LogWarning("TeamIndicator: RootVisualElement not found.");
-                return;
-            }
-
-            CreateBar(root);
-            Plugin.LogDebug("TeamIndicator: Bar created.");
+            var hud = FindHud();
+            if (hud == null) return;
+            var bar = _teamColorBarField?.GetValue(hud) as VisualElement;
+            if (bar == null) return;
+            var localTeam = PlayerManager.Instance?.GetLocalPlayer()?.GameState.Value.Team ?? PlayerTeam.None;
+            Apply(bar, localTeam);
         }
-        catch (Exception e)
-        {
-            Plugin.LogError($"TeamIndicator: Setup failed: {e.Message}");
-        }
-    }
-
-    private static void CreateBar(VisualElement root)
-    {
-        // Clean up if already exists
-        _teamColorBar?.RemoveFromHierarchy();
-
-        _teamColorBar = new VisualElement();
-        _teamColorBar.name = "TeamColorBar";
-        _teamColorBar.style.position = Position.Absolute;
-        _teamColorBar.style.bottom = 0;
-        _teamColorBar.style.left = 0;
-        _teamColorBar.style.right = 0;
-        _teamColorBar.style.height = 5;
-        _teamColorBar.style.minWidth = Length.Percent(100f);
-        _teamColorBar.style.maxWidth = Length.Percent(100f);
-        _teamColorBar.style.backgroundColor = DefaultSpectator;
-        _teamColorBar.style.display = DisplayStyle.None;
-
-        root.Add(_teamColorBar);
-    }
-
-    public static void UpdateVisibility()
-    {
-        if (_teamColorBar == null) return;
-
-        if (!(core.Settings.Current?.teamIndicatorEnabled ?? false))
-        {
-            _teamColorBar.style.display = DisplayStyle.None;
-            return;
-        }
-
-        // Re-apply current team color
-        var localPlayer = PlayerManager.Instance?.GetLocalPlayer();
-        if (localPlayer != null)
-        {
-            SetTeamColor(localPlayer.GameState.Value.Team);
-        }
-    }
-
-    public static void SetTeamColor(PlayerTeam team)
-    {
-        if (_teamColorBar == null) return;
-
-        if (!(core.Settings.Current?.teamIndicatorEnabled ?? false))
-        {
-            _teamColorBar.style.display = DisplayStyle.None;
-            return;
-        }
-
-        switch (team)
-        {
-            case PlayerTeam.Blue:
-            case PlayerTeam.Red:
-                // Custom color when enabled, otherwise the game's vanilla team color.
-                _teamColorBar.style.backgroundColor = new StyleColor(
-                    TeamColorSwapper.GetOverrideColor(team) ?? TeamColorSwapper.GetDefaultTeamColor(team));
-                _teamColorBar.style.display = DisplayStyle.Flex;
-                break;
-            default:
-                _teamColorBar.style.backgroundColor = new StyleColor(DefaultSpectator);
-                _teamColorBar.style.display = DisplayStyle.None;
-                break;
-        }
-    }
-
-    public static void Cleanup()
-    {
-        _teamColorBar?.RemoveFromHierarchy();
-        _teamColorBar = null;
+        catch (Exception e) { Plugin.LogDebug($"TeamIndicator: Refresh error: {e.Message}"); }
     }
 
     /// <summary>
-    /// Patch Player.OnPlayerGameStateChanged to update the bar when the local player changes team.
+    /// Clears our inline override so the native bar returns to vanilla coloring.
     /// </summary>
-    [HarmonyPatch(typeof(Player), "OnPlayerGameStateChanged")]
-    public static class OnPlayerGameStateChangedPatch
+    public static void Cleanup()
+    {
+        try
+        {
+            var hud = FindHud();
+            if (hud == null) return;
+            var bar = _teamColorBarField?.GetValue(hud) as VisualElement;
+            if (bar != null) bar.style.backgroundColor = StyleKeyword.Null;
+        }
+        catch { }
+    }
+
+    // Native re-colors the bar via UIUtils.SetTeamClass on every RefreshTeamColorBar
+    // (team change, ShowTeamColorBar toggle, HUD visibility). Re-apply our custom tint
+    // right after so it survives those refreshes.
+    [HarmonyPatch(typeof(UIHUD), nameof(UIHUD.SetTeam))]
+    public static class SetTeam_ApplyCustomColor
     {
         [HarmonyPostfix]
-        public static void Postfix(Player __instance, PlayerGameState oldGameState, PlayerGameState newGameState)
+        public static void Postfix(UIHUD __instance, PlayerTeam team)
         {
             try
             {
-                if (oldGameState.Team == newGameState.Team) return;
-
-                var localPlayer = PlayerManager.Instance?.GetLocalPlayer();
-                if (localPlayer == null || __instance.OwnerClientId != localPlayer.OwnerClientId) return;
-
-                Plugin.LogDebug($"TeamIndicator: Local player team changed to {newGameState.Team}");
-                SetTeamColor(newGameState.Team);
+                var bar = _teamColorBarField?.GetValue(__instance) as VisualElement;
+                Apply(bar, team);
             }
-            catch (Exception e)
-            {
-                Plugin.LogDebug($"TeamIndicator: OnPlayerGameStateChanged error: {e.Message}");
-            }
+            catch (Exception e) { Plugin.LogDebug($"TeamIndicator: SetTeam postfix error: {e.Message}"); }
         }
     }
 }

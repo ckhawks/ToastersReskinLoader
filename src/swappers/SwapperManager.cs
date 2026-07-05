@@ -181,7 +181,7 @@ public static class SwapperManager
         FullArenaSwapper.Initialize();
         HatSwapper.Initialize();
         GenderSwapper.Initialize();
-        TeamIndicatorSwapper.Setup();
+        TeamIndicatorSwapper.Refresh();
     }
 
     public static void Destroy()
@@ -299,8 +299,7 @@ public static class SwapperManager
         FullArenaSwapper.ApplyFromProfile();
         SkyboxSwapper.UpdateSkybox();
         CrispyShadowsSwapper.Apply();
-        TeamIndicatorSwapper.Setup();
-        TeamIndicatorSwapper.UpdateVisibility();
+        TeamIndicatorSwapper.Refresh();
         PuckFXSwapper.ApplyAll();
         MinimapSwapper.RefreshAll();
         GlossSwapper.RequestScan();
