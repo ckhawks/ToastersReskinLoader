@@ -614,9 +614,9 @@ internal static class ServerPreviewCachePatches
     {
         try
         {
-            // Parent to the serverBrowser root so the InlineServerBrowserFilters
-            // patch — which yanks refreshButton into its own button row — can't
-            // squeeze the label between REFRESH and NEW SERVER.
+            // Parent to the serverBrowser root (not the button row) so the label
+            // sits cleanly above the list rather than getting squeezed in beside
+            // the refresh / host buttons.
             if (ServerBrowserField?.GetValue(instance) is not VisualElement serverBrowser) return;
 
             if (_cacheCountLabel != null && _cacheCountLabel.parent == serverBrowser) return;

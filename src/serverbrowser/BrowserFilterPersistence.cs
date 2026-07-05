@@ -41,12 +41,9 @@ internal static class BrowserFilterPersistence
         try
         {
             // Read controls from UIServerBrowser's private fields rather than
-            // walking the visual tree under `filters`. The InlineServerBrowserFilters
-            // patch yanks the controls out of the `filters` wrapper into a
-            // separate strip — if its postfix runs before ours, a Q lookup
-            // through `filters` returns null and we'd silently never hook
-            // any save callbacks. The private fields point at the same
-            // instances regardless of where they're parented.
+            // walking the visual tree — the fields point at the control instances
+            // regardless of where they're parented, so this stays robust even if
+            // another patch reparents the filter controls.
             var search      = AccessTools.Field(typeof(UIServerBrowser), "searchTextField")?.GetValue(browser) as TextField;
             var maxPing     = AccessTools.Field(typeof(UIServerBrowser), "maxPingSlider")?.GetValue(browser) as UI.CurvedSlider;
             var showFull    = AccessTools.Field(typeof(UIServerBrowser), "showFullToggle")?.GetValue(browser) as Toggle;
