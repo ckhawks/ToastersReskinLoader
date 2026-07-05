@@ -73,7 +73,9 @@ public class SettingsConfig
 
     // Additions — opt-in QoL enhancements layered on top of vanilla
     public bool enableBetterFriendsList = true;
-    public bool enableBeaconPing = true;
+    // Renamed from enableBeaconPing when Edgegap Beacons became Probes. Existing
+    // users' old key is ignored on load, so this starts fresh at its default (on).
+    public bool enableProbePing = true;
     // Default off. Persisted under a renamed JSON key (see SettingsProfile) so that
     // users who already had the original default-on key saved start fresh at
     // off rather than inheriting their old "true".

@@ -4,7 +4,7 @@
 //   * When a join attempt is rejected with ConnectionRejectionCode.ServerFull,
 //     start a background poll on JUST that one server's TCP preview port.
 //     We open our own TCPClient with the 3-arg constructor (the same
-//     overload BeaconPinger uses) because vanilla's UIServerBrowser.PingServer
+//     overload ProbePinger uses) because vanilla's UIServerBrowser.PingServer
 //     2-arg overload doesn't actually enforce the connect timeout and
 //     blocks on the ~64s OS-level TCP SYN_SENT timeout on unreachable
 //     hosts.

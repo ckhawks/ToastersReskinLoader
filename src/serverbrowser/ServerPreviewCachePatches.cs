@@ -32,7 +32,6 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using HarmonyLib;
-using ToasterReskinLoader.social.beacon;
 using UnityEngine.UIElements;
 
 using ToasterReskinLoader.core;
@@ -364,7 +363,7 @@ internal static class ServerPreviewCachePatches
             // UIElements is main-thread-only. Vanilla ignores this and gets
             // away with it; we marshal so we don't corrupt the panel pick
             // cache the way the cache-count label bug did earlier.
-            BeaconMainThread.Run(() =>
+            MainThreadDispatcher.Run(() =>
             {
                 try
                 {
@@ -384,7 +383,7 @@ internal static class ServerPreviewCachePatches
     {
         // Final sort once the wave settles so ping-based ordering reflects the
         // live values, not the cache seeds.
-        BeaconMainThread.Run(() =>
+        MainThreadDispatcher.Run(() =>
         {
             try { _sortServers?.Invoke(instance); }
             catch (Exception e) { Plugin.LogError($"ServerPreviewCache: final sort failed: {e.Message}"); }
@@ -447,7 +446,7 @@ internal static class ServerPreviewCachePatches
                     cacheChanged = true;
                 }
 
-                if (cacheChanged) BeaconMainThread.Run(UpdateCacheCountLabel);
+                if (cacheChanged) MainThreadDispatcher.Run(UpdateCacheCountLabel);
             }
             catch (Exception e)
             {
@@ -555,7 +554,7 @@ internal static class ServerPreviewCachePatches
                     int totalCapture = total;
                     bool progressCapture = publishProgress;
                     bool cacheCapture = cacheChanged;
-                    BeaconMainThread.Run(() =>
+                    MainThreadDispatcher.Run(() =>
                     {
                         if (progressCapture) UpdateRefreshButton(doneCapture, totalCapture);
                         if (cacheCapture) UpdateCacheCountLabel();

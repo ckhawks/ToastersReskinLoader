@@ -223,11 +223,11 @@ public static class ArenaSwapper
         ShowTrackedObjects(hiddenGlassObjects,
             go => SetMeshRendererEnabled(go, true));
 
-    [HarmonyPatch(typeof(SpectatorManager), nameof(SpectatorManager.RegisterSpectatorPosition))]
-    public static class SpectatorManagerRegisterSpectatorPosition
+    [HarmonyPatch(typeof(CrowdManager), nameof(CrowdManager.RegisterCrowdPosition))]
+    public static class CrowdManagerRegisterCrowdPosition
     {
         [HarmonyPostfix]
-        public static void Postfix(SpectatorManager __instance)
+        public static void Postfix(CrowdManager __instance)
         {
             UpdateCrowdState();
         }
@@ -313,44 +313,40 @@ public static class ArenaSwapper
         }
     }
 
-    static readonly FieldInfo _spectatorDensityField = typeof(SpectatorManager)
-        .GetField("spectatorDensity",
-            BindingFlags.Instance | BindingFlags.NonPublic);
-
-    static readonly FieldInfo _spectatorMapField = typeof(SpectatorManager)
-        .GetField("spectatorPositionSpectatorMap",
+    static readonly FieldInfo _crowdDensityField = typeof(CrowdManager)
+        .GetField("crowdDensity",
             BindingFlags.Instance | BindingFlags.NonPublic);
 
     public static void UpdateSpectators()
     {
         try
         {
-            if (_spectatorDensityField == null)
+            if (_crowdDensityField == null)
             {
-                Plugin.LogError($"Could not locate _spectatorDensityField");
+                Plugin.LogError($"Could not locate _crowdDensityField");
                 return;
             }
 
-            var spectatorManager = SpectatorManager.Instance;
+            var crowdManager = CrowdManager.Instance;
 
             // Update density
-            _spectatorDensityField.SetValue(spectatorManager,
+            _crowdDensityField.SetValue(crowdManager,
                 ReskinProfileManager.currentProfile.spectatorDensity);
 
-            // Get all SpectatorPosition objects and re-register them
+            // Get all CrowdPosition objects and re-register them
             // First, unregister all existing ones
-            SpectatorPosition[] positions = Object.FindObjectsByType<SpectatorPosition>(FindObjectsSortMode.None);
+            CrowdPosition[] positions = Object.FindObjectsByType<CrowdPosition>(FindObjectsSortMode.None);
             foreach (var pos in positions)
             {
-                spectatorManager.UnregisterSpectatorPosition(pos);
+                crowdManager.UnregisterCrowdPosition(pos);
             }
 
-            // Then re-register if crowd is enabled (density filtering happens in RegisterSpectatorPosition)
+            // Then re-register if crowd is enabled (density filtering happens in RegisterCrowdPosition)
             if (ReskinProfileManager.currentProfile.crowdEnabled)
             {
                 foreach (var pos in positions)
                 {
-                    spectatorManager.RegisterSpectatorPosition(pos);
+                    crowdManager.RegisterCrowdPosition(pos);
                 }
             }
 
