@@ -184,8 +184,8 @@ public class SettingsConfig
     // ── Display settings (moved out of the reskin profile — personal/perf, not shared) ──
 
     // Gloss remover.
-    public bool  glossRemoverEnabled = false;
-    public float glossSmoothness = 0.5f;
+    public bool  glossRemoverEnabled = true;
+    public float glossSmoothness = 0.0f;
     public bool  glossAffectSticks = true;
     public bool  glossAffectPlayers = true;
     public bool  glossAffectPucks = true;

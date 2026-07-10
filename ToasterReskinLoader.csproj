@@ -37,16 +37,26 @@
     <Message Importance="high" Text="$(AssemblyName) built successfully!" />
   </Target>
 
-  <!-- Streamline development and move the built .dll to the plugins folder after building -->
+  <!-- Asset bundles that must ship next to the DLL. GenderSwapper/HatSwapper load
+       these by name from the plugin directory at runtime; without them the body-type
+       and hat swaps silently no-op. -->
+  <ItemGroup>
+    <PluginAsset Include="gender" />
+    <PluginAsset Include="hats" />
+  </ItemGroup>
+
+  <!-- Streamline development and move the built .dll (plus asset bundles) to the plugins folder(s) after building -->
   <Target Name="PostBuildMoveDll" AfterTargets="Build">
-    <PropertyGroup>
-      <TargetDir>C:\Program Files (x86)\Steam\steamapps\common\Puck\Plugins\ToasterReskinLoader</TargetDir>
-    </PropertyGroup>
+    <ItemGroup>
+      <PluginTargetDir Include="C:\Program Files (x86)\Steam\steamapps\common\Puck\Plugins\ToasterReskinLoader" />
+      <PluginTargetDir Include="C:\PuckOfficialDev\puck\Builds\Windows Client\Plugins\ToasterReskinLoader" />
+    </ItemGroup>
 
-    <MakeDir Directories="$(TargetDir)" />
-    <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(TargetDir)" OverwriteReadOnlyFiles="true" />
+    <MakeDir Directories="@(PluginTargetDir)" />
+    <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="%(PluginTargetDir.Identity)" OverwriteReadOnlyFiles="true" />
+    <Copy SourceFiles="@(PluginAsset)" DestinationFolder="%(PluginTargetDir.Identity)" OverwriteReadOnlyFiles="true" />
 
-    <Message Importance="high" Text="Copied $(AssemblyName).dll to $(TargetDir)" />
+    <Message Importance="high" Text="Copied $(AssemblyName).dll + asset bundles to %(PluginTargetDir.Identity)" />
   </Target>
 
 </Project>

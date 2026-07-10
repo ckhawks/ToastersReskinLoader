@@ -180,7 +180,10 @@ public static class GenderSwapper
 
         if (torsoChild == null || groinChild == null)
         {
-            Plugin.LogWarning("[Gender] Could not find torso/groin children");
+            Plugin.LogWarning(
+                $"[Gender] Could not find torso/groin children (torso={torsoChild != null}, groin={groinChild != null}). " +
+                $"PlayerTorso children: [{DescribeChildren(playerMesh.PlayerTorso?.transform)}]; " +
+                $"PlayerGroin children: [{DescribeChildren(playerMesh.PlayerGroin?.transform)}]");
             return;
         }
 
@@ -298,6 +301,19 @@ public static class GenderSwapper
             if (groin != null) UnityEngine.Object.Destroy(groin);
             spawnedGroins.Remove(clientId);
         }
+    }
+
+    /// <summary>
+    /// Comma-separated list of a transform's direct child names — used to diagnose
+    /// hierarchy changes (e.g. a game update renaming the "torso"/"groin" child).
+    /// </summary>
+    private static string DescribeChildren(Transform parent)
+    {
+        if (parent == null) return "<null>";
+        var names = new List<string>();
+        for (int i = 0; i < parent.childCount; i++)
+            names.Add(parent.GetChild(i).name);
+        return string.Join(", ", names);
     }
 
     private static Transform FindChildByName(Transform parent, string childName)
