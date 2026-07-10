@@ -310,13 +310,8 @@ public static class TeamColorSwapper
                 var blueBtn = (Button)_blueButtonField?.GetValue(teamSelect);
                 var redBtn = (Button)_redButtonField?.GetValue(teamSelect);
 
-                bool showCount = ToasterReskinLoader.core.Settings.Current?.enableTeamButtonPlayerCount ?? true;
-
-                int blueCount = showCount && PlayerManager.Instance != null
-                    ? PlayerManager.Instance.GetPlayersByTeam(PlayerTeam.Blue).Count : 0;
-                int redCount = showCount && PlayerManager.Instance != null
-                    ? PlayerManager.Instance.GetPlayersByTeam(PlayerTeam.Red).Count : 0;
-
+                // Player counts on team buttons are native in B1117 (UITeamSelect.StyleTeamCounts
+                // shows a separate count label), so we only override the button's team name/color.
                 string blueName = !string.IsNullOrEmpty(profile.blueTeamName)
                     ? profile.blueTeamName : "TEAM BLUE";
                 string redName = !string.IsNullOrEmpty(profile.redTeamName)
@@ -329,7 +324,7 @@ public static class TeamColorSwapper
                         var bc = profile.blueTeamColor;
                         blueBtn.schedule.Execute(() => { blueBtn.style.backgroundColor = bc; });
                     }
-                    blueBtn.text = showCount ? $"{blueName} - {blueCount}" : blueName;
+                    blueBtn.text = blueName;
                 }
                 if (redBtn != null)
                 {
@@ -338,7 +333,7 @@ public static class TeamColorSwapper
                         var rc = profile.redTeamColor;
                         redBtn.schedule.Execute(() => { redBtn.style.backgroundColor = rc; });
                     }
-                    redBtn.text = showCount ? $"{redName} - {redCount}" : redName;
+                    redBtn.text = redName;
                 }
             }
             catch (Exception e)

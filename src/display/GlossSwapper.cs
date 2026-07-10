@@ -34,6 +34,15 @@ public static class GlossSwapper
         public bool hadMetallicGlossMap;
         public bool hadSpecGlossMap;
         public bool hadSmoothnessAlbedoAlpha;
+
+        // B1117: the stick shader's shine is a Clear Coat layer (and metallic), not
+        // _Smoothness — so we also scale those down to actually dull sticks/tape/pucks.
+        public bool hasMetallic;
+        public float originalMetallic;
+        public bool hasClearCoat;
+        public float originalClearCoatOpacity;
+        public bool hasClearCoatSmoothness;
+        public float originalClearCoatSmoothness;
     }
 
     public enum ObjectCategory { Other, Stick, Player, Puck }
@@ -159,6 +168,12 @@ public static class GlossSwapper
                     hadMetallicGlossMap = mat.IsKeywordEnabled("_METALLICSPECGLOSSMAP") || mat.IsKeywordEnabled("_METALLICGLOSSMAP"),
                     hadSpecGlossMap = mat.IsKeywordEnabled("_SPECGLOSSMAP"),
                     hadSmoothnessAlbedoAlpha = mat.IsKeywordEnabled("_SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A"),
+                    hasMetallic = mat.HasProperty("_Metallic"),
+                    originalMetallic = mat.HasProperty("_Metallic") ? mat.GetFloat("_Metallic") : 0f,
+                    hasClearCoat = mat.HasProperty("_Clear_Coat_Opacity"),
+                    originalClearCoatOpacity = mat.HasProperty("_Clear_Coat_Opacity") ? mat.GetFloat("_Clear_Coat_Opacity") : 0f,
+                    hasClearCoatSmoothness = mat.HasProperty("_Clear_Coat_Smoothness"),
+                    originalClearCoatSmoothness = mat.HasProperty("_Clear_Coat_Smoothness") ? mat.GetFloat("_Clear_Coat_Smoothness") : 0f,
                 };
                 _tracked[mid] = t;
             }
@@ -189,7 +204,9 @@ public static class GlossSwapper
     {
         return mat.HasProperty("_Smoothness")
             || mat.HasProperty("_Glossiness")
-            || mat.HasProperty("roughnessFactor");
+            || mat.HasProperty("roughnessFactor")
+            || mat.HasProperty("_Metallic")
+            || mat.HasProperty("_Clear_Coat_Opacity");
     }
 
     private static bool ContainsCI(string s, string needle) =>
@@ -215,7 +232,7 @@ public static class GlossSwapper
                 ContainsCI(n, "skate") || ContainsCI(n, "glove") || ContainsCI(n, "legpad") ||
                 ContainsCI(n, "mustache") || ContainsCI(n, "beard") || ContainsCI(n, "face") ||
                 ContainsCI(n, "visor") || ContainsCI(n, "chestpad") || ContainsCI(n, "shoulder") ||
-                ContainsCI(n, "strap"))
+                ContainsCI(n, "strap") || ContainsCI(n, "torso") || ContainsCI(n, "groin"))
                 return ObjectCategory.Player;
         }
 
@@ -248,18 +265,27 @@ public static class GlossSwapper
     private static void ApplyOrRestoreMaterial(Tracked t)
     {
         if (t.material == null) return;
-        if (CategoryEnabled(t.category)) ApplyGloss(t.material);
+        if (CategoryEnabled(t.category)) ApplyGloss(t);
         else Restore(t);
     }
 
-    private static void ApplyGloss(Material mat)
+    private static void ApplyGloss(Tracked t)
     {
+        var mat = t.material;
         float s = Mathf.Clamp01(Cfg?.glossSmoothness ?? 0.5f);
         float roughness = 1f - s;
 
         if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", s);
         if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", s);
         if (mat.HasProperty("roughnessFactor")) mat.SetFloat("roughnessFactor", roughness);
+
+        // Scale metallic + clear coat toward matte as the slider drops. The stick
+        // shader's shine is the Clear Coat layer, and metallic drives reflections on
+        // tape/pucks — _Smoothness alone touches neither. At s=1 (original) these are
+        // unchanged; at s=0 they go fully matte.
+        if (t.hasMetallic) mat.SetFloat("_Metallic", t.originalMetallic * s);
+        if (t.hasClearCoat) mat.SetFloat("_Clear_Coat_Opacity", t.originalClearCoatOpacity * s);
+        if (t.hasClearCoatSmoothness) mat.SetFloat("_Clear_Coat_Smoothness", s);
 
         // URP ignores _Smoothness when a gloss-map texture is bound — disable those
         // keywords so the shader falls back to the float value we set.
@@ -302,6 +328,9 @@ public static class GlossSwapper
         if (mat.HasProperty("_SpecularHighlights")) mat.SetFloat("_SpecularHighlights", t.originalSpecular);
         if (mat.HasProperty("_EnvironmentReflections")) mat.SetFloat("_EnvironmentReflections", t.originalEnvRefl);
         if (mat.HasProperty("_GlossyReflections")) mat.SetFloat("_GlossyReflections", t.originalGlossy);
+        if (t.hasMetallic) mat.SetFloat("_Metallic", t.originalMetallic);
+        if (t.hasClearCoat) mat.SetFloat("_Clear_Coat_Opacity", t.originalClearCoatOpacity);
+        if (t.hasClearCoatSmoothness) mat.SetFloat("_Clear_Coat_Smoothness", t.originalClearCoatSmoothness);
 
         if (t.hadSpecHighlightsOn) { mat.EnableKeyword("_SPECULARHIGHLIGHTS_ON"); mat.DisableKeyword("_SPECULARHIGHLIGHTS_OFF"); }
         else { mat.DisableKeyword("_SPECULARHIGHLIGHTS_ON"); mat.EnableKeyword("_SPECULARHIGHLIGHTS_OFF"); }

@@ -22,6 +22,10 @@ public static class ReskinManagerMenuAccessButtons
         .GetField("settingsButton",
             BindingFlags.Instance | BindingFlags.NonPublic);
 
+    static readonly FieldInfo _pauseMenuServerBrowserButtonField = typeof(UIPauseMenu)
+        .GetField("serverBrowserButton",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
     private static void AddReskinManagerMenuButtonToPauseMenu(UIPauseMenu pauseMenu)
     {
         VisualElement containerVisualElement = pauseMenuSettingsButton.parent;
@@ -33,6 +37,20 @@ public static class ReskinManagerMenuAccessButtons
         }
 
         Button reskinMenuButton = CreateReskinManagerMenuButton(pauseMenuSettingsButton);
+
+        // Place the button directly below the native SERVER BROWSER button.
+        var serverBrowserButton = (Button)_pauseMenuServerBrowserButtonField?.GetValue(pauseMenu);
+        if (serverBrowserButton != null)
+        {
+            int idx = containerVisualElement.IndexOf(serverBrowserButton);
+            if (idx >= 0)
+            {
+                containerVisualElement.Insert(idx + 1, reskinMenuButton);
+                return;
+            }
+        }
+
+        // Fallback: near the top of the menu.
         containerVisualElement.Insert(1, reskinMenuButton);
     }
 

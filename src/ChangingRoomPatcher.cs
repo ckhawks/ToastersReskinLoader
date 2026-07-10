@@ -321,9 +321,16 @@ namespace ToasterReskinLoader
 
         private static void ApplyTextureToComponent(Component component, Texture2D texture)
         {
+            // B1117: MeshRendererTexturer applies the texture via a MaterialPropertyBlock,
+            // which overrides material.mainTexture — so SetTexture is the authoritative path.
+            // A direct material write here would be overridden (and would force the material
+            // color to white), so only fall back to it when there is no texturer.
             var meshRendererTexturer = component.GetComponent<MeshRendererTexturer>();
             if (meshRendererTexturer != null)
+            {
                 meshRendererTexturer.SetTexture(texture);
+                return;
+            }
 
             var renderer = component.GetComponent<Renderer>();
             if (renderer != null && renderer.material != null)

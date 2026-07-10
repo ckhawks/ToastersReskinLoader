@@ -41,14 +41,11 @@ internal static class BrowserFilterPersistence
         try
         {
             // Read controls from UIServerBrowser's private fields rather than
-            // walking the visual tree under `filters`. The InlineServerBrowserFilters
-            // patch yanks the controls out of the `filters` wrapper into a
-            // separate strip — if its postfix runs before ours, a Q lookup
-            // through `filters` returns null and we'd silently never hook
-            // any save callbacks. The private fields point at the same
-            // instances regardless of where they're parented.
+            // walking the visual tree — the fields point at the control instances
+            // regardless of where they're parented, so this stays robust even if
+            // another patch reparents the filter controls.
             var search      = AccessTools.Field(typeof(UIServerBrowser), "searchTextField")?.GetValue(browser) as TextField;
-            var maxPing     = AccessTools.Field(typeof(UIServerBrowser), "maxPingTextField")?.GetValue(browser) as IntegerField;
+            var maxPing     = AccessTools.Field(typeof(UIServerBrowser), "maxPingSlider")?.GetValue(browser) as UI.CurvedSlider;
             var showFull    = AccessTools.Field(typeof(UIServerBrowser), "showFullToggle")?.GetValue(browser) as Toggle;
             var showEmpty   = AccessTools.Field(typeof(UIServerBrowser), "showEmptyToggle")?.GetValue(browser) as Toggle;
             var showPwd     = AccessTools.Field(typeof(UIServerBrowser), "showPasswordProtectedToggle")?.GetValue(browser) as Toggle;
@@ -58,7 +55,7 @@ internal static class BrowserFilterPersistence
             // Apply saved values. Setting .value fires the base-game
             // ChangeEvent which re-runs the filter — exactly what we want.
             if (search      != null) search.value      = cfg.browserSearch ?? "";
-            if (maxPing     != null) maxPing.value     = cfg.browserMaxPing;
+            if (maxPing     != null) maxPing.MappedValue = cfg.browserMaxPing;
             if (showFull    != null) showFull.value    = cfg.browserShowFull;
             if (showEmpty   != null) showEmpty.value   = cfg.browserShowEmpty;
             if (showPwd     != null) showPwd.value     = cfg.browserShowLocked;
@@ -74,7 +71,7 @@ internal static class BrowserFilterPersistence
             if (search != null)
                 search.RegisterCallback<ChangeEvent<string>>(ev => Save(c => c.browserSearch = ev.newValue ?? ""));
             if (maxPing != null)
-                maxPing.RegisterCallback<ChangeEvent<int>>(ev => Save(c => c.browserMaxPing = ev.newValue));
+                maxPing.MappedValueChanged += v => Save(c => c.browserMaxPing = v);
             if (showFull != null)
                 showFull.RegisterValueChangedCallback(ev => Save(c => c.browserShowFull = ev.newValue));
             if (showEmpty != null)

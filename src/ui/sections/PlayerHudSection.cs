@@ -15,15 +15,9 @@ public static class PlayerHudSection
             "On-screen player and team identification. Team colors and names are set per-team in the Players tab.");
         if (cfg == null) return;
 
-        SettingsUI.ToggleRow(root, "Enable team indicator", cfg.teamIndicatorEnabled,
-            v =>
-            {
-                cfg.teamIndicatorEnabled = v;
-                Settings.Save();
-                TeamIndicatorSwapper.UpdateVisibility();
-            });
         SettingsUI.Note(root,
-            "Shows a colored bar at the bottom of the screen indicating your current team. Uses your custom team colors.");
+            "The game's own team-color bar automatically uses your custom team colors (set per-team "
+            + "in the Players tab) when team-color customization is enabled.");
 
         SettingsUI.ToggleRow(root, "Color floating player names by team", cfg.enablePlayerUsernameTeamColors,
             v => { cfg.enablePlayerUsernameTeamColors = v; Settings.Save(); });

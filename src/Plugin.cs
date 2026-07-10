@@ -26,7 +26,7 @@ namespace ToasterReskinLoader;
 public class Plugin : IPuckPlugin
 {
     public static string MOD_NAME = "ToasterReskinLoader";
-    public static string MOD_VERSION = "2.2.1";
+    public static string MOD_VERSION = "2.3.0";
     public static string MOD_GUID = "pw.stellaric.toaster.reskinloader";
 
     static readonly Harmony harmony = new Harmony(MOD_GUID);
@@ -38,7 +38,6 @@ public class Plugin : IPuckPlugin
         Plugin.Log($"Enabling {MOD_VERSION}...");
         try
         {
-            PatchStripAnsiLogs.Apply(harmony);
             if (IsDedicatedServer())
             {
                 Plugin.Log("Environment: dedicated server.");
@@ -99,7 +98,6 @@ public class Plugin : IPuckPlugin
                 ToasterReskinLoader.diagnostics.WorkshopUpdateChecker.Initialize();
                 SwapperManager.SetupMatchmakingListeners();
                 PartyLineup.Initialize();
-                ToothbrushFilter.ResetIfActive();
 
                 // Load settings, run the runtime feature init batch (each isolated
                 // so one failure doesn't abort the rest), then start the tick host.
@@ -123,17 +121,14 @@ public class Plugin : IPuckPlugin
                 if (ToasterReskinLoader.core.Settings.Current?.enableBetterFriendsList ?? true)
                     BetterFriendsList.Enable();
 
-                if (ToasterReskinLoader.core.Settings.Current?.enableBeaconPing ?? true)
-                    ToasterReskinLoader.social.beacon.BeaconPing.Enable();
+                if (ToasterReskinLoader.core.Settings.Current?.enableProbePing ?? true)
+                    ToasterReskinLoader.social.probe.ProbePing.Enable();
 
                 if (ToasterReskinLoader.core.Settings.Current?.enableVanillaUIRetheme ?? true)
                     ToasterReskinLoader.ui.VanillaUIRetheme.Enable();
 
                 if (ToasterReskinLoader.core.Settings.Current?.enableAutoConnectMatchmaking ?? false)
                     ToasterReskinLoader.serverbrowser.AutoConnectMatchmaking.Enable();
-
-                if (ToasterReskinLoader.core.Settings.Current?.disableControllerInput ?? false)
-                    ToasterReskinLoader.input.DisableControllerInput.Enable();
 
                 if (ToasterReskinLoader.core.Settings.Current?.enableFrameProfiler ?? false)
                     ToasterReskinLoader.diagnostics.profiler.FrameProfiler.Enable();
@@ -165,10 +160,9 @@ public class Plugin : IPuckPlugin
         {
             Plugin.Log($"Disabling...");
             BetterFriendsList.Disable();
-            ToasterReskinLoader.social.beacon.BeaconPing.Disable();
+            ToasterReskinLoader.social.probe.ProbePing.Disable();
             ToasterReskinLoader.ui.VanillaUIRetheme.Disable();
             ToasterReskinLoader.serverbrowser.AutoConnectMatchmaking.Disable();
-            ToasterReskinLoader.input.DisableControllerInput.Disable();
             ToasterReskinLoader.diagnostics.profiler.FrameProfiler.Disable();
             harmony.UnpatchSelf();
             AppearanceAPI.Cleanup();

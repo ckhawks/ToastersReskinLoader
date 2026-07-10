@@ -1,16 +1,14 @@
-// Rendering — shadow quality and glossiness. Merges the former Shadows and
-// Glossiness pages into one. Part of the "Tweaks" sidebar group (Game).
+// Rendering — surface glossiness control. Part of the "Tweaks" sidebar group (Game).
 //
-// Both are personal/performance settings stored in SettingsConfig, not the
-// reskin profile.
+// A personal/performance setting stored in SettingsConfig, not the reskin profile.
+// (Shadow quality is native in B1117 via the video-settings Shadow Quality option.)
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
 using ToasterReskinLoader.core;
-using ToasterReskinLoader.display; // CrispyShadowsSwapper, GlossSwapper
+using ToasterReskinLoader.display; // GlossSwapper
 
 namespace ToasterReskinLoader.ui.sections;
 
@@ -22,157 +20,11 @@ public static class RenderingSection
     public static void CreateSection(VisualElement root)
     {
         var cfg = SettingsUI.RequireConfig(root,
-            "Shadow quality and surface glossiness. Personal/performance settings — not part of a reskin pack.");
+            "Surface glossiness. Personal/performance setting — not part of a reskin pack.");
         if (cfg == null) return;
-
-        SettingsUI.Header(root, "Shadows");
-        BuildShadows(root);
-
-        SettingsUI.Separator(root);
 
         SettingsUI.Header(root, "Glossiness");
         BuildGloss(root);
-    }
-
-    // ── Shadows ──────────────────────────────────────────────────────────
-
-    private static readonly Dictionary<string, int> ResolutionOptions = new Dictionary<string, int>
-    {
-        { "256 (Very Low)", 256 },
-        { "512 (Low)", 512 },
-        { "1024 (Medium)", 1024 },
-        { "2048 (High)", 2048 },
-        { "4096 (Very High)", 4096 },
-        { "8192 (Ultra)", 8192 },
-    };
-
-    private static readonly Dictionary<string, int> CascadeOptions = new Dictionary<string, int>
-    {
-        { "1 Cascade", 1 },
-        { "2 Cascades", 2 },
-        { "3 Cascades", 3 },
-        { "4 Cascades", 4 },
-    };
-
-    private static void ResetShadowsToDefault()
-    {
-        var d = new SettingsConfig();
-        var c = Cfg;
-        if (c == null) return;
-        c.crispyShadowsEnabled = d.crispyShadowsEnabled;
-        c.shadowResolution = d.shadowResolution;
-        c.shadowDistance = d.shadowDistance;
-        c.shadowCascadeCount = d.shadowCascadeCount;
-        c.shadowSoftShadows = d.shadowSoftShadows;
-        Save();
-        CrispyShadowsSwapper.Apply();
-    }
-
-    private static void BuildShadows(VisualElement root)
-    {
-        var cfg = Cfg;
-        SettingsUI.Note(root,
-            "Crispy Shadows overrides the game's shadow map settings for sharper, higher-quality shadows.");
-
-        var dependentControls = new List<VisualElement>();
-
-        var enableRow = UITools.CreateConfigurationRow();
-        enableRow.Add(UITools.CreateConfigurationLabel("Enable Crispy Shadows"));
-        var enableToggle = UITools.CreateConfigurationCheckbox(cfg.crispyShadowsEnabled);
-        enableToggle.value = cfg.crispyShadowsEnabled;
-        enableToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
-        {
-            cfg.crispyShadowsEnabled = evt.newValue;
-            Save();
-            CrispyShadowsSwapper.Apply();
-            UITools.UpdateDependentControlsState(dependentControls, evt.newValue);
-        });
-        enableRow.Add(enableToggle);
-        root.Add(enableRow);
-
-        // Resolution dropdown + VRAM estimate
-        var resolutionRow = UITools.CreateConfigurationRow();
-        resolutionRow.Add(UITools.CreateConfigurationLabel("Shadow Map Resolution"));
-        var resolutionChoices = ResolutionOptions.Keys.ToList();
-        string currentResolution = ResolutionOptions.FirstOrDefault(kv => kv.Value == cfg.shadowResolution).Key
-            ?? "4096 (Very High)";
-        var resolutionDropdown = UITools.CreateStringDropdownField(resolutionChoices, currentResolution);
-
-        var vramLabel = UITools.CreateConfigurationLabel(
-            $"Estimated VRAM: {CrispyShadowsSwapper.EstimateVRAM(cfg.shadowResolution)}");
-        vramLabel.style.marginTop = 2;
-        vramLabel.style.marginBottom = 8;
-        vramLabel.style.fontSize = 13;
-        vramLabel.style.color = new Color(0.7f, 0.7f, 0.7f);
-
-        resolutionDropdown.RegisterCallback<ChangeEvent<string>>(evt =>
-        {
-            if (ResolutionOptions.TryGetValue(evt.newValue, out int resolution))
-            {
-                cfg.shadowResolution = resolution;
-                Save();
-                CrispyShadowsSwapper.Apply();
-                vramLabel.text = $"Estimated VRAM: {CrispyShadowsSwapper.EstimateVRAM(resolution)}";
-            }
-        });
-        resolutionRow.Add(resolutionDropdown);
-        root.Add(resolutionRow);
-        dependentControls.Add(resolutionRow);
-        root.Add(vramLabel);
-        dependentControls.Add(vramLabel);
-
-        // Distance slider — applies live, saves on release
-        var distanceRow = UITools.CreateConfigurationRow();
-        distanceRow.Add(UITools.CreateConfigurationLabel("Shadow Distance"));
-        var distanceSlider = UITools.CreateConfigurationSlider(10, 300, cfg.shadowDistance, 300);
-        distanceSlider.RegisterCallback<ChangeEvent<float>>(evt =>
-        {
-            cfg.shadowDistance = evt.newValue;
-            CrispyShadowsSwapper.Apply();
-        });
-        distanceSlider.RegisterCallback<PointerUpEvent>(evt => Save());
-        distanceRow.Add(distanceSlider);
-        root.Add(distanceRow);
-        dependentControls.Add(distanceRow);
-
-        // Cascades dropdown
-        var cascadeRow = UITools.CreateConfigurationRow();
-        cascadeRow.Add(UITools.CreateConfigurationLabel("Shadow Cascades"));
-        var cascadeChoices = CascadeOptions.Keys.ToList();
-        string currentCascade = CascadeOptions.FirstOrDefault(kv => kv.Value == cfg.shadowCascadeCount).Key
-            ?? "4 Cascades";
-        var cascadeDropdown = UITools.CreateStringDropdownField(cascadeChoices, currentCascade);
-        cascadeDropdown.RegisterCallback<ChangeEvent<string>>(evt =>
-        {
-            if (CascadeOptions.TryGetValue(evt.newValue, out int cascades))
-            {
-                cfg.shadowCascadeCount = cascades;
-                Save();
-                CrispyShadowsSwapper.Apply();
-            }
-        });
-        cascadeRow.Add(cascadeDropdown);
-        root.Add(cascadeRow);
-        dependentControls.Add(cascadeRow);
-
-        // Soft shadows
-        var softRow = UITools.CreateConfigurationRow();
-        softRow.Add(UITools.CreateConfigurationLabel("Soft Shadows"));
-        var softToggle = UITools.CreateConfigurationCheckbox(cfg.shadowSoftShadows);
-        softToggle.value = cfg.shadowSoftShadows;
-        softToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
-        {
-            cfg.shadowSoftShadows = evt.newValue;
-            Save();
-            CrispyShadowsSwapper.Apply();
-        });
-        softRow.Add(softToggle);
-        root.Add(softRow);
-        dependentControls.Add(softRow);
-
-        root.Add(SettingsUI.RebuildButton(root, "Reset shadows to default", ResetShadowsToDefault, CreateSection));
-
-        UITools.UpdateDependentControlsState(dependentControls, cfg.crispyShadowsEnabled);
     }
 
     // ── Glossiness ───────────────────────────────────────────────────────

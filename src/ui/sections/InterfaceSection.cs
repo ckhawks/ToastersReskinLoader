@@ -14,10 +14,6 @@ public static class InterfaceSection
         var cfg = SettingsUI.RequireConfig(root, "Menu behavior and global UI/text fixes.");
         if (cfg == null) return;
 
-        SettingsUI.ToggleRow(root, "Close secondary menus with ESC", cfg.enableEscCloseMenus,
-            v => { cfg.enableEscCloseMenus = v; Settings.Save(); });
-        SettingsUI.ToggleRow(root, "Show player count on team select buttons", cfg.enableTeamButtonPlayerCount,
-            v => { cfg.enableTeamButtonPlayerCount = v; Settings.Save(); });
         SettingsUI.ToggleRow(root, "Text drop-shadow on all game UI", cfg.enableUiTextShadow,
             v =>
             {
@@ -30,7 +26,7 @@ public static class InterfaceSection
         SettingsUI.Note(root,
             "Restart the game for an off→on toggle to take full effect; changes apply to the next mod menu open.");
 
-        SettingsUI.ToggleRow(root, "Darken vanilla checkbox/input backgrounds", cfg.enableVanillaUIRetheme,
+        SettingsUI.ToggleRow(root, "Restyle vanilla dropdown menus", cfg.enableVanillaUIRetheme,
             v =>
             {
                 cfg.enableVanillaUIRetheme = v;

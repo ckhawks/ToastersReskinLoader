@@ -67,14 +67,15 @@ public static class MinimapSwapper
             var profile = Cfg;
             if (profile == null) return;
 
-            // Refresh player elements
-            var playerMap = (Dictionary<PlayerBody, VisualElement>)PlayerMapField?.GetValue(minimap);
+            // Refresh player elements. B1117: playerBodyVisualElementMap is now a
+            // (Root, Body) tuple dict; style the Root element.
+            var playerMap = (Dictionary<PlayerBody, (VisualElement Root, VisualElement Body)>)PlayerMapField?.GetValue(minimap);
             if (playerMap != null)
             {
                 foreach (var kvp in playerMap)
                 {
                     if (!kvp.Key || !kvp.Key.Player) continue;
-                    ApplyPlayerStyle(kvp.Value, kvp.Key.Player.Team, kvp.Key.Player.IsLocalPlayer, profile);
+                    ApplyPlayerStyle(kvp.Value.Root, kvp.Key.Player.Team, kvp.Key.Player.IsLocalPlayer, profile);
                 }
             }
 
@@ -110,7 +111,7 @@ public static class MinimapSwapper
         // Local player icon color override
         if (isLocalPlayer && profile.localPlayerMinimapIconEnabled)
         {
-            VisualElement bodyEl = playerEl.Q("Body");
+            VisualElement bodyEl = rootEl.Q("Body");
             if (bodyEl != null)
             {
                 Color iconColor = team == PlayerTeam.Red
@@ -144,29 +145,14 @@ public static class MinimapSwapper
         ApplyTintRecursive(puckEl, profile.minimapPuckColor);
     }
 
-    private static bool _puckStructureLogged;
-
+    // Note: in B1117 the minimap puck is painter-drawn (UIMinimap.DrawPuckDot), so it
+    // has no background image to tint — minimapPuckColor no longer has a visible effect.
+    // The recursive tint is left in for any child element that does carry an image.
     private static void ApplyTintRecursive(VisualElement el, Color color)
     {
-        if (!_puckStructureLogged)
-        {
-            LogElementTree(el, 0);
-            _puckStructureLogged = true;
-        }
-
-        // Apply tint to this element and all children
         el.style.unityBackgroundImageTintColor = color;
         foreach (var child in el.Children())
             ApplyTintRecursive(child, color);
-    }
-
-    private static void LogElementTree(VisualElement el, int depth)
-    {
-        string indent = new string(' ', depth * 2);
-        string bg = el.resolvedStyle.backgroundImage.texture != null ? " [has bg image]" : "";
-        Plugin.Log($"[Minimap Puck] {indent}{el.GetType().Name} name='{el.name}' classes='{string.Join(",", el.GetClasses())}'{bg}");
-        foreach (var child in el.Children())
-            LogElementTree(child, depth + 1);
     }
 
     // ── Harmony Patches ─────────────────────────────────────────────────
@@ -183,10 +169,10 @@ public static class MinimapSwapper
                 var profile = Cfg;
                 if (profile == null) return;
 
-                var map = (Dictionary<PlayerBody, VisualElement>)PlayerMapField?.GetValue(__instance);
+                var map = (Dictionary<PlayerBody, (VisualElement Root, VisualElement Body)>)PlayerMapField?.GetValue(__instance);
                 if (map == null || !map.ContainsKey(playerBody)) return;
 
-                ApplyPlayerStyle(map[playerBody], playerBody.Player.Team, playerBody.Player.IsLocalPlayer, profile);
+                ApplyPlayerStyle(map[playerBody].Root, playerBody.Player.Team, playerBody.Player.IsLocalPlayer, profile);
             }
             catch (Exception e)
             {

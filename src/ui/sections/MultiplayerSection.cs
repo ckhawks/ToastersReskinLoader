@@ -4,7 +4,7 @@
 using UnityEngine.UIElements;
 using ToasterReskinLoader.core;
 using ToasterReskinLoader.social;
-using ToasterReskinLoader.social.beacon;
+using ToasterReskinLoader.social.probe;
 using ToasterReskinLoader.serverbrowser;
 
 namespace ToasterReskinLoader.ui.sections;
@@ -35,15 +35,15 @@ public static class MultiplayerSection
                 PartyLineup.RefreshFromConfig();
             });
 
-        SettingsUI.ToggleRow(root, "Enable matchmaking beacon ping panel", cfg.enableBeaconPing,
+        SettingsUI.ToggleRow(root, "Enable matchmaking probe ping panel", cfg.enableProbePing,
             v =>
             {
-                cfg.enableBeaconPing = v;
+                cfg.enableProbePing = v;
                 Settings.Save();
-                if (v) BeaconPing.Enable();
-                else   BeaconPing.Disable();
+                if (v) ProbePing.Enable();
+                else   ProbePing.Disable();
             });
-        SettingsUI.Note(root, "Adds a panel to the Play menu listing community servers with live ping.");
+        SettingsUI.Note(root, "Adds a panel to the Play menu listing matchmaking regions with live ping.");
 
         SettingsUI.ToggleRow(root, "Auto-connect to matchmaking matches", cfg.enableAutoConnectMatchmaking,
             v =>

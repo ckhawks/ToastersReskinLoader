@@ -192,7 +192,7 @@ public static class PlayersSection
         ReskinProfileManager.SaveProfile();
         try { TeamColorSwapper.RefreshAll(); } catch { }
         try { ArenaSwapper.UpdateGoalFrameColors(); } catch { }
-        try { TeamIndicatorSwapper.UpdateVisibility(); } catch { }
+        try { TeamIndicatorSwapper.Refresh(); } catch { }
         try { ToasterReskinLoaderAPI.NotifyTeamColorsChanged(); } catch { }
     }
 

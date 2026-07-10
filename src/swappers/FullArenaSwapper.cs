@@ -155,9 +155,9 @@ public static class FullArenaSwapper
 
             // Verify we're in a game scene (not menu/changing_room)
             Scene currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
-            if (!currentScene.name.Equals("level_1", StringComparison.OrdinalIgnoreCase))
+            if (!currentScene.name.Equals("level_default", StringComparison.OrdinalIgnoreCase))
             {
-                Plugin.LogWarning($"[FullArena] Not in expected game scene 'level_1'. Current scene: {currentScene.name}");
+                Plugin.LogWarning($"[FullArena] Not in expected game scene 'level_default'. Current scene: {currentScene.name}");
                 return;
                 // Note: Could extend this to support other scene names if needed
             }

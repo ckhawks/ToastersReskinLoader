@@ -27,16 +27,7 @@ public class SettingsConfig
     public float arenaAudioVolume = 0.9f;
 
     // Base-game UX patches (default on)
-    public bool enableEscCloseMenus = true;
-    // Allow chat in any in-game phase (LockerRoom, Warmup, Playing) when
-    // connected to a server. The chat key is also blocked when typing in
-    // any text input, so this is safe at any phase.
-    public bool enableChatAnyInGamePhase = true;
-    // Allow the scoreboard hold-to-view in any in-game phase (TeamSelect,
-    // PositionSelect, Spectate, etc.) — vanilla only shows it during Play.
-    public bool enableScoreboardAnyInGamePhase = true;
     public bool enableChatDragSelect = true;
-    public bool enableInlineServerBrowserFilters = true;
     public bool enableHideInactiveChat = false;
     public bool enableSpectatorMinimap = true;
     // Minimap rotation mode. Mutually exclusive — only one applies at a time.
@@ -49,7 +40,6 @@ public class SettingsConfig
     public bool enablePlayerUsernameTeamColors = false;
     public bool enableBrowserFilterPersistence = true;
     public bool enableNumberedNames = false;
-    public bool enableTeamButtonPlayerCount = true;
     public bool enablePartyLineup = true;
     public bool enableSavedServerPasswords = true;
     public bool enableServerBrowserSortTweaks = true;
@@ -67,13 +57,12 @@ public class SettingsConfig
     // Latin glyphs, so things like ▶/▼/★/☆ render as blank boxes
     // until we attach a system font (Segoe UI Symbol, etc.) as fallback.
     public bool enableUnicodeFontFallback = true;
-    // Fixes the vanilla bug where every player's country flag renders identical
-    // (all flag meshes share one baked material asset). See FlagMaterialFix.
-    public bool enableFlagMaterialFix = true;
 
     // Additions — opt-in QoL enhancements layered on top of vanilla
     public bool enableBetterFriendsList = true;
-    public bool enableBeaconPing = true;
+    // Renamed from enableBeaconPing when Edgegap Beacons became Probes. Existing
+    // users' old key is ignored on load, so this starts fresh at its default (on).
+    public bool enableProbePing = true;
     // Default off. Persisted under a renamed JSON key (see SettingsProfile) so that
     // users who already had the original default-on key saved start fresh at
     // off rather than inheriting their old "true".
@@ -132,11 +121,6 @@ public class SettingsConfig
     public bool enableChatNoFade = false;
     public bool enableEnhancedModMenu = true;
     public bool enableAutoConnectMatchmaking = false;
-    // Disable all connected game controllers (gamepads/joysticks) at the
-    // Input System level. Fixes the attached-controller cursor hijack where
-    // the first click on a menu button is eaten. Default off so controller
-    // players are unaffected. See DisableControllerInput.
-    public bool disableControllerInput = false;
     // Fly the position-select bench camera around like a spectator while you've
     // joined a team but haven't claimed a position yet. Right-click toggles
     // free-look. Purely client-local (see PositionSelectFreeLook). Default on;
@@ -198,16 +182,10 @@ public class SettingsConfig
     public float devConsoleH = 460f;
 
     // ── Display settings (moved out of the reskin profile — personal/perf, not shared) ──
-    // Shadows (CrispyShadows). Defaults mirror the old reskin-profile defaults.
-    public bool  crispyShadowsEnabled = true;
-    public int   shadowResolution = 8192;
-    public float shadowDistance = 50f;
-    public int   shadowCascadeCount = 4;
-    public bool  shadowSoftShadows = true;
 
     // Gloss remover.
-    public bool  glossRemoverEnabled = false;
-    public float glossSmoothness = 0.5f;
+    public bool  glossRemoverEnabled = true;
+    public float glossSmoothness = 0.0f;
     public bool  glossAffectSticks = true;
     public bool  glossAffectPlayers = true;
     public bool  glossAffectPucks = true;
@@ -218,13 +196,11 @@ public class SettingsConfig
     public Color minimapPuckColor = new Color(0f, 0f, 0f, 1f);
     public float minimapPlayerScale = 1f;
     public float minimapPuckScale = 1f;
-    public int   minimapRefreshRate = 60;
+    public int   minimapRefreshRate = 120;
     public bool  localPlayerMinimapIconEnabled = false;
     public Color blueLocalPlayerMinimapIconColor = new Color(0f, 1f, 0f, 1f);
     public Color redLocalPlayerMinimapIconColor = new Color(0f, 1f, 0f, 1f);
 
-    // Team indicator (on-ice colored bar showing your team).
-    public bool teamIndicatorEnabled = false;
 
     // Chat (HUD).
     public float chatHeight = 300f;

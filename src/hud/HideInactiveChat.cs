@@ -318,27 +318,9 @@ internal static class HideInactiveChat
         {
             // User opened chat to type — always show the container, even
             // when the flag is off (cheap no-op when already visible).
+            // (The "[TEAM]" indicator is native in B1117 via UIChat.inputPrefix,
+            // so we no longer inject our own label — it would double up.)
             ShowChatContainer(__instance);
-
-            // Show a "[TEAM]" prefix on the input when typing in team
-            // chat. UI Toolkit renders BaseField<T>.label to the left
-            // of the input element automatically, so we just set the
-            // property — no DOM injection required. All-chat keeps the
-            // default empty label.
-            try
-            {
-                var tf = GetTextField(__instance);
-                if (tf != null)
-                {
-                    tf.label = __instance.IsTeamChat ? "  [TEAM]" : string.Empty;
-                    // BaseField creates the label element lazily on this
-                    // first non-empty assignment — after UiTextShadow's
-                    // view walk — so shadow it explicitly to match the
-                    // chat text next to it.
-                    UiTextShadow.ApplyToSubtree(tf);
-                }
-            }
-            catch (Exception e) { Debug.LogWarning("[QoL] team-chat label apply failed: " + e.Message); }
         }
     }
 
@@ -347,15 +329,6 @@ internal static class HideInactiveChat
     {
         private static void Postfix(UIChat __instance)
         {
-            // Clear the [TEAM] prefix regardless of the hide-inactive
-            // flag so it doesn't linger after the input collapses.
-            try
-            {
-                var tf = GetTextField(__instance);
-                if (tf != null) tf.label = string.Empty;
-            }
-            catch (Exception e) { Debug.LogWarning("[QoL] team-chat label clear failed: " + e.Message); }
-
             if (!Enabled) return;
             // User closed chat. Re-check — if every message is already
             // past its blur point, collapse the container immediately.
@@ -363,29 +336,28 @@ internal static class HideInactiveChat
         }
     }
 
-    // When the chat container was just re-shown after being hidden, the
-    // first scroll-to-bottom call would otherwise tween over the entire
-    // (now-grown) scroll distance in 0.2s, which reads as a distracting
-    // fast scroll. Detect that case and teleport instead.
-    [HarmonyPatch(typeof(UIChat), "SmoothScrollToVerticalPosition")]
-    private static class UIChat_SmoothScroll_SnapAfterShow_Prefix
+    // When the chat container was just re-shown after being hidden, native's
+    // RefreshContentAndScroll tweens the scroll over the entire (now-grown)
+    // distance in 0.2s, which reads as a distracting fast scroll. In the snap
+    // window we let native run, then kill its tween and teleport to the bottom.
+    // (B1117 replaced SmoothScrollToVerticalPosition(float,bool) with the
+    // parameterless RefreshContentAndScroll(), which sets verticalScroller
+    // .highValue to the bottom and starts the tween.)
+    [HarmonyPatch(typeof(UIChat), "RefreshContentAndScroll")]
+    private static class UIChat_RefreshContentAndScroll_SnapAfterShow_Postfix
     {
-        private static bool Prefix(UIChat __instance, float position, bool isBottomPosition)
+        private static void Postfix(UIChat __instance)
         {
-            if (!Enabled) return true;
-            if (Time.unscaledTime > _snapUntilUnscaledTime) return true; // window expired → vanilla tween
+            if (!Enabled) return;
+            if (Time.unscaledTime > _snapUntilUnscaledTime) return; // window expired → keep vanilla tween
             try
             {
                 if (_fiScrollView == null) _fiScrollView = AccessTools.Field(typeof(UIChat), "scrollView");
                 var scrollView = _fiScrollView?.GetValue(__instance) as ScrollView;
-                if (scrollView == null) return true;
+                if (scrollView == null) return;
 
-                // 1. Kill any in-flight DOTween smoothScrollTween. Vanilla
-                //    does this at the start of SmoothScrollToVerticalPosition,
-                //    but since we return false to skip vanilla we have to
-                //    kill it ourselves — otherwise a prior tween keeps
-                //    running and overwrites our scrollOffset write next
-                //    frame.
+                // Kill the DOTween smoothScrollTween native just started so it
+                // doesn't animate over the snap we're about to do.
                 if (_fiSmoothScrollTween == null)
                     _fiSmoothScrollTween = AccessTools.Field(typeof(UIChat), "smoothScrollTween");
                 var existingTween = _fiSmoothScrollTween?.GetValue(__instance);
@@ -397,47 +369,31 @@ internal static class HideInactiveChat
                     _fiSmoothScrollTween.SetValue(__instance, null);
                 }
 
-                // 2. Mirror vanilla's target math: position is the bottom-of
-                //    -new-child; subtract viewport height when isBottomPosition
-                //    so the new message sits flush at the bottom of the
-                //    viewport.
-                float viewport = scrollView.contentViewport?.resolvedStyle.height ?? 0f;
-                float targetY = position - (isBottomPosition ? viewport : 0f);
-                if (targetY < 0f) targetY = 0f;
+                // Teleport straight to the bottom native just computed (highValue).
+                float targetY = scrollView.verticalScroller.highValue;
                 scrollView.scrollOffset = new Vector2(scrollView.scrollOffset.x, targetY);
 
-                // 3. Mirror the flag bookkeeping vanilla does in its
-                //    tween's OnComplete handler so the next valueChanged
-                //    callback computes autoScroll correctly (= true at
-                //    bottom). Without this autoScroll would be stuck off
-                //    after the snap, and subsequent messages would never
-                //    fire SmoothScrollToVerticalPosition.
+                // Mirror the flag bookkeeping vanilla does in the tween's
+                // OnComplete so the next valueChanged callback computes
+                // autoScroll correctly (= true at bottom).
                 if (_fiIsScrolling == null) _fiIsScrolling = AccessTools.Field(typeof(UIChat), "isScrolling");
                 if (_fiAutoScroll == null)  _fiAutoScroll  = AccessTools.Field(typeof(UIChat), "autoScroll");
                 _fiIsScrolling?.SetValue(__instance, false);
                 _fiAutoScroll?.SetValue(__instance, true);
 
-                // 4. Re-apply on the next frame too. UIToolkit's ScrollView
-                //    clamps scrollOffset against the CURRENT verticalScroller
-                //    highValue — if the new content's geometry hasn't fully
-                //    propagated to the scroller yet (which happens during a
-                //    cascade of GeometryChangedEvents in one frame), the
-                //    initial write can get truncated to a smaller max. The
-                //    scheduled follow-up runs after the next layout pass
-                //    when highValue has caught up.
+                // Re-apply on the next frame too — UIToolkit's ScrollView clamps
+                // scrollOffset against the current highValue, which may not have
+                // caught up to the new content's geometry within this frame.
                 float capturedTarget = targetY;
                 scrollView.schedule.Execute(() =>
                 {
                     try { scrollView.scrollOffset = new Vector2(scrollView.scrollOffset.x, capturedTarget); }
                     catch { }
                 }).ExecuteLater(0);
-
-                return false; // skip vanilla tween
             }
             catch (Exception e)
             {
-                Plugin.LogWarning("[QoL] chat snap-to-bottom failed: " + e.Message);
-                return true;
+                Plugin.LogWarning("[QoL] chat snap-after-show failed: " + e.Message);
             }
         }
     }

@@ -432,19 +432,11 @@ internal static class ServerBrowserSort
             if (__instance == null) return;
             try
             {
-                // Reset to PLAYERS%-descending on open only when the sort
-                // tweaks are enabled — the badge/filter passes below still
-                // run for favorites/blocks/saved-passwords even when they're
-                // not.
-                if (SortTweaksEnabled)
-                {
-                    var tField = AccessTools.Field(typeof(UIServerBrowser), "sortType");
-                    var dField = AccessTools.Field(typeof(UIServerBrowser), "sortDirection");
-                    tField?.SetValue(__instance, Enum.ToObject(tField.FieldType, SortType_Players));
-                    dField?.SetValue(__instance, Enum.ToObject(dField.FieldType, SortDir_Descending));
-
-                    AccessTools.Method(typeof(UIServerBrowser), "StyleSortButtons")?.Invoke(__instance, null);
-                }
+                // B1117 defaults the browser to Players-descending on open, so we
+                // no longer force the default sort here (doing so would fight the
+                // game's new sort-arrow state). Our SortServers postfix below still
+                // layers the fill-ratio PLAYERS% ordering + favorites-first tier on
+                // top of whatever column is active.
 
                 // Re-style every server row so badges show up retroactively
                 // when the feature was enabled while the browser already

@@ -39,14 +39,6 @@ public static class PartyLineup
     private static readonly FieldInfo _attackerStickMeshField = typeof(LockerRoomStick)
         .GetField("attackerStickMesh", BindingFlags.Instance | BindingFlags.NonPublic);
 
-    // MeshRendererTexturer caches a per-instance Material reference; on a clone
-    // this still points at the original's material, so writes leak to the local
-    // player. We null these out after cloning to force a fresh per-renderer copy.
-    private static readonly FieldInfo _mrtMaterialField = typeof(MeshRendererTexturer)
-        .GetField("material", BindingFlags.Instance | BindingFlags.NonPublic);
-    private static readonly FieldInfo _mrtIsInstantiatedField = typeof(MeshRendererTexturer)
-        .GetField("isMaterialInstantiated", BindingFlags.Instance | BindingFlags.NonPublic);
-
     // For reading valid IDs from serialized lists
     private static readonly FieldInfo _jerseysField = typeof(PlayerTorso)
         .GetField("jerseys", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -540,16 +532,11 @@ public static class PartyLineup
             r.sharedMaterials = copies;
         }
 
-        // MRT lazily caches Material on first access. The cached ref points at
-        // the original's per-instance material; null it so the next access
-        // re-fetches via MeshRenderer.material (which is now our fresh copy).
-        var texturers = root.GetComponentsInChildren<MeshRendererTexturer>(true);
-        foreach (var t in texturers)
-        {
-            if (t == null) continue;
-            _mrtMaterialField?.SetValue(t, null);
-            _mrtIsInstantiatedField?.SetValue(t, false);
-        }
+        // Note: in B1117 MeshRendererTexturer (jersey/groin) applies its texture as a
+        // per-renderer MaterialPropertyBlock, not a cached/instantiated Material — so a
+        // clone doesn't share MRT texture state with the original and needs no special
+        // handling here. The sharedMaterials copy above covers the direct-material
+        // swappers (gender/hat/color writes).
     }
 
     // ── Cleanup ─────────────────────────────────────────────────────

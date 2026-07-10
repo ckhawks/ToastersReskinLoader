@@ -19,14 +19,6 @@ public static class ServerBrowserSection
             "Server browser sorting, filtering, and saved server data.");
         if (cfg == null) return;
 
-        SettingsUI.ToggleRow(root, "Show filters inline", cfg.enableInlineServerBrowserFilters,
-            v =>
-            {
-                cfg.enableInlineServerBrowserFilters = v;
-                Settings.Save();
-                if (v) InlineServerBrowserFilters.ReapplyInlineFiltersForCurrent();
-                else   InlineServerBrowserFilters.UndoInlineFiltersForCurrent();
-            });
         SettingsUI.ToggleRow(root, "Remember filters between sessions", cfg.enableBrowserFilterPersistence,
             v => { cfg.enableBrowserFilterPersistence = v; Settings.Save(); });
         SettingsUI.ToggleRow(root, "Auto-queue when joining a full server", cfg.enableServerSlotQueue,
