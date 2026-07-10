@@ -15,17 +15,75 @@ public static class PuckSwapper
     private static readonly int BaseMap = Shader.PropertyToID("_BaseMap");
     private static System.Random _random = new System.Random();
 
+    private static bool _loggedHierarchy;
+
+    /// <summary>
+    /// Resolves the transform carrying the puck's body MeshRenderer. The vanilla hierarchy is
+    /// puck &gt; "puck" &gt; "Puck", but a game update can rename/restructure it, so we fall back
+    /// to searching children for a MeshRenderer that has a MeshFilter and a "_BaseMap" material
+    /// (the puck body — not FX quads, trails, or the elevation indicator). The actual hierarchy
+    /// is logged once when the known path misses, so a broken layout is diagnosable passively.
+    /// </summary>
+    public static Transform ResolvePuckMeshTransform(Transform puckRoot)
+    {
+        if (puckRoot == null) return null;
+
+        // Known vanilla path.
+        var known = puckRoot.Find("puck")?.Find("Puck");
+        if (known != null && known.GetComponent<MeshRenderer>() != null)
+            return known;
+
+        // Fallback: find the body renderer by shape (MeshFilter + textured material).
+        Transform best = null;
+        foreach (var mr in puckRoot.GetComponentsInChildren<MeshRenderer>(true))
+        {
+            var mf = mr.GetComponent<MeshFilter>();
+            if (mf == null || mf.sharedMesh == null || mr.sharedMaterial == null) continue;
+            if (!mr.sharedMaterial.HasProperty("_BaseMap")) continue;
+            best = mr.transform;
+            if (string.Equals(mr.name, "Puck", StringComparison.OrdinalIgnoreCase))
+                break; // exact-name match wins outright
+        }
+
+        if (!_loggedHierarchy && (known == null || best == null))
+        {
+            _loggedHierarchy = true;
+            if (best == null)
+                Plugin.LogWarning($"[Puck] Could not resolve puck body mesh under '{puckRoot.name}'. Hierarchy:\n{DescribeHierarchy(puckRoot, 0)}");
+            else
+                Plugin.LogWarning($"[Puck] Vanilla path puck/Puck missing; resolved body mesh via fallback: '{best.name}'. Hierarchy:\n{DescribeHierarchy(puckRoot, 0)}");
+        }
+
+        return best;
+    }
+
+    /// <summary>Indented dump of a transform subtree with renderer/filter markers, for diagnostics.</summary>
+    private static string DescribeHierarchy(Transform t, int depth)
+    {
+        string indent = new string(' ', depth * 2);
+        bool mr = t.GetComponent<MeshRenderer>() != null;
+        bool mf = t.GetComponent<MeshFilter>() != null;
+        string tags = (mr ? " [MeshRenderer]" : "") + (mf ? " [MeshFilter]" : "");
+        var sb = new System.Text.StringBuilder();
+        sb.Append(indent).Append(t.name).Append(tags).Append('\n');
+        for (int i = 0; i < t.childCount; i++)
+            sb.Append(DescribeHierarchy(t.GetChild(i), depth + 1));
+        return sb.ToString();
+    }
+
     // Set a specific Puck to a specific ReskinEntry (can be null)
     private static void SetPuckTexture(Puck puck, ReskinRegistry.ReskinEntry reskinEntry)
     {
         try
         {
-            MeshRenderer puckMeshRenderer =
-                puck.gameObject.transform.Find("puck").Find("Puck").GetComponent<MeshRenderer>();
+            Transform meshTransform = ResolvePuckMeshTransform(puck.gameObject.transform);
+            MeshRenderer puckMeshRenderer = meshTransform != null
+                ? meshTransform.GetComponent<MeshRenderer>()
+                : null;
 
             if (puckMeshRenderer == null)
             {
-                Plugin.LogError("No MeshRenderer found on GameObject Puck.");
+                Plugin.LogError("No MeshRenderer found for puck body.");
                 return;
             }
 

@@ -43,7 +43,7 @@ public static class PuckPreview
     {
         if (_puckMesh != null && _puckMaterialTemplate != null) return;
         if (puck == null) return;
-        var meshTransform = puck.transform.Find("puck")?.Find("Puck");
+        var meshTransform = PuckSwapper.ResolvePuckMeshTransform(puck.transform);
         CaptureFromTransform(meshTransform);
     }
 
@@ -123,7 +123,7 @@ public static class PuckPreview
         // list at startup, so it's in memory even in the main menu (no game required).
         foreach (var puck in Resources.FindObjectsOfTypeAll<Puck>())
         {
-            var meshTransform = puck.transform.Find("puck")?.Find("Puck");
+            var meshTransform = PuckSwapper.ResolvePuckMeshTransform(puck.transform);
             if (CaptureFromTransform(meshTransform)) return true;
         }
 
