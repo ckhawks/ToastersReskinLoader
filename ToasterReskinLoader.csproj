@@ -37,12 +37,14 @@
     <Message Importance="high" Text="$(AssemblyName) built successfully!" />
   </Target>
 
-  <!-- Asset bundles that must ship next to the DLL. GenderSwapper/HatSwapper load
-       these by name from the plugin directory at runtime; without them the body-type
-       and hat swaps silently no-op. -->
+  <!-- Assets that must ship next to the DLL and are loaded by name from the plugin
+       directory at runtime: the gender/hats asset bundles (GenderSwapper/HatSwapper)
+       and the puck normal map (PuckSwapper). Without them the corresponding swap
+       silently no-ops. -->
   <ItemGroup>
     <PluginAsset Include="gender" />
     <PluginAsset Include="hats" />
+    <PluginAsset Include="puck_normal.png" />
   </ItemGroup>
 
   <!-- Streamline development and move the built .dll (plus asset bundles) to the plugins folder(s) after building -->
