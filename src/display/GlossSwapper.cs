@@ -232,7 +232,7 @@ public static class GlossSwapper
                 ContainsCI(n, "skate") || ContainsCI(n, "glove") || ContainsCI(n, "legpad") ||
                 ContainsCI(n, "mustache") || ContainsCI(n, "beard") || ContainsCI(n, "face") ||
                 ContainsCI(n, "visor") || ContainsCI(n, "chestpad") || ContainsCI(n, "shoulder") ||
-                ContainsCI(n, "strap"))
+                ContainsCI(n, "strap") || ContainsCI(n, "torso") || ContainsCI(n, "groin"))
                 return ObjectCategory.Player;
         }
 
