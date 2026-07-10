@@ -205,17 +205,10 @@ public static class GenderSwapper
         }
         else
         {
-            if (maleTorsoPrefab != null)
-            {
-                GameObject newTorso = SpawnReplacement(maleTorsoPrefab, torsoChild, origTorsoRenderer);
-                spawnedTorsos[key] = newTorso;
-                if (origTorsoRenderer != null) origTorsoRenderer.enabled = false;
-            }
-            else
-            {
-                if (origTorsoRenderer != null) origTorsoRenderer.enabled = true;
-            }
-
+            // Body Type 1 = the vanilla body. Keep the game's original mesh instead of
+            // swapping in maleTorsoPrefab: the vanilla mesh is smooth-shaded, and our
+            // replacement is not, so replacing it made Body Type 1 look faceted.
+            if (origTorsoRenderer != null) origTorsoRenderer.enabled = true;
             if (origGroinRenderer != null) origGroinRenderer.enabled = true;
         }
     }
@@ -251,6 +244,42 @@ public static class GenderSwapper
         }
     }
 
+    /// <summary>
+    /// Recomputes smooth vertex normals. RecalculateNormals() alone leaves the mesh faceted
+    /// because the FBX splits vertices at UV/hard-edge seams, so we first average the per-face
+    /// normals across all vertices that share a position (welding by a quantized key), then
+    /// write the averaged normal back to each. Operates on a mesh instance — never the asset.
+    /// </summary>
+    private static bool _warnedMeshNotReadable;
+
+    private static void SmoothNormals(Mesh mesh)
+    {
+        mesh.RecalculateNormals();
+        Vector3[] verts = mesh.vertices;
+        Vector3[] normals = mesh.normals;
+        if (verts.Length == 0 || normals.Length != verts.Length) return;
+
+        // Weld vertices whose positions agree to ~0.001 units.
+        var summed = new Dictionary<Vector3, Vector3>();
+        var keys = new Vector3[verts.Length];
+        for (int i = 0; i < verts.Length; i++)
+        {
+            Vector3 k = new Vector3(
+                Mathf.Round(verts[i].x * 1000f),
+                Mathf.Round(verts[i].y * 1000f),
+                Mathf.Round(verts[i].z * 1000f));
+            keys[i] = k;
+            summed.TryGetValue(k, out Vector3 sum);
+            summed[k] = sum + normals[i];
+        }
+
+        for (int i = 0; i < verts.Length; i++)
+            normals[i] = summed[keys[i]].normalized;
+
+        mesh.normals = normals;
+        mesh.RecalculateTangents();
+    }
+
     private static GameObject SpawnReplacement(GameObject prefab, Transform originalChild, MeshRenderer originalRenderer)
     {
         // Parent to the same parent as the original (the bone)
@@ -264,6 +293,29 @@ public static class GenderSwapper
 
         Plugin.LogDebug($"[Gender] Spawned replacement: origChild localScale={originalChild.localScale}, lossyScale={originalChild.lossyScale}, instance localScale={instance.transform.localScale}, lossyScale={instance.transform.lossyScale}");
 
+        // Smooth-shade the replacement so it matches vanilla shading. Our FBX exports with
+        // flat (per-face) normals, which looks faceted next to the game's smooth bodies.
+        // Requires the mesh to be CPU-readable: enable "Read/Write" on the FBX import (or bake
+        // smooth normals at import) before rebuilding the gender bundle. When it's not readable
+        // we skip rather than spam RecalculateNormals "Not allowed" errors.
+        MeshFilter mf = instance.GetComponent<MeshFilter>() ?? instance.GetComponentInChildren<MeshFilter>();
+        if (mf != null && mf.sharedMesh != null)
+        {
+            if (mf.sharedMesh.isReadable)
+            {
+                Mesh smoothed = UnityEngine.Object.Instantiate(mf.sharedMesh); // don't mutate the shared asset
+                SmoothNormals(smoothed);
+                mf.sharedMesh = smoothed;
+            }
+            else if (!_warnedMeshNotReadable)
+            {
+                _warnedMeshNotReadable = true;
+                Plugin.LogWarning(
+                    $"[Gender] Mesh '{mf.sharedMesh.name}' is not readable — cannot smooth normals at runtime. " +
+                    "Enable Read/Write (or bake smooth normals) on the FBX import and rebuild the gender bundle.");
+            }
+        }
+
         // Copy materials from the original renderer to the new one
         MeshRenderer newRenderer = instance.GetComponent<MeshRenderer>();
         if (newRenderer == null)
@@ -274,7 +326,20 @@ public static class GenderSwapper
             // Copy the original's materials array (preserves shader + textures)
             newRenderer.materials = originalRenderer.materials;
 
-            Plugin.LogDebug($"[Gender] Copied {originalRenderer.materials.Length} material(s) from {originalRenderer.name} to {newRenderer.name}");
+            // b1117: the jersey texture is applied by MeshRendererTexturer as a
+            // MaterialPropertyBlock set with the INDEXED overload — SetPropertyBlock(block,
+            // materialIndex). We must copy it with the same per-index overload; the non-indexed
+            // GetPropertyBlock reads a different slot and comes back empty, leaving the
+            // replacement untextured. Copy every material index to cover multi-material meshes.
+            int blockCount = Mathf.Min(originalRenderer.sharedMaterials.Length, newRenderer.sharedMaterials.Length);
+            for (int i = 0; i < blockCount; i++)
+            {
+                var block = new MaterialPropertyBlock();
+                originalRenderer.GetPropertyBlock(block, i);
+                newRenderer.SetPropertyBlock(block, i);
+            }
+
+            Plugin.LogDebug($"[Gender] Copied {originalRenderer.materials.Length} material(s) + property block from {originalRenderer.name} to {newRenderer.name}");
             foreach (var mat in newRenderer.materials)
             {
                 Plugin.LogDebug($"[Gender]   Material: {mat.name}, Shader: {mat.shader.name}");
