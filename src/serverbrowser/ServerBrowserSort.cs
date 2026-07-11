@@ -703,6 +703,18 @@ internal static class ServerBrowserSort
                         star.style.position = Position.Absolute;
                         star.style.left = 4;
                         star.style.top = 0;
+                        // The game's own USS ('.server Button') forces every
+                        // Button in a row to 'position:absolute; width:100%;
+                        // height:100%' — that's how vanilla lays the invisible
+                        // full-row connect button over each row. Our star is a
+                        // Button too and is added LAST (so it sits on top of the
+                        // connect button), which means without an explicit size
+                        // it inherits width/height:100% and swallows EVERY click
+                        // on the row → clicking anywhere just unfavorites instead
+                        // of connecting. Pin the star to its glyph so the rest of
+                        // the row falls through to the connect button beneath.
+                        star.style.width = StarReservedWidth;
+                        star.style.height = new Length(100, LengthUnit.Percent);
                         star.style.paddingLeft = 4;
                         star.style.paddingRight = 4;
                         star.style.paddingTop = 0;
