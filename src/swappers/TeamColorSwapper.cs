@@ -82,7 +82,9 @@ public static class TeamColorSwapper
             {
                 var mapField = typeof(UIMinimap).GetField("playerBodyVisualElementMap",
                     BindingFlags.Instance | BindingFlags.NonPublic);
-                var map = (Dictionary<PlayerBody, VisualElement>)mapField?.GetValue(minimap);
+                // B1117: playerBodyVisualElementMap is a (Root, Body) tuple dict; the cached
+                // Body is the arrow element we tint.
+                var map = (Dictionary<PlayerBody, (VisualElement Root, VisualElement Body)>)mapField?.GetValue(minimap);
                 if (map != null)
                 {
                     var profile = ReskinProfileManager.currentProfile;
@@ -95,7 +97,7 @@ public static class TeamColorSwapper
                             continue;
 
                         Color? c = GetOverrideColor(kvp.Key.Player.Team);
-                        VisualElement bodyEl = kvp.Value.Q("Player")?.Q("Body");
+                        VisualElement bodyEl = kvp.Value.Body;
                         if (bodyEl != null)
                         {
                             if (c != null)
@@ -103,6 +105,22 @@ public static class TeamColorSwapper
                             else
                                 bodyEl.style.unityBackgroundImageTintColor = StyleKeyword.Null;
                         }
+                    }
+                }
+
+                // Minimap sticks — vanilla colors the .minimapStick via a team background-color;
+                // override it with the owning player's custom team color (or hand it back on null).
+                var stickField = typeof(UIMinimap).GetField("stickVisualElementMap",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+                var stickMap = (Dictionary<Stick, VisualElement>)stickField?.GetValue(minimap);
+                if (stickMap != null)
+                {
+                    foreach (var kvp in stickMap)
+                    {
+                        if (!kvp.Key || !kvp.Key.Player || kvp.Value == null) continue;
+                        Color? c = GetOverrideColor(kvp.Key.Player.Team);
+                        kvp.Value.style.backgroundColor =
+                            c != null ? new StyleColor(c.Value) : StyleKeyword.Null;
                     }
                 }
             }
@@ -184,14 +202,11 @@ public static class TeamColorSwapper
                 Color? c = GetOverrideColor(playerBody.Player.Team);
                 if (c == null) return;
 
-                var map = (Dictionary<PlayerBody, VisualElement>)_mapField?.GetValue(__instance);
+                var map = (Dictionary<PlayerBody, (VisualElement Root, VisualElement Body)>)_mapField?.GetValue(__instance);
                 if (map == null || !map.ContainsKey(playerBody)) return;
 
-                VisualElement playerEl = map[playerBody].Q("Player");
-                if (playerEl == null) return;
-
-                // Tint the Body child which is the actual arrow icon
-                VisualElement bodyEl = playerEl.Q("Body");
+                // B1117: tint the cached Body child, which is the actual arrow icon.
+                VisualElement bodyEl = map[playerBody].Body;
                 var color = c.Value;
                 if (bodyEl != null)
                 {
@@ -204,6 +219,39 @@ public static class TeamColorSwapper
             catch (Exception e)
             {
                 Plugin.LogDebug($"TeamColorSwapper.Minimap error: {e.Message}");
+            }
+        }
+    }
+
+    // Minimap sticks are colored on add (vanilla sets a team background-color in AddStick); override
+    // with the owning player's custom team color.
+    [HarmonyPatch(typeof(UIMinimap), nameof(UIMinimap.AddStick))]
+    public static class MinimapAddStickPatch
+    {
+        static readonly FieldInfo _stickMapField = typeof(UIMinimap)
+            .GetField("stickVisualElementMap", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        [HarmonyPostfix]
+        public static void Postfix(UIMinimap __instance, Stick stick)
+        {
+            try
+            {
+                if (!stick || !stick.Player) return;
+
+                Color? c = GetOverrideColor(stick.Player.Team);
+                if (c == null) return;
+
+                var map = (Dictionary<Stick, VisualElement>)_stickMapField?.GetValue(__instance);
+                if (map == null || !map.ContainsKey(stick)) return;
+
+                VisualElement stickEl = map[stick];
+                var color = c.Value;
+                if (stickEl != null)
+                    stickEl.schedule.Execute(() => stickEl.style.backgroundColor = color);
+            }
+            catch (Exception e)
+            {
+                Plugin.LogDebug($"TeamColorSwapper.MinimapStick error: {e.Message}");
             }
         }
     }
@@ -310,8 +358,13 @@ public static class TeamColorSwapper
                 var blueBtn = (Button)_blueButtonField?.GetValue(teamSelect);
                 var redBtn = (Button)_redButtonField?.GetValue(teamSelect);
 
-                // Player counts on team buttons are native in B1117 (UITeamSelect.StyleTeamCounts
-                // shows a separate count label), so we only override the button's team name/color.
+                // Player counts on team buttons are native (UITeamSelect.StyleTeamCounts
+                // shows a separate CountLabel), so we only override the team name/color.
+                //
+                // B1153 changed the button node tree: the team name now lives in a child
+                // Label named "NameLabel" (alongside "CountLabel"), rather than on the
+                // Button's own text. Setting Button.text draws extra text overlapping the
+                // NameLabel, so retarget the NameLabel child instead.
                 string blueName = !string.IsNullOrEmpty(profile.blueTeamName)
                     ? profile.blueTeamName : "TEAM BLUE";
                 string redName = !string.IsNullOrEmpty(profile.redTeamName)
@@ -324,7 +377,8 @@ public static class TeamColorSwapper
                         var bc = profile.blueTeamColor;
                         blueBtn.schedule.Execute(() => { blueBtn.style.backgroundColor = bc; });
                     }
-                    blueBtn.text = blueName;
+                    var blueNameLabel = blueBtn.Q<Label>("NameLabel");
+                    if (blueNameLabel != null) blueNameLabel.text = blueName;
                 }
                 if (redBtn != null)
                 {
@@ -333,7 +387,8 @@ public static class TeamColorSwapper
                         var rc = profile.redTeamColor;
                         redBtn.schedule.Execute(() => { redBtn.style.backgroundColor = rc; });
                     }
-                    redBtn.text = redName;
+                    var redNameLabel = redBtn.Q<Label>("NameLabel");
+                    if (redNameLabel != null) redNameLabel.text = redName;
                 }
             }
             catch (Exception e)
