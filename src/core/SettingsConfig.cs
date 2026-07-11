@@ -194,6 +194,14 @@ public class SettingsConfig
     public bool  glossAffectSticks = true;
     public bool  glossAffectPlayers = true;
     public bool  glossAffectPucks = true;
+    // Global environment-reflection scale (RenderSettings.reflectionIntensity). Scales
+    // the reflection-probe contribution across the whole scene, dialing back the static
+    // rink cubemap that mirrors onto glossy surfaces while leaving direct light
+    // highlights intact. On URP Lit in a built game this is the only reliable runtime
+    // lever — the per-material _ENVIRONMENTREFLECTIONS_OFF keyword is stripped. Scene-
+    // wide (affects ice/boards too), so it's opt-in. 1 = untouched, 0 = no reflections.
+    public bool  reflectionReduceEnabled = false;
+    public float reflectionIntensity = 0.0f;
 
     // Color grade — counteracts the washed-out/gray look the game took on when
     // its render pipeline was retuned (HDR buffer disabled, ambient dimmed). A

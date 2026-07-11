@@ -188,6 +188,43 @@ public static class GlossSwapper
         }
     }
 
+    // ── Global environment reflections ───────────────────────────────────
+    // The rink cubemap that mirrors onto glossy surfaces (puck, stick, helmet) is the
+    // contribution of the scene's ReflectionProbe(s). On URP Lit in a built game the
+    // per-material _ENVIRONMENTREFLECTIONS_OFF keyword is stripped, and the global
+    // RenderSettings.reflectionIntensity only scales the skybox ambient — neither
+    // touches a placed probe. Scaling each ReflectionProbe.intensity directly is the
+    // reliable lever: at 0 the probe contributes nothing (matte), so surfaces keep their
+    // direct light highlights but drop the pasted-on rink reflection. Scene-wide, opt-in.
+    //
+    // Probes are recreated per scene, so Apply() must be re-called from the scene-loaded
+    // hook (see SwapperManager). Slider acts as a multiplier of each probe's original
+    // intensity so relative probe balance is preserved.
+
+    private class ReflProbeState { public ReflectionProbe probe; public float origIntensity; }
+    private static readonly Dictionary<int, ReflProbeState> _probes = new Dictionary<int, ReflProbeState>();
+
+    public static void ApplyReflectionIntensity()
+    {
+        var cfg = Cfg;
+        if (cfg == null) return;
+
+        var probes = Object.FindObjectsByType<ReflectionProbe>(FindObjectsSortMode.None);
+        float mul = cfg.reflectionReduceEnabled ? Mathf.Clamp01(cfg.reflectionIntensity) : 1f;
+
+        foreach (var p in probes)
+        {
+            if (p == null) continue;
+            int id = p.GetInstanceID();
+            if (!_probes.TryGetValue(id, out var st))
+            {
+                st = new ReflProbeState { probe = p, origIntensity = p.intensity };
+                _probes[id] = st;
+            }
+            p.intensity = st.origIntensity * mul;
+        }
+    }
+
     private static void WritePropertyBlock(Renderer r)
     {
         float s = Mathf.Clamp01(Cfg?.glossSmoothness ?? 0.5f);

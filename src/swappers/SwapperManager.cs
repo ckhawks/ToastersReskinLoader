@@ -199,6 +199,7 @@ public static class SwapperManager
         ToasterReskinLoader.display.PatchMinimapRotation.ResetTracking();
         ToasterReskinLoader.hud.PatchPlayerUsernameColors.ResetTracking();
         GlossSwapper.ResetScanScheduled();
+        GlossSwapper.ApplyReflectionIntensity(); // reflectionIntensity resets per scene
         if (scene.name.Equals("locker_room"))
         {
             StickTapeSwapper.ClearTapeCache();

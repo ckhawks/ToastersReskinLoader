@@ -171,8 +171,11 @@ public static class RenderingSection
         c.glossAffectSticks = d.glossAffectSticks;
         c.glossAffectPlayers = d.glossAffectPlayers;
         c.glossAffectPucks = d.glossAffectPucks;
+        c.reflectionReduceEnabled = d.reflectionReduceEnabled;
+        c.reflectionIntensity = d.reflectionIntensity;
         Save();
         GlossSwapper.RestoreAll();
+        GlossSwapper.ApplyReflectionIntensity();
         if (c.glossRemoverEnabled) GlossSwapper.Scan();
     }
 
@@ -234,10 +237,62 @@ public static class RenderingSection
         AddCategoryToggle(root, dependentControls, "Pucks",
             () => cfg.glossAffectPucks, v => cfg.glossAffectPucks = v);
 
+        BuildEnvironmentReflections(root);
+
         root.Add(SettingsUI.RebuildButton(root, "Reset glossiness to default",
             () => { ResetGlossToDefault(); GlossSwapper.ReapplyAll(); }, CreateSection));
 
         UITools.UpdateDependentControlsState(dependentControls, cfg.glossRemoverEnabled);
+    }
+
+    // ── Environment Reflections ──────────────────────────────────────────
+    // Global reflection-probe scale (RenderSettings.reflectionIntensity). Independent of
+    // the gloss remover above — it's the only reliable runtime lever to drop the static
+    // rink cubemap on URP Lit surfaces in a built game. Scene-wide, so opt-in.
+
+    private static void BuildEnvironmentReflections(VisualElement root)
+    {
+        var cfg = Cfg;
+
+        SettingsUI.Separator(root);
+        SettingsUI.Header(root, "Environment Reflections");
+        SettingsUI.Note(root,
+            "The game maps a reflection of the rink (ice, boards, lights) onto glossy surfaces. It's baked and "
+            + "doesn't move with the world, so it looks pasted-on and slides oddly across a spinning puck or a "
+            + "stick. This dials that reflection down across the whole scene while keeping the direct shine from "
+            + "the arena lights. Note: it's scene-wide, so the ice and boards lose some of their own reflectivity "
+            + "too.");
+
+        var dependentControls = new List<VisualElement>();
+
+        var enableRow = UITools.CreateConfigurationRow();
+        enableRow.Add(UITools.CreateConfigurationLabel("Reduce Environment Reflections"));
+        var enableToggle = UITools.CreateConfigurationCheckbox(cfg.reflectionReduceEnabled);
+        enableToggle.value = cfg.reflectionReduceEnabled;
+        enableToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
+        {
+            cfg.reflectionReduceEnabled = evt.newValue;
+            Save();
+            GlossSwapper.ApplyReflectionIntensity();
+            UITools.UpdateDependentControlsState(dependentControls, evt.newValue);
+        });
+        enableRow.Add(enableToggle);
+        root.Add(enableRow);
+
+        var amountRow = UITools.CreateConfigurationRow();
+        amountRow.Add(UITools.CreateConfigurationLabel("Reflection amount"));
+        var amountSlider = UITools.CreateConfigurationSlider(0f, 1f, cfg.reflectionIntensity, 300);
+        amountSlider.RegisterCallback<ChangeEvent<float>>(evt =>
+        {
+            cfg.reflectionIntensity = evt.newValue;
+            GlossSwapper.ApplyReflectionIntensity();
+        });
+        amountSlider.RegisterCallback<PointerUpEvent>(evt => Save());
+        amountRow.Add(amountSlider);
+        root.Add(amountRow);
+        dependentControls.Add(amountRow);
+
+        UITools.UpdateDependentControlsState(dependentControls, cfg.reflectionReduceEnabled);
     }
 
     private static void AddCategoryToggle(VisualElement container, List<VisualElement> dependents,

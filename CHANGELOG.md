@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.3.2
+
+### Added
+- **Environment Reflections control** (Rendering → Glossiness). A "Reduce
+  Environment Reflections" toggle plus a Reflection amount slider that scale the
+  scene's reflection probe(s) down. The game maps a static reflection of the rink
+  (ice, boards, lights) onto glossy surfaces — it doesn't move with the world, so
+  it looks pasted-on and slides oddly across a spinning puck or a stick. Dialing
+  it down drops that reflection while keeping the direct shine from the arena
+  lights. Scene-wide (affects ice/boards too), off by default. Re-applies on scene
+  load since the game resets probe intensity per scene.
+
 ## 2.3.1
 
 Bug-fix and quality-of-life release, primarily catching the mod up to the
