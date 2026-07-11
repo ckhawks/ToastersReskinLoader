@@ -12,7 +12,9 @@
       "Read(//c/Projects/Puck Plugins/ToasterReskinLoader/**)",
       "Bash(gh api *)",
       "Read(//tmp/**)",
-      "PowerShell(gh api *)"
+      "PowerShell(gh api *)",
+      "Read(//c/Projects/Puck Plugins/**)",
+      "Bash(ls ToasterCameras)"
     ]
   }
 }
