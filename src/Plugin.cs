@@ -137,6 +137,9 @@ public class Plugin : IPuckPlugin
                 if (ToasterReskinLoader.core.Settings.Current?.enableFrameProfiler ?? false)
                     ToasterReskinLoader.diagnostics.profiler.FrameProfiler.Enable();
 
+                // Corrective safety net for the vanilla goal-announcement leak; always on.
+                ToasterReskinLoader.hud.AnnouncementHideGuard.Enable();
+
                 ToasterReskinLoader.serverbrowser.ServerPreviewCache.Initialize();
 
                 // The locker room scene is already loaded before the mod loads,
@@ -168,6 +171,7 @@ public class Plugin : IPuckPlugin
             ToasterReskinLoader.ui.VanillaUIRetheme.Disable();
             ToasterReskinLoader.serverbrowser.AutoConnectMatchmaking.Disable();
             ToasterReskinLoader.diagnostics.profiler.FrameProfiler.Disable();
+            ToasterReskinLoader.hud.AnnouncementHideGuard.Disable();
             harmony.UnpatchSelf();
             AppearanceAPI.Cleanup();
             PartyLineup.Cleanup();
