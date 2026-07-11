@@ -4,12 +4,14 @@
 //
 //   * Milliseconds     (cfg.enableScoreboardMilliseconds, default OFF)
 //     Clock label re-rendered each frame as MM:SS.mmm. Vanilla
-//     GameManager.Server_Tick decrements GameState.Tick by 1 each
-//     second (clamped ≥ 0), so Tick = remaining seconds and we
-//     interpolate the sub-second part locally between server updates.
+//     GameManager.Server_Tick decrements GameState.Tick by 1 each second,
+//     holding at 0:00 for a full second before expiring the phase, so the
+//     displayed integer is the received Tick and we count the sub-second
+//     part DOWN within that second (Tick.999 → Tick.000), matching the
+//     vanilla digits like a real scoreboard clock — including the final
+//     0:00 second, which counts 00:00.999 → 00:00.000 instead of freezing.
 //     The interpolation window is clamped to 1s past the last received
-//     tick so a paused / between-period server doesn't drift our local
-//     clock into the past.
+//     tick so a paused / between-period server doesn't drift the fraction.
 //
 //   * Clock color      (cfg.enableScoreboardClockColor, default ON)
 //     timeLabel.style.color ramps over the final 30s: a smooth amber→red
@@ -129,11 +131,14 @@ internal static class ScoreboardPolish
             return;
         }
 
-        // Clamp the local interpolation window so a paused/between-
-        // period server doesn't drift the displayed value into the
-        // past. 1.0s mirrors Server_Tick's 1s cadence.
+        // Fraction remaining within the currently displayed second, counting .999 → .000.
+        // elapsed is clamped to Server_Tick's 1s cadence so a paused/between-period server
+        // holds the fraction at .000 (matching the frozen vanilla digit) instead of running
+        // negative. Adding it to _lastTick keeps the whole-second part equal to the vanilla
+        // clock, so the last 0:00 second counts 00:00.999 → 00:00.000 instead of freezing.
         float elapsed   = Mathf.Min(Time.unscaledTime - _lastTickRealTime, 1.0f);
-        float effective = Mathf.Max(0f, _lastTick - elapsed);
+        float fraction  = Mathf.Clamp(1.0f - elapsed, 0f, 0.999f);
+        float effective = _lastTick + fraction;
 
         if (wantMs) UpdateText(effective);
         UpdateColor(wantColor, effective);
