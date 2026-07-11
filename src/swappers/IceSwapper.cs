@@ -47,6 +47,15 @@ public static class IceSwapper
                 iceBottomMeshRenderer.material.SetTexture("baseColorTexture", texture2D);
             }
 
+            // The game update flipped the ice mesh's UV orientation, so custom ice
+            // textures read backwards. Rotate the mapping 180 degrees to restore it.
+            Vector2 flipScale = new Vector2(-1f, -1f);
+            Vector2 flipOffset = new Vector2(1f, 1f);
+            iceBottomMeshRenderer.material.SetTextureScale("_BaseMap", flipScale);
+            iceBottomMeshRenderer.material.SetTextureOffset("_BaseMap", flipOffset);
+            iceBottomMeshRenderer.material.SetTextureScale("baseColorTexture", flipScale);
+            iceBottomMeshRenderer.material.SetTextureOffset("baseColorTexture", flipOffset);
+
             return;
         }
         catch (Exception e)
