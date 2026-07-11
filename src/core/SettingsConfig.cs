@@ -190,13 +190,30 @@ public class SettingsConfig
     public bool  glossAffectPlayers = true;
     public bool  glossAffectPucks = true;
 
+    // Color grade — counteracts the washed-out/gray look the game took on when
+    // its render pipeline was retuned (HDR buffer disabled, ambient dimmed). A
+    // runtime Volume layered on top of the game's grading (see ColorGrade).
+    // Saturation/Contrast/Warmth are -100..100; Exposure is EV (-2..2).
+    public bool  colorGradeEnabled = false;
+    public float colorGradeSaturation = 0f;
+    public float colorGradeContrast = 0f;
+    public float colorGradeExposure = 0f;
+    public float colorGradeWarmth = 0f;
+    // Root-cause fix: flip the pipeline HDR flag back on. Experimental — costs a
+    // render-buffer reallocation, so it's a separate opt-in from the sliders.
+    public bool  colorGradeReenableHDR = false;
+
     // Minimap (HUD).
     public Color blueMinimapNumberColor = Color.white;
     public Color redMinimapNumberColor = Color.white;
     public Color minimapPuckColor = new Color(0f, 0f, 0f, 1f);
     public float minimapPlayerScale = 1f;
     public float minimapPuckScale = 1f;
+    public float minimapStickScale = 1f;
     public int   minimapRefreshRate = 120;
+    // Puck elevation indicator overrides (vanilla: puck shrinks + fades as it rises).
+    public bool  minimapPuckElevationReverse = false;      // true = grow instead of shrink
+    public bool  minimapPuckElevationTransparency = true;  // false = no fade with height
     public bool  localPlayerMinimapIconEnabled = false;
     public Color blueLocalPlayerMinimapIconColor = new Color(0f, 1f, 0f, 1f);
     public Color redLocalPlayerMinimapIconColor = new Color(0f, 1f, 0f, 1f);

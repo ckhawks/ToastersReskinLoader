@@ -109,6 +109,10 @@ public class Plugin : IPuckPlugin
                 SafeInit("UiTextShadow", ToasterReskinLoader.hud.UiTextShadow.Initialize);
                 core.TickDriver.Bootstrap();
 
+                // Apply the persisted color grade (counteracts the B1153+ gray/
+                // washed-out look). No-ops cheaply when the user hasn't enabled it.
+                ToasterReskinLoader.display.ColorGrade.Apply();
+
                 if (ToasterReskinLoader.core.Settings.Current?.enableEnhancedModMenu ?? true)
                     ModMenuEnhancer.RegisterEvents();
 

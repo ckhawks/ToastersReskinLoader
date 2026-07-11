@@ -25,6 +25,138 @@ public static class RenderingSection
 
         SettingsUI.Header(root, "Glossiness");
         BuildGloss(root);
+
+        SettingsUI.Separator(root);
+        SettingsUI.Header(root, "Color & Saturation");
+        BuildColorGrade(root);
+    }
+
+    // ── Color & Saturation ───────────────────────────────────────────────
+    // Runtime-only knobs (ColorGrade static state) — not stored in the profile
+    // or settings config. Counteracts the flatter/grayer look the game took on
+    // when its render pipeline was retuned (HDR buffer disabled, ambient dimmed).
+
+    private static void BuildColorGrade(VisualElement root)
+    {
+        var cfg = Cfg;
+        SettingsUI.Note(root,
+            "A recent game update disabled HDR and dimmed the arena lighting, which makes colors look washed "
+            + "out and gray. These sliders layer a color grade on top to bring saturation and contrast back.");
+
+        var dependentControls = new List<VisualElement>();
+
+        var enableRow = UITools.CreateConfigurationRow();
+        enableRow.Add(UITools.CreateConfigurationLabel("Enable Color Correction"));
+        var enableToggle = UITools.CreateConfigurationCheckbox(cfg.colorGradeEnabled);
+        enableToggle.value = cfg.colorGradeEnabled;
+        enableToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
+        {
+            cfg.colorGradeEnabled = evt.newValue;
+            Save();
+            ColorGrade.Apply();
+            UITools.UpdateDependentControlsState(dependentControls, evt.newValue);
+        });
+        enableRow.Add(enableToggle);
+        root.Add(enableRow);
+
+        dependentControls.Add(AddGradeSlider(root, "Saturation", -100f, 100f,
+            () => cfg.colorGradeSaturation, v => cfg.colorGradeSaturation = v));
+        dependentControls.Add(AddGradeSlider(root, "Contrast", -100f, 100f,
+            () => cfg.colorGradeContrast, v => cfg.colorGradeContrast = v));
+        dependentControls.Add(AddGradeSlider(root, "Brightness", -2f, 2f,
+            () => cfg.colorGradeExposure, v => cfg.colorGradeExposure = v));
+        dependentControls.Add(AddGradeSlider(root, "Warmth", -100f, 100f,
+            () => cfg.colorGradeWarmth, v => cfg.colorGradeWarmth = v));
+
+        var presetRow = new VisualElement();
+        presetRow.style.flexDirection = FlexDirection.Row;
+        presetRow.style.marginTop = 8;
+        presetRow.style.marginBottom = 4;
+        root.Add(presetRow);
+        AddGradePreset(presetRow, root, "Neutral", 0f, 0f, 0f, 0f);
+        AddGradePreset(presetRow, root, "Vivid", 30f, 12f, 0.1f, 0f);
+        AddGradePreset(presetRow, root, "Punchy", 45f, 25f, 0.15f, 5f);
+        AddGradePreset(presetRow, root, "Warm", 20f, 8f, 0.1f, 20f);
+        dependentControls.Add(presetRow);
+
+        SettingsUI.Separator(root);
+
+        var hdrRow = UITools.CreateConfigurationRow();
+        hdrRow.Add(UITools.CreateConfigurationLabel("Re-enable HDR (experimental)"));
+        var hdrToggle = UITools.CreateConfigurationCheckbox(cfg.colorGradeReenableHDR);
+        hdrToggle.value = cfg.colorGradeReenableHDR;
+        hdrToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
+        {
+            cfg.colorGradeReenableHDR = evt.newValue;
+            Save();
+            ColorGrade.Apply();
+        });
+        hdrRow.Add(hdrToggle);
+        root.Add(hdrRow);
+        SettingsUI.Note(root,
+            "Turns the HDR color buffer back on — the root cause of the washed-out highlights. This is the most "
+            + "faithful fix but reallocates the render buffer and may cost a little performance. Leave off if you "
+            + "notice issues; the sliders above work without it.");
+
+        root.Add(SettingsUI.RebuildButton(root, "Reset color to default",
+            () => ColorGrade.ResetToDefault(), CreateSection));
+
+        UITools.UpdateDependentControlsState(dependentControls, cfg.colorGradeEnabled);
+    }
+
+    private static VisualElement AddGradeSlider(VisualElement root, string label, float min, float max,
+        Func<float> getter, Action<float> setter)
+    {
+        var row = UITools.CreateConfigurationRow();
+        row.Add(UITools.CreateConfigurationLabel(label));
+        var slider = UITools.CreateConfigurationSlider(min, max, getter(), 300);
+        slider.RegisterCallback<ChangeEvent<float>>(evt =>
+        {
+            setter(evt.newValue);
+            ColorGrade.Apply();
+        });
+        slider.RegisterCallback<PointerUpEvent>(evt => Save());
+        row.Add(slider);
+        root.Add(row);
+        return row;
+    }
+
+    private static void AddGradePreset(VisualElement parent, VisualElement contentRoot, string name,
+        float saturation, float contrast, float exposure, float warmth)
+    {
+        var btn = new Button { text = name };
+        btn.style.flexGrow = 1;
+        btn.style.height = 28;
+        btn.style.marginRight = 4;
+        btn.style.paddingLeft = 0;
+        btn.style.paddingRight = 0;
+        btn.style.paddingTop = 0;
+        btn.style.paddingBottom = 0;
+        btn.style.fontSize = 13;
+        btn.style.unityTextAlign = TextAnchor.MiddleCenter;
+        btn.style.backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f));
+        btn.style.color = Color.white;
+        UITools.AddHoverEffectsForButton(btn);
+        btn.RegisterCallback<ClickEvent>(evt =>
+        {
+            var cfg = Cfg;
+            if (cfg != null)
+            {
+                cfg.colorGradeEnabled = true;
+                cfg.colorGradeSaturation = saturation;
+                cfg.colorGradeContrast = contrast;
+                cfg.colorGradeExposure = exposure;
+                cfg.colorGradeWarmth = warmth;
+                Save();
+            }
+            ColorGrade.Apply();
+
+            var title = contentRoot.childCount > 0 ? contentRoot[0] : null;
+            contentRoot.Clear();
+            if (title != null) contentRoot.Add(title);
+            CreateSection(contentRoot);
+        });
+        parent.Add(btn);
     }
 
     // ── Glossiness ───────────────────────────────────────────────────────

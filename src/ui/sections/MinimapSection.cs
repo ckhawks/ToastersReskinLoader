@@ -27,6 +27,9 @@ public static class MinimapSection
         c.minimapPuckColor = d.minimapPuckColor;
         c.minimapPlayerScale = d.minimapPlayerScale;
         c.minimapPuckScale = d.minimapPuckScale;
+        c.minimapStickScale = d.minimapStickScale;
+        c.minimapPuckElevationReverse = d.minimapPuckElevationReverse;
+        c.minimapPuckElevationTransparency = d.minimapPuckElevationTransparency;
         c.minimapRefreshRate = d.minimapRefreshRate;
         c.localPlayerMinimapIconEnabled = d.localPlayerMinimapIconEnabled;
         c.blueLocalPlayerMinimapIconColor = d.blueLocalPlayerMinimapIconColor;
@@ -122,8 +125,19 @@ public static class MinimapSection
             val => { cfg.minimapPlayerScale = val; SaveQoL(); ToasterReskinLoaderAPI.NotifyMinimapSettingsChanged(); });
         SettingsUI.SliderRow(root, "Puck Icon Scale", 0.5f, 3f, cfg.minimapPuckScale,
             val => { cfg.minimapPuckScale = val; SaveQoL(); ToasterReskinLoaderAPI.NotifyMinimapSettingsChanged(); });
+        SettingsUI.SliderRow(root, "Stick Icon Scale", 0.5f, 3f, cfg.minimapStickScale,
+            val => { cfg.minimapStickScale = val; SaveQoL(); ToasterReskinLoaderAPI.NotifyMinimapSettingsChanged(); });
         SettingsUI.SliderRow(root, "Minimap Refresh Rate", 1f, 120f, cfg.minimapRefreshRate,
             val => { cfg.minimapRefreshRate = Mathf.RoundToInt(val); SaveQoL(); MinimapSwapper.ApplyRefreshRate(); });
+
+        SettingsUI.Separator(root);
+        SettingsUI.Header(root, "Puck Elevation");
+        SettingsUI.ToggleRow(root, "Puck grows with height (instead of shrinking)",
+            cfg.minimapPuckElevationReverse,
+            v => { cfg.minimapPuckElevationReverse = v; SaveQoL(); });
+        SettingsUI.ToggleRow(root, "Fade puck with height",
+            cfg.minimapPuckElevationTransparency,
+            v => { cfg.minimapPuckElevationTransparency = v; SaveQoL(); });
 
         root.Add(SettingsUI.RebuildButton(root, "Reset minimap to default",
             () => { ResetMinimapToDefault(); ToasterReskinLoaderAPI.NotifyMinimapSettingsChanged(); },
