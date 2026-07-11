@@ -16,5 +16,10 @@ public static class ScoreboardSection
             v => { cfg.enableScoreboardMilliseconds = v; Settings.Save(); });
         SettingsUI.ToggleRow(root, "Clock turns amber then red in the final 30 seconds", cfg.enableScoreboardClockColor,
             v => { cfg.enableScoreboardClockColor = v; Settings.Save(); });
+
+        SettingsUI.ToggleRow(root, "Disable goal-scored screen flash", cfg.disableGoalScoredFlash,
+            v => { cfg.disableGoalScoredFlash = v; Settings.Save(); });
+        SettingsUI.Note(root,
+            "Hides the full-screen team-colored flash when a goal is scored. The goal slow-motion is unaffected.");
     }
 }

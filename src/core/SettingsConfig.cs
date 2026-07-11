@@ -114,6 +114,11 @@ public class SettingsConfig
     [JsonProperty("enableScoreboardMillisecondsV2")]
     public bool enableScoreboardMilliseconds = false;
     public bool enableScoreboardClockColor   = true;
+    // Suppress the full-screen team-colored flash the game shows when a goal
+    // is scored (UIOverlayManagerController.Event_Everyone_OnGoalScored →
+    // FlashScreen). Only the screen flash — the goal slow-motion is a separate
+    // server-side effect and is left untouched. Default off (vanilla flash on).
+    public bool disableGoalScoredFlash = false;
     // Chat visual option: expired messages stay at full opacity instead
     // of fading to the .blurred USS state. Default off — the vanilla fade
     // keeps stale chatter from piling up on screen.
