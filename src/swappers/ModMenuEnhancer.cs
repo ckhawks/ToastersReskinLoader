@@ -1583,8 +1583,12 @@ namespace ToasterReskinLoader.swappers
             }
 
             label.text = count > 0 ? $"{count} RESKIN{(count == 1 ? "" : "S")}" : "IN TRL";
+            label.style.display = DisplayStyle.Flex;
             label.style.color = new Color(0.6f, 0.85f, 1f);
-            label.style.marginRight = 0;
+            // A mod that is both a plugin and a reskin pack keeps its reparented toggle
+            // (ENABLED/DISABLED + checkbox) in the chip alongside this label, so leave a
+            // gap before it. Pure packs have no toggle and need no trailing margin.
+            label.style.marginRight = chip.Q<Toggle>() != null ? 10 : 0;
             chip.style.backgroundColor = new StyleColor(new Color(0.15f, 0.25f, 0.4f, 0.7f));
         }
 
@@ -1610,8 +1614,11 @@ namespace ToasterReskinLoader.swappers
             toggle.style.flexGrow = 0;
             toggle.style.minHeight = 0;
             toggle.style.minWidth = 0;
-            toggle.style.width = 22;
-            toggle.style.height = 22;
+            // Let the toggle size to its content (checkbox input + the base game's
+            // ENABLED/DISABLED label) so the chip background wraps both. Only the
+            // inner input is clamped to 22×22 below.
+            toggle.style.width = StyleKeyword.Auto;
+            toggle.style.height = StyleKeyword.Auto;
             toggle.style.alignSelf = Align.Center;
             toggle.style.flexDirection = FlexDirection.Row;
             chip.Add(toggle);
@@ -1637,13 +1644,28 @@ namespace ToasterReskinLoader.swappers
                 tInput.style.flexShrink = 0;
                 tInput.style.flexGrow = 0;
             }
-            var tText = toggle.Q<Label>(className: "unity-toggle__text");
-            if (tText != null) tText.style.display = DisplayStyle.None;
+            // The base game renders the ENABLED/DISABLED text on the toggle's field
+            // label (unity-base-field__label), not on unity-toggle__text (which is
+            // empty). Its USS gives it a fixed 96px width with right-aligned text and
+            // margin-left:auto, which — once the toggle is content-sized inside our
+            // chip — leaves a checkbox-sized empty gap to the left of the word. Shrink
+            // it to fit its content so it hugs the checkbox and the chip wraps both.
+            var tLabel = toggle.Q<Label>(className: "unity-base-field__label");
+            if (tLabel != null)
+            {
+                tLabel.style.width = StyleKeyword.Auto;
+                tLabel.style.minWidth = 0;
+                tLabel.style.marginLeft = 0;
+                tLabel.style.marginRight = 8;
+                tLabel.style.alignSelf = Align.Center;
+                tLabel.style.unityTextAlign = TextAnchor.MiddleRight;
+            }
         }
 
         private static void UpdateOutdatedChip(VisualElement chip, Label label)
         {
             label.text = "OUTDATED B202";
+            label.style.display = DisplayStyle.Flex;
             label.style.color = new Color(0.85f, 0.85f, 0.85f);
             label.style.marginRight = 0;
             chip.style.backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f, 0.85f));
@@ -1652,6 +1674,7 @@ namespace ToasterReskinLoader.swappers
         private static void UpdateMissingFilesChip(VisualElement chip, Label label)
         {
             label.text = "MISSING FILES";
+            label.style.display = DisplayStyle.Flex;
             label.style.color = new Color(1f, 0.55f, 0.2f);
             label.style.marginRight = 0;
             chip.style.backgroundColor = new StyleColor(new Color(0.4f, 0.15f, 0.05f, 0.9f));
@@ -1659,21 +1682,15 @@ namespace ToasterReskinLoader.swappers
 
         private static void UpdateToggleChip(VisualElement chip, Label label, bool enabled)
         {
-            // Re-assert the gap between label and toggle — older builds created the
-            // label without this margin, and the chip persists across reloads.
-            label.style.marginRight = 10;
-            if (enabled)
-            {
-                label.text = "ENABLED";
-                label.style.color = new Color(0.2f, 1f, 0.4f);
-                chip.style.backgroundColor = new StyleColor(new Color(0.1f, 0.35f, 0.15f, 0.7f));
-            }
-            else
-            {
-                label.text = "DISABLED";
-                label.style.color = new Color(1f, 0.5f, 0.5f);
-                chip.style.backgroundColor = new StyleColor(new Color(0.4f, 0.15f, 0.15f, 0.7f));
-            }
+            // The base game now renders its own ENABLED/DISABLED text on the toggle,
+            // so we no longer add our own. Hide our state label and just recolor the
+            // chip to reflect enabled/disabled.
+            label.text = "";
+            label.style.display = DisplayStyle.None;
+            label.style.marginRight = 0;
+            chip.style.backgroundColor = enabled
+                ? new StyleColor(new Color(0.1f, 0.35f, 0.15f, 0.7f))
+                : new StyleColor(new Color(0.4f, 0.15f, 0.15f, 0.7f));
         }
 
         private static void ShrinkStatistics(VisualElement statistics)
