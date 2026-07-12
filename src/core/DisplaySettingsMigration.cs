@@ -38,6 +38,9 @@ internal static class DisplaySettingsMigration
                 ReadBool(j, "glossAffectPucks", v => cfg.glossAffectPucks = v);
                 ReadBool(j, "reflectionReduceEnabled", v => cfg.reflectionReduceEnabled = v);
                 ReadFloat(j, "reflectionIntensity", v => cfg.reflectionIntensity = v);
+                ReadBool(j, "reflKillSticks", v => cfg.reflKillSticks = v);
+                ReadBool(j, "reflKillPlayers", v => cfg.reflKillPlayers = v);
+                ReadBool(j, "reflKillPucks", v => cfg.reflKillPucks = v);
 
                 // Minimap
                 ReadColor(j, "blueMinimapNumberColor", v => cfg.blueMinimapNumberColor = v);

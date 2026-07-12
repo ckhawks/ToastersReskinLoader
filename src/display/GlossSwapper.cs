@@ -58,7 +58,7 @@ public static class GlossSwapper
     /// </summary>
     public static void Scan()
     {
-        if (!(Cfg?.glossRemoverEnabled ?? false)) return;
+        if (!ShouldScan()) return;
 
         var meshes = Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None);
         foreach (var r in meshes) ProcessRenderer(r);
@@ -86,7 +86,7 @@ public static class GlossSwapper
     /// </summary>
     public static void RequestScan()
     {
-        if (!(Cfg?.glossRemoverEnabled ?? false)) return;
+        if (!ShouldScan()) return;
         if (_scanScheduled) return;
 
         var runner = MonoBehaviourSingleton<UIManager>.Instance;
@@ -142,11 +142,16 @@ public static class GlossSwapper
         if (mats == null || mats.Length == 0) return;
 
         ObjectCategory cat = Categorize(r, mats);
-        bool enabled = CategoryEnabled(cat);
+        bool glossOn = Cfg?.glossRemoverEnabled ?? false;
+        bool enabled = glossOn && CategoryEnabled(cat);
 
+        // Gloss material tweaks only run when the gloss remover is on. Scan() can also be
+        // driven by the per-category reflection kill alone (see ShouldScan), in which
+        // case we skip material changes and only touch reflection-probe usage below.
         bool anyHandled = false;
         foreach (var mat in mats)
         {
+            if (!glossOn) break;
             if (mat == null || mat.shader == null) continue;
             if (!HasGlossControl(mat)) continue;
 
@@ -181,11 +186,14 @@ public static class GlossSwapper
             anyHandled = true;
         }
 
-        if (anyHandled)
-        {
-            if (enabled) WritePropertyBlock(r);
-            _trackedRendererIds.Add(rid);
-        }
+        if (enabled && anyHandled) WritePropertyBlock(r);
+
+        // Reflection-probe usage for the per-category kill. Scoped to reflectable
+        // categories (stick/player/puck) so we don't track every rink renderer, and so
+        // toggling a category back on restores its original usage on the next scan.
+        if (cat != ObjectCategory.Other) ApplyProbeUsage(r, cat);
+
+        _trackedRendererIds.Add(rid);
     }
 
     // ── Global environment reflections ───────────────────────────────────
@@ -223,6 +231,148 @@ public static class GlossSwapper
             }
             p.intensity = st.origIntensity * mul;
         }
+    }
+
+    // ── Per-category reflection removal ───────────────────────────────────
+    // Finer-grained alternative to the global slider: strip the rink reflection from
+    // only chosen categories. Two parts working together:
+    //   1. Renderers in a killed category get reflectionProbeUsage = Off, so they stop
+    //      sampling the rink probe. On their own they'd then fall back to the scene's
+    //      default reflection (the blue sky) — hence...
+    //   2. ...the scene default reflection is swapped for a 1x1 black cubemap while any
+    //      category is killed, so the fallback is nothing. Probe-covered renderers in
+    //      non-killed categories still use the real probe and are unaffected.
+    // The black default only touches renderers that AREN'T using a probe, so it's mostly
+    // scoped to the categories we turned off — with the caveat that any other
+    // probe-less surface in the scene loses its reflection too.
+
+    private static bool ReflKillForCategory(ObjectCategory cat)
+    {
+        var p = Cfg;
+        if (p == null) return false;
+        switch (cat)
+        {
+            case ObjectCategory.Stick: return p.reflKillSticks;
+            case ObjectCategory.Player: return p.reflKillPlayers;
+            case ObjectCategory.Puck: return p.reflKillPucks;
+            default: return false;
+        }
+    }
+
+    private static bool AnyReflKill()
+    {
+        var p = Cfg;
+        return p != null && (p.reflKillSticks || p.reflKillPlayers || p.reflKillPucks);
+    }
+
+    private static bool ShouldScan()
+        => (Cfg?.glossRemoverEnabled ?? false) || AnyReflKill();
+
+    private class ProbeUsageState { public Renderer renderer; public UnityEngine.Rendering.ReflectionProbeUsage usage; }
+    private static readonly Dictionary<int, ProbeUsageState> _probeUsage = new Dictionary<int, ProbeUsageState>();
+
+    private static void ApplyProbeUsage(Renderer r, ObjectCategory cat)
+    {
+        int rid = r.GetInstanceID();
+        if (!_probeUsage.TryGetValue(rid, out var st))
+        {
+            st = new ProbeUsageState { renderer = r, usage = r.reflectionProbeUsage };
+            _probeUsage[rid] = st;
+        }
+        var target = ReflKillForCategory(cat)
+            ? UnityEngine.Rendering.ReflectionProbeUsage.Off
+            : st.usage;
+        if (r.reflectionProbeUsage != target)
+        {
+            ToasterReskinLoader.Plugin.Log(
+                $"[GlossProbe] {cat} '{r.gameObject.name}' {r.reflectionProbeUsage} -> {target} (orig={st.usage})");
+            r.reflectionProbeUsage = target;
+        }
+    }
+
+    private static void RestoreAllProbeUsage()
+    {
+        foreach (var st in _probeUsage.Values)
+            if (st.renderer != null) st.renderer.reflectionProbeUsage = st.usage;
+        _probeUsage.Clear();
+    }
+
+    // Black cubemap swapped in as the scene default reflection while any category is
+    // killed, so probe-off renderers reflect nothing instead of the sky.
+    private static Cubemap _blackCube;
+    private static bool _defaultReflCaptured;
+    private static UnityEngine.Rendering.DefaultReflectionMode _origReflMode;
+    private static Texture _origCustomRefl;
+
+    private static Cubemap BlackCube()
+    {
+        if (_blackCube == null)
+        {
+            _blackCube = new Cubemap(1, TextureFormat.RGB24, false);
+            for (int face = 0; face < 6; face++)
+                _blackCube.SetPixel((CubemapFace)face, 0, 0, Color.black);
+            _blackCube.Apply();
+        }
+        return _blackCube;
+    }
+
+    /// <summary>
+    /// Swaps the scene's default reflection for a black cubemap while any per-category
+    /// reflection kill is active (restoring the game's original otherwise). Call from the
+    /// same places as ApplyReflectionIntensity — these settings reset per scene load.
+    /// </summary>
+    public static void ApplyReflectionKill()
+    {
+        if (AnyReflKill())
+        {
+            if (!_defaultReflCaptured)
+            {
+                _origReflMode = RenderSettings.defaultReflectionMode;
+                _origCustomRefl = RenderSettings.customReflectionTexture;
+                _defaultReflCaptured = true;
+            }
+            RenderSettings.defaultReflectionMode = UnityEngine.Rendering.DefaultReflectionMode.Custom;
+            RenderSettings.customReflectionTexture = BlackCube();
+            // Changes to the default reflection don't take effect until the environment
+            // is rebuilt — without this the swap (and the restore below) silently no-ops.
+            DynamicGI.UpdateEnvironment();
+        }
+        else if (_defaultReflCaptured)
+        {
+            RenderSettings.defaultReflectionMode = _origReflMode;
+            RenderSettings.customReflectionTexture = _origCustomRefl;
+            _defaultReflCaptured = false;
+            DynamicGI.UpdateEnvironment();
+        }
+    }
+
+    /// <summary>
+    /// Re-applies per-category reflection kill after a settings change: swaps the black
+    /// default reflection in/out, then re-scans to update each renderer's probe usage.
+    /// When nothing is left to scan (no gloss, no kill), restores probe usage directly.
+    /// </summary>
+    public static void OnReflKillChanged()
+    {
+        ApplyReflectionKill();
+        _trackedRendererIds.Clear();
+        bool scanned = ShouldScan();
+        int trackedProbes = _probeUsage.Count;
+        if (scanned) Scan();
+        else RestoreAllProbeUsage();
+        ToasterReskinLoader.Plugin.Log(
+            $"[GlossReflKill] anyKill={AnyReflKill()} scanned={scanned} probeRenderersBefore={trackedProbes}");
+    }
+
+    /// <summary>
+    /// Clears per-scene reflection tracking. Probes, renderers, and the RenderSettings
+    /// default reflection all reset on scene load, so the captured originals are stale
+    /// and must be re-captured against the new scene.
+    /// </summary>
+    public static void ResetReflectionTracking()
+    {
+        _probes.Clear();
+        _probeUsage.Clear();
+        _defaultReflCaptured = false;
     }
 
     private static void WritePropertyBlock(Renderer r)

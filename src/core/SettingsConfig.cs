@@ -210,6 +210,13 @@ public class SettingsConfig
     // wide (affects ice/boards too), so it's opt-in. 1 = untouched, 0 = no reflections.
     public bool  reflectionReduceEnabled = false;
     public float reflectionIntensity = 0.0f;
+    // Per-category reflection removal. Sets the renderer's reflectionProbeUsage to Off
+    // for the chosen categories so they stop sampling the rink probe, and swaps the
+    // scene's default reflection for a black cubemap so the fallback is nothing (not the
+    // blue sky). Independent of the global slider above.
+    public bool  reflKillSticks = false;
+    public bool  reflKillPlayers = false;
+    public bool  reflKillPucks = false;
 
     // Color grade — counteracts the washed-out/gray look the game took on when
     // its render pipeline was retuned (HDR buffer disabled, ambient dimmed). A

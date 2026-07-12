@@ -173,9 +173,13 @@ public static class RenderingSection
         c.glossAffectPucks = d.glossAffectPucks;
         c.reflectionReduceEnabled = d.reflectionReduceEnabled;
         c.reflectionIntensity = d.reflectionIntensity;
+        c.reflKillSticks = d.reflKillSticks;
+        c.reflKillPlayers = d.reflKillPlayers;
+        c.reflKillPucks = d.reflKillPucks;
         Save();
         GlossSwapper.RestoreAll();
         GlossSwapper.ApplyReflectionIntensity();
+        GlossSwapper.OnReflKillChanged();
         if (c.glossRemoverEnabled) GlossSwapper.Scan();
     }
 
@@ -293,6 +297,33 @@ public static class RenderingSection
         dependentControls.Add(amountRow);
 
         UITools.UpdateDependentControlsState(dependentControls, cfg.reflectionReduceEnabled);
+
+        // Per-category removal — separate mechanism from the global slider above.
+        SettingsUI.Separator(root);
+        SettingsUI.Header(root, "Remove From Specific Objects");
+        SettingsUI.Note(root,
+            "Instead of the scene-wide slider, strip the rink reflection from only these object types. "
+            + "They stop reflecting the rink entirely (the fallback is black, not the blue sky). Any other "
+            + "surface in the scene that isn't covered by a reflection probe may lose its reflection too.");
+
+        AddReflKillToggle(root, "Sticks", () => cfg.reflKillSticks, v => cfg.reflKillSticks = v);
+        AddReflKillToggle(root, "Players (body, helmet, jersey, etc.)", () => cfg.reflKillPlayers, v => cfg.reflKillPlayers = v);
+        AddReflKillToggle(root, "Pucks", () => cfg.reflKillPucks, v => cfg.reflKillPucks = v);
+    }
+
+    private static void AddReflKillToggle(VisualElement root, string label, Func<bool> getter, Action<bool> setter)
+    {
+        var row = UITools.CreateConfigurationRow();
+        row.Add(UITools.CreateConfigurationLabel(label));
+        var toggle = UITools.CreateConfigurationCheckbox(getter());
+        toggle.RegisterCallback<ChangeEvent<bool>>(evt =>
+        {
+            setter(evt.newValue);
+            Save();
+            GlossSwapper.OnReflKillChanged();
+        });
+        row.Add(toggle);
+        root.Add(row);
     }
 
     private static void AddCategoryToggle(VisualElement container, List<VisualElement> dependents,

@@ -199,7 +199,11 @@ public static class SwapperManager
         ToasterReskinLoader.display.PatchMinimapRotation.ResetTracking();
         ToasterReskinLoader.hud.PatchPlayerUsernameColors.ResetTracking();
         GlossSwapper.ResetScanScheduled();
-        GlossSwapper.ApplyReflectionIntensity(); // reflectionIntensity resets per scene
+        // Reflection-probe intensity, per-renderer probe usage, and the default
+        // reflection all reset per scene — clear stale tracking and re-apply.
+        GlossSwapper.ResetReflectionTracking();
+        GlossSwapper.ApplyReflectionIntensity();
+        GlossSwapper.ApplyReflectionKill();
         if (scene.name.Equals("locker_room"))
         {
             StickTapeSwapper.ClearTapeCache();
