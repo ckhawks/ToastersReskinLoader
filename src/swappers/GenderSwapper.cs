@@ -214,6 +214,61 @@ public static class GenderSwapper
     }
 
     /// <summary>
+    /// Re-copies the jersey MaterialPropertyBlock(s) from a player's original (now
+    /// disabled) torso/groin renderers onto their spawned female replacements.
+    ///
+    /// JerseySwapper writes reskins into the ORIGINAL PlayerTorso/PlayerGroin
+    /// renderer, but for female bodies that renderer is disabled and a separate
+    /// female replacement — carrying a one-time property-block copy taken at swap
+    /// time — is what's actually visible. So after any jersey re-apply (reload,
+    /// team/jersey change) the female replacement is stale, and if the reload
+    /// destroyed the texture its block still points at, the jersey renders black.
+    /// Calling this right after applying the jersey keeps the female body in sync.
+    ///
+    /// No-ops for male-bodied players (no spawned replacement) and at spawn time
+    /// (the replacement doesn't exist yet — the gender swap copies the fresh block
+    /// itself), so it only does work on the re-apply paths that were broken.
+    /// </summary>
+    public static void SyncJerseyBlocks(Player player)
+    {
+        if (player?.PlayerBody?.PlayerMesh == null) return;
+
+        ulong key = player.OwnerClientId;
+        var mesh = player.PlayerBody.PlayerMesh;
+        try
+        {
+            SyncBlocks(spawnedTorsos, key, mesh.PlayerTorso?.transform, "torso");
+            SyncBlocks(spawnedGroins, key, mesh.PlayerGroin?.transform, "groin");
+        }
+        catch (Exception e)
+        {
+            Plugin.LogError($"[Gender] SyncJerseyBlocks failed: {e.Message}");
+        }
+    }
+
+    private static void SyncBlocks(Dictionary<ulong, GameObject> map, ulong key, Transform parent, string childName)
+    {
+        if (parent == null) return;
+        if (!map.TryGetValue(key, out var replacement) || replacement == null) return;
+
+        Transform origChild = FindChildByName(parent, childName);
+        MeshRenderer orig = origChild != null ? origChild.GetComponent<MeshRenderer>() : null;
+        MeshRenderer dest = replacement.GetComponent<MeshRenderer>() ?? replacement.GetComponentInChildren<MeshRenderer>();
+        if (orig == null || dest == null) return;
+
+        // Mirror the indexed copy the gender swap does (SetPropertyBlock(block, i)):
+        // the jersey lives in a per-index MaterialPropertyBlock, so read/write the
+        // same slots across every material index.
+        int blockCount = Mathf.Min(orig.sharedMaterials.Length, dest.sharedMaterials.Length);
+        for (int i = 0; i < blockCount; i++)
+        {
+            var block = new MaterialPropertyBlock();
+            orig.GetPropertyBlock(block, i);
+            dest.SetPropertyBlock(block, i);
+        }
+    }
+
+    /// <summary>
     /// Applies skin tone and facial hair color to a player's head renderers.
     /// Shared by both the locker room preview and in-game appearance application.
     /// </summary>

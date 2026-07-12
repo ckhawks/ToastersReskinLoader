@@ -175,6 +175,12 @@ public static class JerseySwapper
         }
         Plugin.LogDebug($"Set jersey for {player.Username.Value.ToString()}");
 
+        // Female bodies render a separate torso/groin replacement whose jersey is a
+        // one-time property-block copy; re-sync it now so this re-apply reaches the
+        // visible mesh (otherwise female jerseys go black on reload). No-op for male
+        // bodies and at spawn (replacement not spawned yet).
+        GenderSwapper.SyncJerseyBlocks(player);
+
         // Prototype: Test player text color customization
         PlayerTextSwapper.SetPlayerTextColors(player);
     }

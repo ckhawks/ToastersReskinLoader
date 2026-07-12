@@ -295,6 +295,15 @@ public static class SwapperManager
         ArenaSwapper.UpdateGoalFrameColors();
         OnBlueJerseyChanged();
         OnRedJerseyChanged();
+        // Sticks and pucks are normally textured at spawn time via Harmony patches,
+        // so they must be re-applied here too. Otherwise a re-apply that doesn't
+        // respawn them (e.g. the Reload button, which destroys the texture cache
+        // first) leaves their materials pointing at destroyed textures — invisible
+        // stick, black pucks. All four no-op safely when nothing is spawned.
+        OnPersonalStickChanged();
+        OnBlueTeamStickChanged();
+        OnRedTeamStickChanged();
+        PuckSwapper.SetAllPucksTextures();
         OnBlueLegPadsChanged();
         OnRedLegPadsChanged();
         OnBlueHelmetsChanged();
