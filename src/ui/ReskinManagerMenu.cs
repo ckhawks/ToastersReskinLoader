@@ -319,6 +319,12 @@ public static class ReskinManagerMenu
         sidebarScrollView.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
         sidebarScrollView.contentContainer.style.paddingRight = 0;
         sidebarScrollView.contentContainer.style.paddingLeft = 0;
+        // The viewport carries a small default right-padding/margin from the game USS, which
+        // leaves a gap between the full-width sidebar rows and the vertical scrollbar. Zero it
+        // (and the scroller's own left margin) so the rows run flush up to the scrollbar.
+        sidebarScrollView.contentViewport.style.paddingRight = 0;
+        sidebarScrollView.contentViewport.style.marginRight = 0;
+        sidebarScrollView.verticalScroller.style.marginLeft = 0;
         sidebarScrollView.style.backgroundColor = new StyleColor(new Color(64f / 255f, 64f / 255f, 64f / 255f, 1));
         sidebarContainer.Add(sidebarScrollView);
         PopulateSidebar();
