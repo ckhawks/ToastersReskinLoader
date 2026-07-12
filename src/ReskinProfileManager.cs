@@ -379,7 +379,7 @@ public static class ReskinProfileManager
     /// A helper method to gather all non-null ReskinEntry objects from the current profile.
     /// </summary>
     /// <returns>A list of all active reskin entries.</returns>
-    private static List<ReskinRegistry.ReskinEntry> GetAllActiveReskinEntries()
+    public static List<ReskinRegistry.ReskinEntry> GetAllActiveReskinEntries()
     {
         var activeList = new List<ReskinRegistry.ReskinEntry>();
 

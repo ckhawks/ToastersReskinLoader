@@ -46,6 +46,20 @@ public class Plugin : IPuckPlugin
             else
             {
                 Plugin.Log("Environment: client.");
+
+                // ── Startup timing instrumentation ──────────────────────────
+                // Temporary: measures how long each synchronous phase of OnEnable
+                // takes so we can locate the launch black-screen freeze. Look for
+                // "[Timing]" lines in the log. Remove once diagnosed.
+                var __sw = System.Diagnostics.Stopwatch.StartNew();
+                long __last = 0;
+                void Step(string label)
+                {
+                    long now = __sw.ElapsedMilliseconds;
+                    Plugin.Log($"[Timing] {label}: {now - __last} ms (cumulative {now} ms)");
+                    __last = now;
+                }
+
                 Plugin.Log("Patching methods...");
                 try
                 {
@@ -57,11 +71,14 @@ public class Plugin : IPuckPlugin
                     Plugin.LogError($"Inner: {patchEx.InnerException}");
                     throw;
                 }
+                Step("harmony.PatchAll");
                 Plugin.Log($"All patched! Patched methods:");
                 LogAllPatchedMethods();
-                
+                Step("LogAllPatchedMethods");
+
                 modSettings = ModSettings.Load();
                 modSettings.Save(); // So that it writes any missing config values immediately
+                Step("ModSettings.Load+Save");
 
                 // Run the display-settings migration FIRST (standalone — doesn't need the runtime).
                 // It reads the OLD keys (shadows/gloss/minimap/chat/team-indicator) straight from
@@ -82,10 +99,10 @@ public class Plugin : IPuckPlugin
                 //     (only runs if PuckFX config exists and profile has default PuckFX values)
                 PuckFXMigrator.TryMigrate();
 
-                // 3. Finally, apply the loaded settings to the game.
-                ReskinProfileManager.LoadTexturesForActiveReskins();
-                Plugin.Log($"Profile is applied!");
-                
+                // 3. Texture warm-up + apply is deferred to StartupLoader below so it
+                //    runs across frames instead of freezing the render thread here
+                //    (OnEnable is invoked synchronously on the main thread). The cheap
+                //    swapper/registration setup still runs synchronously now.
                 SwapperManager.Setup();
                 PuckFXSwapper.ApplyAll();
                 ChangingRoomHelper.Scan();
@@ -142,13 +159,20 @@ public class Plugin : IPuckPlugin
 
                 ToasterReskinLoader.serverbrowser.ServerPreviewCache.Initialize();
 
-                // The locker room scene is already loaded before the mod loads,
-                // so OnSceneLoaded won't fire - apply everything here
-                if (ChangingRoomHelper.IsInMainMenu())
+                // The locker room scene is already loaded before the mod loads, so
+                // OnSceneLoaded won't fire - we have to apply everything ourselves.
+                // Warm all active textures across frames (with a loading overlay),
+                // then run the apply pass once they're cached. Deferring this is what
+                // keeps OnEnable from freezing the game on a black screen at launch.
+                bool applyInMainMenu = ChangingRoomHelper.IsInMainMenu();
+                core.StartupLoader.Begin(onComplete: () =>
                 {
-                    SwapperManager.SetAll();
-                    ChangingRoomHelper.ApplyInitialCustomizations();
-                }
+                    if (applyInMainMenu)
+                    {
+                        SwapperManager.SetAll();
+                        ChangingRoomHelper.ApplyInitialCustomizations();
+                    }
+                });
             }
             
             Plugin.Log($"Enabled!");
