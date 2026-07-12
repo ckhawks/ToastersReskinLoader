@@ -188,6 +188,10 @@ public class SettingsConfig
     // loaded mod assembly. Gives per-mod cost rows in the Top Calls table
     // but adds 100s of patches at load time.
     public bool enableFrameProfilerModInstrumentation = false;
+    // Logs how long each plugin/mod's Enable() took, one line per enable
+    // ("[EnableTiming] plugin 'X': N ms"). Only sees mods that enable after TRL
+    // (all but whichever precedes TRL alphabetically). Cheap; on by default.
+    public bool enablePluginEnableTiming = true;
     // Persisted dev console window position/size
     public float devConsoleX = 40f;
     public float devConsoleY = 40f;

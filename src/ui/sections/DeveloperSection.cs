@@ -46,6 +46,15 @@ public static class DeveloperSection
                 }
             });
 
+        SettingsUI.ToggleRow(root,
+            "Log per-mod enable timing at startup ([EnableTiming] lines; mods after TRL only)",
+            cfg.enablePluginEnableTiming,
+            v =>
+            {
+                cfg.enablePluginEnableTiming = v;
+                Settings.Save();
+            });
+
         var devButtonsRow = UITools.CreateConfigurationRow();
         devButtonsRow.style.justifyContent = Justify.FlexStart;
         var openConsoleBtn = new Button(() =>
