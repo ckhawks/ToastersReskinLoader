@@ -19,6 +19,13 @@ public static class DeveloperSection
         SettingsUI.ToggleRow(root, "Enable in-game dev console", cfg.enableDevConsole,
             v => { cfg.enableDevConsole = v; Settings.Save(); });
 
+        // Verbose debug logging (LogDebug). Lives on Plugin.modSettings, not the
+        // core Settings config, so it toggles/saves independently.
+        SettingsUI.ToggleRow(root,
+            "Enable verbose debug logging (spams the Puck log; off by default)",
+            Plugin.modSettings.DebugLoggingModeEnabled,
+            v => { Plugin.modSettings.DebugLoggingModeEnabled = v; Plugin.modSettings.Save(); });
+
         SettingsUI.ToggleRow(root,
             "Enable frame profiler overlay (F4 cycles mode, F5 toggles CSV log)",
             cfg.enableFrameProfiler,
