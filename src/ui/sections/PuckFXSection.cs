@@ -238,11 +238,34 @@ public static class PuckFXSection
             }
         );
 
-        // Trail start/end opacity sliders are intentionally excluded from the UI.
-        // The underlying TrailRenderer alpha gradient doesn't appear to have a visible
-        // effect — the material color overrides it. The profile fields still exist
-        // (puckFXTrailStartAlpha / puckFXTrailEndAlpha) so the plumbing is ready
-        // if a workaround is found.
+        // Opacity gradient along the trail. Start = the head (at the puck),
+        // End = the fading tail. GetTrailMaterial() configures the trail material
+        // for alpha blending so these keys take visible effect.
+        CreateSliderRow(
+            contentScrollViewContent,
+            "Start Opacity",
+            0f,
+            1f,
+            () => ReskinProfileManager.currentProfile.puckFXTrailStartAlpha,
+            val =>
+            {
+                ReskinProfileManager.currentProfile.puckFXTrailStartAlpha = val;
+                PuckFXSwapper.ApplyAll();
+            }
+        );
+
+        CreateSliderRow(
+            contentScrollViewContent,
+            "End Opacity",
+            0f,
+            1f,
+            () => ReskinProfileManager.currentProfile.puckFXTrailEndAlpha,
+            val =>
+            {
+                ReskinProfileManager.currentProfile.puckFXTrailEndAlpha = val;
+                PuckFXSwapper.ApplyAll();
+            }
+        );
 
         // --- Reset Button ---
         Button resetButton = new Button

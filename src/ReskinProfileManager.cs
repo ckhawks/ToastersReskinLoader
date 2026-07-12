@@ -1040,9 +1040,9 @@ public static class ReskinProfileManager
         [PresetField("Puck FX", "Trail lifetime")]
         public float puckFXTrailLifetime = 0.6f;
         [PresetField("Puck FX", "Trail start alpha")]
-        public float puckFXTrailStartAlpha = 0f;
+        public float puckFXTrailStartAlpha = 1f;
         [PresetField("Puck FX", "Trail end alpha")]
-        public float puckFXTrailEndAlpha = 1f;
+        public float puckFXTrailEndAlpha = 0f;
         [PresetField("Puck FX", "Silhouette color")]
         public Color puckFXSilhouetteColor = new Color(1f, 1f, 1f, 0.502f);
 

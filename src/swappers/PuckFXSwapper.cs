@@ -239,8 +239,30 @@ public static class PuckFXSwapper
                      ?? Shader.Find("Universal Render Pipeline/Unlit")
                      ?? Shader.Find("Unlit/Color");
         if (shader == null)
+        {
             Plugin.LogWarning("PuckFX: no trail shader found; the puck trail will be invisible.");
-        _trailMaterial = shader != null ? new Material(shader) : null;
+            return null;
+        }
+
+        var mat = new Material(shader);
+
+        // Force straight alpha blending so the trail's colorGradient alpha keys
+        // (puckFXTrailStart/EndAlpha) actually control opacity. Without this the
+        // material renders opaque and discards the vertex-color alpha. These
+        // property/keyword names only exist on URP shaders; SetFloat/keyword calls
+        // for absent properties are harmless no-ops on the fallback shaders, which
+        // already blend transparently by default (e.g. Sprites/Default).
+        mat.SetFloat("_Surface", 1f); // 0 = Opaque, 1 = Transparent
+        mat.SetFloat("_Blend", 0f);   // 0 = Alpha
+        mat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        mat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        mat.SetFloat("_ZWrite", 0f);
+        mat.SetOverrideTag("RenderType", "Transparent");
+        mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+        mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+
+        _trailMaterial = mat;
         return _trailMaterial;
     }
 
