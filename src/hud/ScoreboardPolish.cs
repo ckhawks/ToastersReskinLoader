@@ -12,6 +12,10 @@
 //     0:00 second, which counts 00:00.999 → 00:00.000 instead of freezing.
 //     The interpolation window is clamped to 1s past the last received
 //     tick so a paused / between-period server doesn't drift the fraction.
+//     cfg.scoreboardMillisecondsDigits picks how many sub-second place
+//     values to show (1 tenths / 2 hundredths / 3 milliseconds) and
+//     cfg.enableScoreboardMillisecondsLast5Only restricts them to the
+//     final 5 seconds (plain MM:SS above that).
 //
 //   * Clock color      (cfg.enableScoreboardClockColor, default ON)
 //     timeLabel.style.color ramps over the final 30s: a smooth amber→red
@@ -140,18 +144,33 @@ internal static class ScoreboardPolish
         float fraction  = Mathf.Clamp(1.0f - elapsed, 0f, 0.999f);
         float effective = _lastTick + fraction;
 
-        if (wantMs) UpdateText(effective);
+        if (wantMs)
+        {
+            // "Last 5 seconds only" mode leaves the clock as plain vanilla
+            // MM:SS until the final 5s, then appends the sub-second digits.
+            bool showFraction = !cfg.enableScoreboardMillisecondsLast5Only || effective <= 5f;
+            UpdateText(effective, fraction, showFraction, cfg.scoreboardMillisecondsDigits);
+        }
         UpdateColor(wantColor, effective);
     }
 
-    private static void UpdateText(float effective)
+    private static void UpdateText(float effective, float fraction, bool showFraction, int digits)
     {
         TimeSpan ts = TimeSpan.FromSeconds(effective);
-        string text;
-        if (ts.TotalHours < 1.0)
-            text = $"{ts.Minutes:D2}:{ts.Seconds:D2}.{ts.Milliseconds:D3}";
-        else
-            text = $"{(int)ts.TotalHours:D2}:{ts.Minutes:D2}:{ts.Seconds:D2}.{ts.Milliseconds:D3}";
+        string text = ts.TotalHours < 1.0
+            ? $"{ts.Minutes:D2}:{ts.Seconds:D2}"
+            : $"{(int)ts.TotalHours:D2}:{ts.Minutes:D2}:{ts.Seconds:D2}";
+
+        if (showFraction)
+        {
+            // Truncate (not round) the counting-down fraction to the chosen
+            // number of place values so the leading digits match a vanilla
+            // scoreboard: .999 → "9" / "99" / "999" for 1 / 2 / 3 digits.
+            digits = Mathf.Clamp(digits, 1, 3);
+            int scaled = (int)(fraction * Mathf.Pow(10, digits));
+            text += "." + scaled.ToString().PadLeft(digits, '0');
+        }
+
         _timeLabel.text = text;
     }
 

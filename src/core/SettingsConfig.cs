@@ -111,8 +111,16 @@ public class SettingsConfig
     //     amber→red lerp 30s→10s, solid red the last 10s, red flashing in
     //     the final 5s. Only animates during the Warmup / Play phases (see
     //     ScoreboardPolish).
+    //   * scoreboardMillisecondsDigits → how many sub-second place values
+    //     to show (1 = tenths, 2 = hundredths, 3 = milliseconds). Clamped
+    //     1..3. Default 3 (full milliseconds).
+    //   * enableScoreboardMillisecondsLast5Only → only append the sub-second
+    //     digits during the final 5 seconds; above 5s the clock reads as the
+    //     plain vanilla MM:SS. Default off (show them the whole time).
     [JsonProperty("enableScoreboardMillisecondsV2")]
     public bool enableScoreboardMilliseconds = false;
+    public int  scoreboardMillisecondsDigits = 3;
+    public bool enableScoreboardMillisecondsLast5Only = false;
     public bool enableScoreboardClockColor   = true;
     // Suppress the full-screen team-colored flash the game shows when a goal
     // is scored (UIOverlayManagerController.Event_Everyone_OnGoalScored →
