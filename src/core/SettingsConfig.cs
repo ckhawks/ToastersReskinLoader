@@ -60,6 +60,8 @@ public class SettingsConfig
 
     // Additions — opt-in QoL enhancements layered on top of vanilla
     public bool enableBetterFriendsList = true;
+    // Persistent right-side main-menu board showing which servers friends are on.
+    public bool enableFriendsBoard = true;
     // Renamed from enableBeaconPing when Edgegap Beacons became Probes. Existing
     // users' old key is ignored on load, so this starts fresh at its default (on).
     public bool enableProbePing = true;

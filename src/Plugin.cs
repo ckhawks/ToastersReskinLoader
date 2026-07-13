@@ -142,6 +142,9 @@ public class Plugin : IPuckPlugin
                 if (ToasterReskinLoader.core.Settings.Current?.enableBetterFriendsList ?? true)
                     BetterFriendsList.Enable();
 
+                if (ToasterReskinLoader.core.Settings.Current?.enableFriendsBoard ?? true)
+                    ToasterReskinLoader.social.friendspanel.FriendsBoard.Enable();
+
                 if (ToasterReskinLoader.core.Settings.Current?.enableProbePing ?? true)
                     ToasterReskinLoader.social.probe.ProbePing.Enable();
 
@@ -191,6 +194,7 @@ public class Plugin : IPuckPlugin
         {
             Plugin.Log($"Disabling...");
             BetterFriendsList.Disable();
+            ToasterReskinLoader.social.friendspanel.FriendsBoard.Disable();
             ToasterReskinLoader.social.probe.ProbePing.Disable();
             ToasterReskinLoader.ui.VanillaUIRetheme.Disable();
             ToasterReskinLoader.serverbrowser.AutoConnectMatchmaking.Disable();

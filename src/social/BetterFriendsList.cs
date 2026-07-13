@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -41,11 +42,43 @@ public static class BetterFriendsList
     internal static readonly System.Reflection.FieldInfo UIFriends_friendsList =
         AccessTools.Field(typeof(UIFriends), "friendsList");
 
+    // Steam pushes a friend's rich presence asynchronously after
+    // RequestFriendRichPresence (or when they change servers). Those arrivals
+    // fire FriendRichPresenceUpdate_t — NOT PersonaStateChange — so without
+    // this callback we'd only ever see a friend's server the one time the
+    // 3-second delayed refresh in Enable() happens to catch it. This is what
+    // kept the server-name detail stuck on "..." previously.
+    private static Callback<FriendRichPresenceUpdate_t> _richPresenceCallback;
+
+    // Puck's own AppID, cached so the rich-presence callback can filter out
+    // updates from friends in OTHER games with a plain uint compare instead of
+    // a P/Invoke per callback. With 500 friends the vast majority of RP traffic
+    // is not Puck, so this early-out is the hot path.
+    private static AppId_t _puckAppId;
+
+    // Coalesce a burst of FriendRichPresenceUpdate_t (a playing friend sets ~9
+    // keys, each firing separately) into a single refresh per frame. Callbacks
+    // run on the main thread during RunCallbacks, so same-frame arrivals collect
+    // here and flush once next Update — one re-sort, not one per key.
+    private static readonly HashSet<string> _dirtyFriendIds = new HashSet<string>();
+    private static bool _flushQueued;
+
     public static bool IsEnabled { get; private set; }
 
     public static void Enable()
     {
         if (IsEnabled) return;
+
+        // Fix Puck's empty-IP rich presence: rewrite steam_player_group/connect
+        // with the real endpoint the client dialed. Restores Steam "Join Game"
+        // and lets other mod users resolve our server name. See
+        // BFL_RichPresenceIpFixPatch for the why.
+        _harmony.Patch(
+            AccessTools.Method(typeof(SteamIntegrationManager), nameof(SteamIntegrationManager.SetRichPresencePlaying)),
+            postfix: new HarmonyMethod(typeof(BFL_RichPresenceIpFixPatch), nameof(BFL_RichPresenceIpFixPatch.Postfix)));
+        _harmony.Patch(
+            AccessTools.Method(typeof(SteamIntegrationManager), nameof(SteamIntegrationManager.SetRichPresenceSpectating)),
+            postfix: new HarmonyMethod(typeof(BFL_RichPresenceIpFixPatch), nameof(BFL_RichPresenceIpFixPatch.Postfix)));
 
         _harmony.Patch(
             AccessTools.Method(typeof(UIFriendsController), "Event_OnSteamConnected"),
@@ -67,6 +100,15 @@ public static class BetterFriendsList
         _harmony.Patch(
             AccessTools.Method(typeof(UIView), nameof(UIView.Hide)),
             postfix: new HarmonyMethod(typeof(BFL_FriendsVisibilityPatch), nameof(BFL_FriendsVisibilityPatch.Postfix)));
+
+        // Re-read + re-ping a friend as soon as their rich presence actually
+        // arrives. Steamworks dispatches this on the main thread during
+        // RunCallbacks, so it's safe to touch UI directly.
+        if (SteamManager.IsInitialized)
+        {
+            _puckAppId = SteamUtils.GetAppID();
+            _richPresenceCallback = Callback<FriendRichPresenceUpdate_t>.Create(OnFriendRichPresenceUpdate);
+        }
 
         IsEnabled = true;
         Plugin.Log("BetterFriendsList enabled.");
@@ -105,10 +147,86 @@ public static class BetterFriendsList
         }
     }
 
+    private static void OnFriendRichPresenceUpdate(FriendRichPresenceUpdate_t data)
+    {
+        if (!IsEnabled)
+            return;
+
+        try
+        {
+            // Cheap early-outs first — this fires for every friend's every RP
+            // key change across ALL games, so with 500 friends it must stay
+            // near-free for the cases we don't care about.
+
+            // Not Puck? Ignore (friend is in another game / general presence).
+            if (data.m_nAppID != _puckAppId)
+                return;
+
+            // Panel closed? Nothing to update — the next panel-open rebuild will
+            // re-request and pick up whatever's current, so defer the work.
+            if (!FriendsListHelper.FriendsPanelVisible)
+                return;
+
+            // Collect; a single flush next frame handles the whole burst.
+            lock (_dirtyFriendIds)
+                _dirtyFriendIds.Add(data.m_steamIDFriend.ToString());
+
+            if (!_flushQueued)
+            {
+                _flushQueued = true;
+                BFLMainThreadDispatcher.Enqueue(FlushDirtyFriends);
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.LogError($"BFL rich-presence update failed: {ex.Message}");
+        }
+    }
+
+    private static void FlushDirtyFriends()
+    {
+        _flushQueued = false;
+
+        List<string> ids;
+        lock (_dirtyFriendIds)
+        {
+            if (_dirtyFriendIds.Count == 0)
+                return;
+            ids = _dirtyFriendIds.ToList();
+            _dirtyFriendIds.Clear();
+        }
+
+        // One scene scan for the whole batch, not one per callback.
+        var controller = UnityEngine.Object.FindAnyObjectByType<UIFriendsController>();
+        if (controller == null)
+            return;
+
+        Plugin.LogDebug($"BFL: flushing {ids.Count} rich-presence update(s)");
+        foreach (var steamId in ids)
+        {
+            try
+            {
+                // requestPresence:false — data is already fresh (that's why the
+                // callback fired); re-requesting would re-trigger this callback.
+                FriendsListHelper.UpdateSingleFriend(controller, steamId, requestPresence: false);
+            }
+            catch (Exception ex)
+            {
+                Plugin.LogError($"BFL flush of {steamId} failed: {ex.Message}");
+            }
+        }
+    }
+
     public static void Disable()
     {
         if (!IsEnabled) return;
         _harmony.UnpatchSelf();
+        _richPresenceCallback?.Unregister();
+        _richPresenceCallback = null;
+        lock (_dirtyFriendIds)
+            _dirtyFriendIds.Clear();
+        _flushQueued = false;
+        FriendsListHelper.FriendsPanelVisible = false;
         FriendsListHelper.FriendInfoCache.Clear();
         FriendsListHelper.RemoveDimOverlay();
         IsEnabled = false;
@@ -141,6 +259,41 @@ public static class BetterFriendsList
         catch (Exception ex)
         {
             Plugin.LogError($"BFL vanilla rebuild on disable failed: {ex.Message}");
+        }
+    }
+}
+
+/// <summary>
+/// Puck builds its "playing"/"spectating" Steam rich presence from the networked
+/// Server struct, whose IpAddress the host never populates (ServerManager.IpAddress
+/// is declared but never assigned anywhere in the game) — so steam_player_group and
+/// connect ship with an EMPTY ip (e.g. ":30609", "+ipAddress  +port 30609"). That
+/// breaks Steam "Join Game" and makes a friend's server unresolvable.
+///
+/// A CLIENT, however, knows the real address it dialed
+/// (GlobalStateManager.ConnectionState.Connection.EndPoint). This postfix runs right
+/// after the game sets its (broken) presence and overwrites the two IP-bearing keys
+/// with that real endpoint. Only fixes the local player's OWN broadcast, so friends
+/// see a resolvable server only if they also run this mod. Listen-server hosts have
+/// no client connection and are left as-is (they have no public IP to advertise).
+/// </summary>
+public static class BFL_RichPresenceIpFixPatch
+{
+    public static void Postfix()
+    {
+        try
+        {
+            var ep = GlobalStateManager.ConnectionState.Connection?.EndPoint;
+            if (ep == null || string.IsNullOrEmpty(ep.ipAddress))
+                return;
+
+            SteamFriends.SetRichPresence("steam_player_group", $"{ep.ipAddress}:{ep.port}");
+            SteamFriends.SetRichPresence("connect", $"+ipAddress {ep.ipAddress} +port {ep.port}");
+            Plugin.LogDebug($"BFL: rewrote rich-presence IP to {ep.ipAddress}:{ep.port}");
+        }
+        catch (Exception ex)
+        {
+            Plugin.LogError($"BFL rich-presence IP fix failed: {ex.Message}");
         }
     }
 }
@@ -234,7 +387,12 @@ public static class BFL_FriendsVisibilityPatch
     public static void Postfix(UIView __instance)
     {
         if (__instance is UIFriends f)
+        {
+            // Cheap flag the RP callback reads to skip work while the panel is
+            // closed — avoids a per-callback scene scan for visibility.
+            FriendsListHelper.FriendsPanelVisible = f.IsVisible;
             FriendsListHelper.UpdateDimOverlay(f);
+        }
     }
 }
 
@@ -244,6 +402,11 @@ public static class FriendsListHelper
     private static readonly Dictionary<ushort, string> _portToEndpointKey = new Dictionary<ushort, string>();
     private static bool _refreshInProgress = false;
     private static VisualElement _dimOverlay;
+
+    // Set by BFL_FriendsVisibilityPatch on the FRIENDS panel's Show/Hide. The
+    // rich-presence callback reads this to avoid doing (and scene-scanning for)
+    // work while the panel is closed.
+    public static bool FriendsPanelVisible;
 
     public static void UpdateDimOverlay(UIFriends uiFriends)
     {
@@ -449,6 +612,15 @@ public static class FriendsListHelper
             bool isInGame = SteamFriends.GetFriendGamePlayed(steamId, out gameInfo);
             bool isInPuck = isInGame && gameInfo.m_gameID.AppID() == puckAppId;
 
+            // Puck's rich presence carries an empty IP (host never sets
+            // ServerManager.IpAddress), so probe Steam's own game-server tracking
+            // as an alternate IP source. If m_unGameIP is non-zero we can ping it.
+            if (isInPuck && Plugin.modSettings.DebugLoggingModeEnabled)
+                Plugin.LogDebug(
+                    $"BFL GameInfo {username}: gameIP={FormatSteamGameIp(gameInfo.m_unGameIP)} " +
+                    $"gamePort={gameInfo.m_usGamePort} queryPort={gameInfo.m_usQueryPort} " +
+                    $"lobby={gameInfo.m_steamIDLobby}");
+
             SteamFriends.RequestFriendRichPresence(steamId);
 
             PuckPresence presence = null;
@@ -467,7 +639,7 @@ public static class FriendsListHelper
                 };
             }
 
-            friends.Add(new FriendInfo
+            var fi = new FriendInfo
             {
                 SteamId = steamIdStr,
                 Username = username,
@@ -475,7 +647,11 @@ public static class FriendsListHelper
                 IsInPuck = isInPuck,
                 IsInOtherGame = isInGame && !isInPuck,
                 Presence = presence
-            });
+            };
+            friends.Add(fi);
+
+            if (isInPuck)
+                LogPresenceDiagnostics("rebuild", steamId, fi);
         }
 
         FriendInfoCache.Clear();
@@ -563,7 +739,10 @@ public static class FriendsListHelper
         }
     }
 
-    public static void UpdateSingleFriend(UIFriendsController controller, string steamId)
+    // requestPresence=false is used by the rich-presence callback path: the
+    // callback ONLY fires because Steam already has fresh data, so re-requesting
+    // there would fire the callback again — an endless UpdateSingleFriend loop.
+    public static void UpdateSingleFriend(UIFriendsController controller, string steamId, bool requestPresence = true)
     {
         var uiFriends = BetterFriendsList.UIFriendsController_uiFriends
             .GetValue(controller) as UIFriends;
@@ -590,7 +769,8 @@ public static class FriendsListHelper
         bool isInGame = SteamFriends.GetFriendGamePlayed(sid, out gameInfo);
         bool isInPuck = isInGame && gameInfo.m_gameID.AppID() == puckAppId;
 
-        SteamFriends.RequestFriendRichPresence(sid);
+        if (requestPresence)
+            SteamFriends.RequestFriendRichPresence(sid);
 
         PuckPresence presence = null;
         if (isInPuck)
@@ -621,6 +801,9 @@ public static class FriendsListHelper
             Presence = presence
         };
         FriendInfoCache[steamId] = info;
+
+        if (isInPuck)
+            LogPresenceDiagnostics("single", sid, info);
 
         Texture2D avatar = SteamIntegrationManager.GetAvatar(steamId, AvatarSize.Medium);
 
@@ -919,7 +1102,24 @@ public static class FriendsListHelper
         foreach (var cls in inviteContainer.GetClasses())
             joinBtn.AddToClassList(cls);
 
+        // The copied icon-button classes leave the button transparent — give it
+        // a solid "positive action" green so it reads as a real button.
+        var idle = new Color(0.20f, 0.52f, 0.30f);
+        var hover = new Color(0.26f, 0.62f, 0.37f);
+        joinBtn.style.backgroundColor = new StyleColor(idle);
+        joinBtn.style.color = Color.white;
+        joinBtn.style.paddingLeft = 10;
+        joinBtn.style.paddingRight = 10;
+        joinBtn.style.paddingTop = 3;
+        joinBtn.style.paddingBottom = 3;
+        joinBtn.style.borderTopLeftRadius = 3;
+        joinBtn.style.borderTopRightRadius = 3;
+        joinBtn.style.borderBottomLeftRadius = 3;
+        joinBtn.style.borderBottomRightRadius = 3;
         joinBtn.style.marginRight = 4;
+
+        joinBtn.RegisterCallback<MouseEnterEvent>(_ => joinBtn.style.backgroundColor = new StyleColor(hover));
+        joinBtn.RegisterCallback<MouseLeaveEvent>(_ => joinBtn.style.backgroundColor = new StyleColor(idle));
 
         int inviteIdx = parent.IndexOf(inviteContainer);
         parent.Insert(inviteIdx, joinBtn);
@@ -1005,6 +1205,54 @@ public static class FriendsListHelper
         });
     }
 
+    // Passive diagnostic: dump every rich-presence key/value Steam actually
+    // hands us for a friend, plus the resolved server preview. Gated behind the
+    // Developer "Debug Logging" toggle so it never spams normal users. This is
+    // the fast way to see WHICH half is failing (empty steam_player_group vs.
+    // TCP ping) instead of guessing.
+    // FriendGameInfo_t.m_unGameIP is a uint in host byte order (Steamworks.NET
+    // hands it back already flipped). 0 means Steam has no server IP for them.
+    internal static string FormatSteamGameIp(uint ip)
+    {
+        if (ip == 0) return "0.0.0.0";
+        return $"{(ip >> 24) & 0xFF}.{(ip >> 16) & 0xFF}.{(ip >> 8) & 0xFF}.{ip & 0xFF}";
+    }
+
+    internal static void LogPresenceDiagnostics(string context, CSteamID sid, FriendInfo friend)
+    {
+        if (!Plugin.modSettings.DebugLoggingModeEnabled)
+            return;
+
+        try
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append($"BFL RP[{context}] {friend.Username} ({sid}) inPuck={friend.IsInPuck}");
+
+            int keyCount = SteamFriends.GetFriendRichPresenceKeyCount(sid);
+            sb.Append($" keys={keyCount}:");
+            for (int i = 0; i < keyCount; i++)
+            {
+                string key = SteamFriends.GetFriendRichPresenceKeyByIndex(sid, i);
+                string val = SteamFriends.GetFriendRichPresence(sid, key);
+                sb.Append($" [{key}={val}]");
+            }
+
+            if (friend.Presence != null && !string.IsNullOrEmpty(friend.Presence.PlayerGroup))
+            {
+                var preview = LookupServerPreview(friend.Presence.PlayerGroup);
+                sb.Append(preview != null
+                    ? $" => preview name=\"{preview.name}\" {preview.players}/{preview.maxPlayers}"
+                    : $" => preview NOT resolved for group '{friend.Presence.PlayerGroup}'");
+            }
+
+            Plugin.LogDebug(sb.ToString());
+        }
+        catch (Exception ex)
+        {
+            Plugin.LogDebug($"BFL RP diag failed: {ex.Message}");
+        }
+    }
+
     public static ServerPreviewData LookupServerPreview(string playerGroup)
     {
         lock (_serverCache)
@@ -1085,6 +1333,16 @@ public static class FriendsListHelper
         }
     }
 
+    // Puck server names can embed TMP rich-text size tags (e.g. "<size=12>...</size>")
+    // that would render literally in our plain UITK detail label. Strip them.
+    private static string StripSizeTags(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return name;
+        return System.Text.RegularExpressions.Regex.Replace(
+            name, "</?size[^>]*>", "",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    }
+
     private static string GetDetailText(FriendInfo friend, ServerPreviewData preview)
     {
         if (!friend.IsInPuck || friend.Presence == null)
@@ -1093,7 +1351,11 @@ public static class FriendsListHelper
         var parts = new List<string>();
 
         if (preview != null && !string.IsNullOrEmpty(preview.name))
-            parts.Add(preview.name);
+        {
+            string name = StripSizeTags(preview.name).Trim();
+            if (name.Length > 0)
+                parts.Add(name);
+        }
 
         string teamRole = "";
         if (!string.IsNullOrEmpty(friend.Presence.Team))
@@ -1168,6 +1430,10 @@ public static class FriendsListHelper
 /// </summary>
 public static class ServerNameFetcher
 {
+    // Max simultaneous preview pings. Bounds thread use while keeping resolution
+    // fast when friends are spread across many servers.
+    private const int PingConcurrency = 8;
+
     public static void FetchServerNames(Action<Dictionary<string, ServerPreviewData>> callback)
     {
         // Capture the callback in the closures below rather than a shared static field, so two
@@ -1186,6 +1452,28 @@ public static class ServerNameFetcher
             }
         }
 
+        FetchServerNames(endpoints, callback);
+    }
+
+    /// Ping an explicit set of "ip:port" endpoints for their server preview.
+    /// Used by FriendsBoard, which builds its own endpoint set independent of
+    /// FriendInfoCache. Endpoints with an empty IP (vanilla friends: ":30611")
+    /// are skipped — nothing to ping.
+    public static void FetchServerNames(ICollection<string> endpointSet, Action<Dictionary<string, ServerPreviewData>> callback)
+    {
+        var endpoints = new HashSet<string>();
+        if (endpointSet != null)
+        {
+            foreach (var addr in endpointSet)
+            {
+                if (string.IsNullOrEmpty(addr)) continue;
+                int colonIdx = addr.LastIndexOf(':');
+                // colonIdx > 0 also rejects ":30611" (empty IP), where colonIdx == 0.
+                if (colonIdx > 0)
+                    endpoints.Add(addr);
+            }
+        }
+
         if (endpoints.Count == 0)
         {
             callback?.Invoke(new Dictionary<string, ServerPreviewData>());
@@ -1194,33 +1482,52 @@ public static class ServerNameFetcher
 
         Task.Run(() =>
         {
-            var results = new Dictionary<string, ServerPreviewData>();
+            // Ping concurrently with a bounded worker pool, mirroring
+            // UIServerBrowser: a sequential loop with 3s+3s timeouts each would
+            // take minutes when many friends are spread across many servers (or
+            // some are unreachable). Each worker blocks on its own I/O and drains
+            // a shared queue, so wall-clock is ~ceil(N / PingConcurrency) pings.
+            var queue = new ConcurrentQueue<string>(endpoints);
+            var results = new ConcurrentDictionary<string, ServerPreviewData>();
+            int workerCount = Math.Max(1, Math.Min(PingConcurrency, endpoints.Count));
 
-            foreach (var addr in endpoints)
+            var workers = new Task[workerCount];
+            for (int w = 0; w < workerCount; w++)
             {
-                try
+                workers[w] = Task.Run(() =>
                 {
-                    int colonIdx = addr.LastIndexOf(':');
-                    string ip = addr.Substring(0, colonIdx);
-                    ushort port;
-                    if (!ushort.TryParse(addr.Substring(colonIdx + 1), out port))
-                        continue;
+                    while (queue.TryDequeue(out var addr))
+                    {
+                        try
+                        {
+                            int colonIdx = addr.LastIndexOf(':');
+                            string ip = addr.Substring(0, colonIdx);
+                            if (!ushort.TryParse(addr.Substring(colonIdx + 1), out var port))
+                                continue;
 
-                    var ep = new EndPoint(ip, port);
-                    var preview = PingServer(ep, 3000, 3000);
-                    if (preview != null)
-                        results[addr] = preview;
-                }
-                catch (Exception ex)
-                {
-                    Plugin.LogDebug($"BFL ping failed for {addr}: {ex.Message}");
-                }
+                            var preview = PingServer(new EndPoint(ip, port), 3000, 3000);
+                            if (preview != null)
+                            {
+                                results[addr] = preview;
+                                Plugin.LogDebug($"BFL ping OK {addr} => \"{preview.name}\" {preview.players}/{preview.maxPlayers}");
+                            }
+                            else
+                            {
+                                Plugin.LogDebug($"BFL ping {addr} connected-or-timed-out but returned no preview");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Plugin.LogDebug($"BFL ping failed for {addr}: {ex.Message}");
+                        }
+                    }
+                });
             }
 
-            BFLMainThreadDispatcher.Enqueue(() =>
-            {
-                callback?.Invoke(results);
-            });
+            Task.WaitAll(workers);
+
+            var final = new Dictionary<string, ServerPreviewData>(results);
+            BFLMainThreadDispatcher.Enqueue(() => callback?.Invoke(final));
         });
     }
 
