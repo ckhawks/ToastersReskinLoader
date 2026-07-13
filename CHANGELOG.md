@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.3.4
+
+### Added
+- **Shrink puck viewmodel** (Pucks, on by default). Pulls the visible puck body
+  in by 1% so it stops clipping into the stick at contact. Cosmetic only — the
+  collider lives on the puck root, so physics and hit detection are unaffected.
+  Toggle in the Pucks settings section.
+
 ## 2.3.3
 
 ### Added
@@ -13,10 +21,6 @@
   option now has a precision picker — tenths, hundredths, or full milliseconds —
   plus an "Only show milliseconds in the final 5 seconds" toggle so the clock
   reads as plain `MM:SS` until the finish. Off/full by default.
-- **Shrink puck viewmodel** (Pucks, on by default). Pulls the visible puck body
-  in by 1% so it stops clipping into the stick at contact. Cosmetic only — the
-  collider lives on the puck root, so physics and hit detection are unaffected.
-  Toggle in the Pucks settings section.
 - **Puck FX trail opacity** (Puck FX). Re-exposed the trail Start/End Opacity
   sliders. The trail material now uses straight alpha blending so the gradient
   actually controls opacity; it defaults to opaque at the head fading out along
