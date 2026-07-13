@@ -7,7 +7,9 @@
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 using ToasterReskinLoader.input;
 
@@ -146,6 +148,21 @@ public class SettingsConfig
     // free-look. Purely client-local (see PositionSelectFreeLook). Default on;
     // it only does anything once you right-click during position select.
     public bool enablePositionSelectFreeLook = true;
+
+    // Global free-fly "noclip" camera toggled with a key anywhere (locker room,
+    // warmup, live play, replays). For inspecting reskins from any angle and
+    // lining up screenshots. Purely client-local (see FreeCamera); it only does
+    // anything once you press the toggle key.
+    public bool enableFreeCamera = true;
+
+    // The rebindable toggle key for the free camera (default F8). Stored by name
+    // so QoL.json stays readable and survives enum reordering.
+    [JsonConverter(typeof(StringEnumConverter))]
+    public Key freeCameraKey = Key.F8;
+
+    // Hide the on-screen "FREE CAMERA — ..." hint bar while flying (e.g. for
+    // clean screenshots). The camera still works; only the overlay is hidden.
+    public bool freeCameraHideHint = false;
 
     // Per-server "trust this mod list" memory. Keyed by "ip:port"; value
     // is the sorted, comma-joined list of mod IDs the user previously

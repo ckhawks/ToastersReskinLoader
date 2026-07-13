@@ -5,7 +5,10 @@
 
 using System;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
+
+using ToasterReskinLoader.input;
 
 namespace ToasterReskinLoader.ui.sections;
 
@@ -62,6 +65,46 @@ internal static class SettingsUI
         var slider = UITools.CreateConfigurationSlider(min, max, current, 300);
         slider.RegisterCallback<ChangeEvent<float>>(evt => onChange(evt.newValue));
         row.Add(slider);
+        parent.Add(row);
+        return row;
+    }
+
+    // A labeled key-rebind row: shows the current key on a button; clicking it
+    // arms KeyRebinder to capture the next key pressed (Esc cancels). The caller's
+    // setter persists (typically Settings.Save).
+    public static VisualElement KeyBindRow(VisualElement parent, string label, Key current, Action<Key> onChange)
+    {
+        var row = UITools.CreateConfigurationRow();
+        row.Add(UITools.CreateConfigurationLabel(label));
+
+        Key cur = current;
+        var btn = new Button
+        {
+            text = cur.ToString(),
+            style =
+            {
+                backgroundColor = new StyleColor(new Color(0.25f, 0.25f, 0.25f)),
+                unityTextAlign = TextAnchor.MiddleCenter,
+                fontSize = 15,
+                minWidth = 120,
+                paddingTop = 6,
+                paddingBottom = 6,
+                paddingLeft = 12,
+                paddingRight = 12,
+            },
+        };
+        UITools.AddHoverEffectsForButton(btn);
+        btn.RegisterCallback<ClickEvent>(_ =>
+        {
+            if (KeyRebinder.IsCapturing) return;
+            btn.text = "Press a key…  (Esc cancels)";
+            KeyRebinder.Begin(k =>
+            {
+                if (k != Key.None) { cur = k; onChange(k); }
+                btn.text = cur.ToString();
+            });
+        });
+        row.Add(btn);
         parent.Add(row);
         return row;
     }

@@ -26,6 +26,7 @@ public sealed class TickDriver : MonoBehaviour
         _instance = go.AddComponent<TickDriver>();
         try { DevConsole.AttachTo(go); } catch (Exception e) { Debug.LogError("[QoL] DevConsole attach failed: " + e); }
         try { PositionSelectFreeLook.AttachTo(go); } catch (Exception e) { Debug.LogError("[QoL] PositionSelectFreeLook attach failed: " + e); }
+        try { FreeCamera.AttachTo(go); } catch (Exception e) { Debug.LogError("[QoL] FreeCamera attach failed: " + e); }
     }
 
     public static void Teardown()
@@ -40,5 +41,8 @@ public sealed class TickDriver : MonoBehaviour
         // ScoreboardPolish runs every frame regardless of menu state so the
         // period clock keeps interpolating milliseconds during play.
         try { ScoreboardPolish.Tick(); } catch { }
+
+        // Drive the key-rebind capture (settings UI) when armed.
+        try { KeyRebinder.Tick(); } catch { }
     }
 }
