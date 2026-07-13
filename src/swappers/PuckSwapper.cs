@@ -157,6 +157,57 @@ public static class PuckSwapper
         return null;
     }
 
+    // ── Viewmodel shrink ────────────────────────────────────────────────────────
+    // Pulls the visible puck body mesh in by 1% so its surface stops clipping into
+    // the stick at contact. Purely cosmetic: the collider/rigidbody live on the puck
+    // root, not this body-mesh child, so physics and hitreg are untouched. The
+    // silhouette and outline render this same mesh (both on the "Puck" layer), so they
+    // shrink with it — that's fine, the target is the puck-vs-stick surface, not a
+    // body-vs-silhouette gap. Gated on the profile toggle; default on.
+    private const float ViewmodelShrinkFactor = 0.99f;
+    private static Vector3? _originalPuckScale;
+
+    /// <summary>Applies (or clears) the viewmodel shrink for one puck based on the toggle.</summary>
+    public static void ApplyViewmodelScale(Puck puck)
+    {
+        try
+        {
+            if (puck == null) return;
+            Transform meshTransform = ResolvePuckMeshTransform(puck.gameObject.transform);
+            if (meshTransform == null) return;
+
+            // Capture the prefab's original scale once (before any shrink is applied)
+            // so toggling the feature off restores the exact vanilla size.
+            _originalPuckScale ??= meshTransform.localScale;
+
+            bool shrink = ReskinProfileManager.currentProfile.puckShrinkViewmodel;
+            meshTransform.localScale = shrink
+                ? _originalPuckScale.Value * ViewmodelShrinkFactor
+                : _originalPuckScale.Value;
+
+            Plugin.LogDebug($"[Puck] Viewmodel scale on '{meshTransform.name}': shrink={shrink}, " +
+                            $"original={_originalPuckScale.Value:F4}, now={meshTransform.localScale:F4}");
+        }
+        catch (Exception ex)
+        {
+            Plugin.LogError($"Error applying puck viewmodel scale: {ex.Message}");
+        }
+    }
+
+    /// <summary>Applies the viewmodel shrink to every active puck (settings change / startup).</summary>
+    public static void ApplyViewmodelScaleAll()
+    {
+        try
+        {
+            foreach (Puck puck in PuckManager.Instance.GetPucks())
+                ApplyViewmodelScale(puck);
+        }
+        catch (Exception ex)
+        {
+            Plugin.LogError($"Error applying puck viewmodel scale to all pucks: {ex.Message}");
+        }
+    }
+
     // Set all puck textures; called when Puck reskin settings are changed
     public static void SetAllPucksTextures()
     {
@@ -180,6 +231,7 @@ public static class PuckSwapper
             PuckPreview.TryCaptureAssets(__instance);
             var puckTexture = GetPuckForRandomizer();
             SetPuckTexture(__instance, puckTexture);
+            ApplyViewmodelScale(__instance);
         }
     }
 }

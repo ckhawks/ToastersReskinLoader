@@ -1045,6 +1045,11 @@ public static class ReskinProfileManager
         public float puckFXTrailEndAlpha = 0f;
         [PresetField("Puck FX", "Silhouette color")]
         public Color puckFXSilhouetteColor = new Color(1f, 1f, 1f, 0.502f);
+        // Shrinks the visible puck body mesh by 1% so it stops clipping into the
+        // stick at contact. Cosmetic only — the collider is on the puck root, not the
+        // body mesh child, so physics/hitreg are unaffected. Default on.
+        [PresetField("Pucks", "Shrink puck viewmodel")]
+        public bool puckShrinkViewmodel = true;
 
         // QoL config lives in its own side-car files now (reskinprofiles/
         // QoL.json + ServerPrefs.json) so visual profiles stay shareable

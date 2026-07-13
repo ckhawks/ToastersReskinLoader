@@ -119,6 +119,32 @@ public static class PucksSection
         bumpMapNoticeLabel.style.fontSize = 12;
         bumpMapNoticeLabel.style.marginTop = 16;
         contentScrollViewContent.Add(bumpMapNoticeLabel);
+
+        // --- Puck Viewmodel ---
+        Label viewmodelHeader = UITools.CreateConfigurationLabel("<b>Puck Viewmodel</b>");
+        viewmodelHeader.style.marginTop = 16;
+        viewmodelHeader.style.marginBottom = 4;
+        contentScrollViewContent.Add(viewmodelHeader);
+
+        Label viewmodelNote = UITools.CreateConfigurationLabel(
+            "Shrinks the visible puck by 1% so it stops clipping into the stick. Cosmetic only — does not affect physics or hit detection.");
+        viewmodelNote.style.fontSize = 12;
+        viewmodelNote.style.color = new Color(0.7f, 0.7f, 0.7f);
+        viewmodelNote.style.marginBottom = 4;
+        contentScrollViewContent.Add(viewmodelNote);
+
+        var shrinkRow = UITools.CreateConfigurationRow();
+        shrinkRow.Add(UITools.CreateConfigurationLabel("Shrink Viewmodel"));
+        var shrinkToggle = UITools.CreateConfigurationCheckbox(
+            ReskinProfileManager.currentProfile.puckShrinkViewmodel);
+        shrinkToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
+        {
+            ReskinProfileManager.currentProfile.puckShrinkViewmodel = evt.newValue;
+            ToasterReskinLoader.swappers.PuckSwapper.ApplyViewmodelScaleAll();
+            ReskinProfileManager.SaveProfile();
+        });
+        shrinkRow.Add(shrinkToggle);
+        contentScrollViewContent.Add(shrinkRow);
     }
 
     // Motion-style switcher for the locker-room preview. Only meaningful in the main menu.

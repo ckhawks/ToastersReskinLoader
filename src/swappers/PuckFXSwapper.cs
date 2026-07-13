@@ -311,6 +311,9 @@ public static class PuckFXSwapper
 
         // Apply silhouette color
         UpdatePuckSilhouetteColor();
+
+        // Apply the viewmodel shrink (anti-stick-clip) to all active pucks.
+        PuckSwapper.ApplyViewmodelScaleAll();
     }
 
     static readonly FieldInfo _universalRendererDataField = typeof(PostProcessing)
