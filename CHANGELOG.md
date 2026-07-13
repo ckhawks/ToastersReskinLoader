@@ -1,5 +1,60 @@
 # Changelog
 
+## 2.3.3
+
+### Added
+- **"Refresh Visible" server-browser button** (Server Browser, on by default).
+  A button next to REFRESH that re-pings only the servers currently shown in the
+  list (those passing your active filters) to update their player counts and
+  names, skipping the master-server roundtrip a full REFRESH does. Pings fan out
+  in parallel like fast scanning, and the button shows live progress. Toggle in
+  the Server Browser settings section.
+- **Clock milliseconds precision** (Scoreboard). The "Clock shows milliseconds"
+  option now has a precision picker — tenths, hundredths, or full milliseconds —
+  plus an "Only show milliseconds in the final 5 seconds" toggle so the clock
+  reads as plain `MM:SS` until the finish. Off/full by default.
+- **Shrink puck viewmodel** (Pucks, on by default). Pulls the visible puck body
+  in by 1% so it stops clipping into the stick at contact. Cosmetic only — the
+  collider lives on the puck root, so physics and hit detection are unaffected.
+  Toggle in the Pucks settings section.
+- **Puck FX trail opacity** (Puck FX). Re-exposed the trail Start/End Opacity
+  sliders. The trail material now uses straight alpha blending so the gradient
+  actually controls opacity; it defaults to opaque at the head fading out along
+  the tail.
+- **Per-object reflection removal** (Rendering → Glossiness). "Remove From
+  Specific Objects" strips the rink reflection from just sticks, players, or
+  pucks — a finer-grained alternative to the scene-wide slider. The chosen
+  objects stop reflecting the rink entirely (fallback is black, not the blue
+  sky). Off by default. Note any other surface not covered by a reflection probe
+  may lose its reflection too.
+- **Overtime period numbering** (Scoreboard, always on). Successive overtimes now
+  read `OVERTIME`, `OVERTIME 2`, `OVERTIME 3`, … instead of a flat `OVERTIME`
+  every period, matching broadcast labeling.
+- **Full server name in the scoreboard** (TAB, always on). Long server names that
+  the game truncates in the replicated netcode value are re-fetched via the same
+  TCP preview request the server browser uses and re-asserted onto the scoreboard.
+- **Developer diagnostics**: a "verbose debug logging" toggle, and a per-mod
+  enable-timing log (`[EnableTiming]` lines) that times how long each mod's
+  `Enable()` takes at startup (mods that load after this one).
+
+### Fixed
+- **Launch freeze / black screen.** Startup used to decode every active reskin
+  texture synchronously on the main thread, freezing the render thread at launch.
+  Texture warm-up is now chunked across frames with a loading overlay, then the
+  (cached) apply pass runs — the game keeps rendering throughout.
+- **Female jerseys, sticks, and pucks going black/invisible on Reload.** The
+  Reload button destroys the texture cache and re-applies without respawning,
+  leaving spawn-time materials pointing at destroyed textures. The female
+  torso/groin copy is now re-synced after a jersey apply, and stick/puck textures
+  are re-applied in the reload pass.
+- **Chat-open key leaking into the message** on non-QWERTY layouts (Dvorak/AZERTY)
+  and after Shift/Caps Lock — the swallow now matches on the OS-layout character
+  and is case-insensitive.
+
+### Internal
+- Sidebar rows in the mod menu now run flush against the vertical scrollbar
+  instead of leaving a gap.
+
 ## 2.3.2
 
 ### Added

@@ -78,6 +78,11 @@ public class SettingsConfig
     // key (see SettingsProfile) for the same migration reason as the cache toggle.
     [JsonProperty("enableFastServerBrowserScanningV2")]
     public bool enableFastServerBrowserScanning = false;
+    // In-browser "REFRESH VISIBLE" button: re-pings only the server rows
+    // currently shown in the list (those passing the active filters) without
+    // the master-server roundtrip a full REFRESH does — a quick way to update
+    // player counts + names for the servers you're actually looking at.
+    public bool enableRefreshVisibleButton = true;
     // In-memory only — never persisted by the old SettingsProfile, so keep it that way.
     [JsonIgnore] public int  serverBrowserPingConcurrency = 16;
     [JsonIgnore] public int  serverBrowserPingConnectTimeoutMs = 1000;

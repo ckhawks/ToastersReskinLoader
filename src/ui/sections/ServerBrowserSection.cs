@@ -47,6 +47,10 @@ public static class ServerBrowserSection
             v => { cfg.enableFastServerBrowserScanning = v; Settings.Save(); });
         SettingsUI.Note(root,
             "Pings many servers at once instead of one at a time — a 50-server refresh drops from ~50s to a few seconds.");
+        SettingsUI.ToggleRow(root, "In-browser \"Refresh Visible\" button", cfg.enableRefreshVisibleButton,
+            v => { cfg.enableRefreshVisibleButton = v; Settings.Save(); RefreshVisibleServers.ApplyVisibility(); });
+        SettingsUI.Note(root,
+            "Adds a button next to REFRESH that re-pings only the servers currently shown in the list — updating their player counts and names without re-fetching the full server list.");
 
         // ── Server browser stores (compact rows) ──────────────────────────
         // Each store has its own enable toggle + expandable entry list.
