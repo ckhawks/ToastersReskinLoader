@@ -298,6 +298,9 @@ public static class PlayerCustomizationSection
         levelUpRow.Add(levelUpToggle);
         contentScrollViewContent.Add(levelUpRow);
 
+        // Usage-analytics opt-outs live in their own "Privacy" section (bottom of the
+        // sidebar), not here — see PrivacySection.
+
         UITools.UpdateDependentControlsState(dependentControls, Plugin.modSettings.ShowPersonalization);
     }
 

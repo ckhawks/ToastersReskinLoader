@@ -433,6 +433,138 @@ public static class ReskinProfileManager
         return activeList;
     }
     
+    // ----------------------------------------------------------------------------------
+    //  Usage-analytics export (see puckstats docs/reskins/05-config-analytics-ingest.md)
+    //
+    //  Flattens the current profile into slot-aware "raw facts" for the equip-usage
+    //  backend: one EquipSlotInfo per equipped fixed slot (carrying team/role so the
+    //  server can derive pairing + team-affinity) plus the puck randomizer list as a
+    //  set. We send raw facts only; the server owns the usage formula. Default/vanilla
+    //  sentinels (null ParentPack) are skipped. Tape slots are included only when their
+    //  mode is "Textured" (the only mode that actually applies the reskin; "Unchanged"
+    //  and "RGB" don't render the entry).
+    // ----------------------------------------------------------------------------------
+
+    /// <summary>One equipped fixed slot, in the shape the equips endpoint expects.</summary>
+    public class EquipSlotInfo
+    {
+        public string slot;
+        public string team;   // "blue" | "red" | null (teamless: ice/net/puck)
+        public string role;   // "skater" | "goalie" | null
+        public string reskinType;
+        public string entryName;
+        public ulong workshopId;
+        public string packUniqueId;
+    }
+
+    /// <summary>One puck in the randomizer list (a set, not a fixed slot).</summary>
+    public class PuckEntryInfo
+    {
+        public string entryName;
+        public ulong workshopId;
+        public string packUniqueId;
+    }
+
+    /// <summary>
+    /// Builds the slot-aware equip snapshot + puck list for the usage-analytics export.
+    /// </summary>
+    public static void BuildEquipAnalytics(out List<EquipSlotInfo> slots, out List<PuckEntryInfo> pucks)
+    {
+        slots = new List<EquipSlotInfo>();
+        pucks = new List<PuckEntryInfo>();
+        var p = currentProfile;
+        if (p == null) return;
+
+        // Sticks (team + personal, per side, skater/goalie)
+        AddSlot(slots, p.stickAttackerBlue,         "blue_skater_stick_team",     "blue", "skater");
+        AddSlot(slots, p.stickAttackerBluePersonal, "blue_skater_stick_personal", "blue", "skater");
+        AddSlot(slots, p.stickAttackerRed,          "red_skater_stick_team",      "red",  "skater");
+        AddSlot(slots, p.stickAttackerRedPersonal,  "red_skater_stick_personal",  "red",  "skater");
+        AddSlot(slots, p.stickGoalieBlue,           "blue_goalie_stick_team",     "blue", "goalie");
+        AddSlot(slots, p.stickGoalieBluePersonal,   "blue_goalie_stick_personal", "blue", "goalie");
+        AddSlot(slots, p.stickGoalieRed,            "red_goalie_stick_team",      "red",  "goalie");
+        AddSlot(slots, p.stickGoalieRedPersonal,    "red_goalie_stick_personal",  "red",  "goalie");
+
+        // Jerseys
+        AddSlot(slots, p.blueSkaterTorso, "blue_skater_torso", "blue", "skater");
+        AddSlot(slots, p.blueSkaterGroin, "blue_skater_groin", "blue", "skater");
+        AddSlot(slots, p.blueGoalieTorso, "blue_goalie_torso", "blue", "goalie");
+        AddSlot(slots, p.blueGoalieGroin, "blue_goalie_groin", "blue", "goalie");
+        AddSlot(slots, p.redSkaterTorso,  "red_skater_torso",  "red",  "skater");
+        AddSlot(slots, p.redSkaterGroin,  "red_skater_groin",  "red",  "skater");
+        AddSlot(slots, p.redGoalieTorso,  "red_goalie_torso",  "red",  "goalie");
+        AddSlot(slots, p.redGoalieGroin,  "red_goalie_groin",  "red",  "goalie");
+
+        // Goalie leg pads
+        AddSlot(slots, p.blueLegPadLeft,  "blue_goalie_legpad_left",  "blue", "goalie");
+        AddSlot(slots, p.blueLegPadRight, "blue_goalie_legpad_right", "blue", "goalie");
+        AddSlot(slots, p.redLegPadLeft,   "red_goalie_legpad_left",   "red",  "goalie");
+        AddSlot(slots, p.redLegPadRight,  "red_goalie_legpad_right",  "red",  "goalie");
+
+        // Helmets + masks
+        AddSlot(slots, p.blueSkaterHelmet, "blue_skater_helmet", "blue", "skater");
+        AddSlot(slots, p.redSkaterHelmet,  "red_skater_helmet",  "red",  "skater");
+        AddSlot(slots, p.blueGoalieHelmet, "blue_goalie_helmet", "blue", "goalie");
+        AddSlot(slots, p.redGoalieHelmet,  "red_goalie_helmet",  "red",  "goalie");
+        AddSlot(slots, p.blueGoalieMask,   "blue_goalie_mask",   "blue", "goalie");
+        AddSlot(slots, p.redGoalieMask,    "red_goalie_mask",    "red",  "goalie");
+
+        // Teamless surfaces
+        AddSlot(slots, p.ice,  "rink_ice", null, null);
+        AddSlot(slots, p.net,  "net",      null, null);
+        AddSlot(slots, p.puck, "puck",     null, null);
+
+        // Tapes — only when the reskin actually renders (mode "Textured")
+        AddTape(slots, p.blueSkaterBladeTapeMode, p.blueSkaterBladeTape, "blue_skater_tape_blade", "blue", "skater");
+        AddTape(slots, p.blueSkaterShaftTapeMode, p.blueSkaterShaftTape, "blue_skater_tape_shaft", "blue", "skater");
+        AddTape(slots, p.blueGoalieBladeTapeMode, p.blueGoalieBladeTape, "blue_goalie_tape_blade", "blue", "goalie");
+        AddTape(slots, p.blueGoalieShaftTapeMode, p.blueGoalieShaftTape, "blue_goalie_tape_shaft", "blue", "goalie");
+        AddTape(slots, p.redSkaterBladeTapeMode,  p.redSkaterBladeTape,  "red_skater_tape_blade",  "red",  "skater");
+        AddTape(slots, p.redSkaterShaftTapeMode,  p.redSkaterShaftTape,  "red_skater_tape_shaft",  "red",  "skater");
+        AddTape(slots, p.redGoalieBladeTapeMode,  p.redGoalieBladeTape,  "red_goalie_tape_blade",  "red",  "goalie");
+        AddTape(slots, p.redGoalieShaftTapeMode,  p.redGoalieShaftTape,  "red_goalie_tape_shaft",  "red",  "goalie");
+
+        // Puck randomizer list (skip the vanilla "Default" sentinel)
+        if (p.puckList != null)
+        {
+            foreach (var puck in p.puckList)
+            {
+                if (puck?.ParentPack == null) continue; // default/vanilla -> skip
+                pucks.Add(new PuckEntryInfo
+                {
+                    entryName = puck.Name,
+                    workshopId = puck.ParentPack.WorkshopId,
+                    packUniqueId = puck.ParentPack.UniqueId,
+                });
+            }
+        }
+    }
+
+    private static void AddSlot(List<EquipSlotInfo> list, ReskinRegistry.ReskinEntry entry,
+        string slot, string team, string role)
+    {
+        // Null entry or an entry with no parent pack (vanilla/default sentinel) => not a real reskin.
+        if (entry?.ParentPack == null) return;
+        list.Add(new EquipSlotInfo
+        {
+            slot = slot,
+            team = team,
+            role = role,
+            reskinType = entry.Type,
+            entryName = entry.Name,
+            workshopId = entry.ParentPack.WorkshopId,
+            packUniqueId = entry.ParentPack.UniqueId,
+        });
+    }
+
+    private static void AddTape(List<EquipSlotInfo> list, string mode, ReskinRegistry.ReskinEntry entry,
+        string slot, string team, string role)
+    {
+        // Only "Textured" mode applies the reskin entry; "Unchanged"/"RGB" don't render it.
+        if (mode != "Textured") return;
+        AddSlot(list, entry, slot, team, role);
+    }
+
     /// <summary>
     /// Finds a live ReskinEntry from the registry based on a reference.
     /// Returns null if the pack or entry is no longer installed.

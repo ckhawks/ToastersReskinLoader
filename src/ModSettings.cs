@@ -12,6 +12,17 @@ public class ModSettings
     public bool ShowNonNaturalSkinTones { get; set; } = true;
     public bool ShowLevelUpNotifications { get; set; } = true;
 
+    // When true, TRL shares the player's equipped reskins with the puckstats usage
+    // backend (anonymous aggregate ranking of which reskins get used). Turning it off
+    // stops sending and purges the user's stored equip data.
+    public bool ShareReskinAnalytics { get; set; } = true;
+
+    // When true, TRL shares which non-reskin mod settings the player has toggled/set
+    // (internal "what features are used" aggregates; not surfaced publicly). Turning it
+    // off stops sending and purges the user's stored settings data. NEVER includes
+    // server passwords or other ServerPrefs data, team names, or window geometry.
+    public bool ShareSettingsAnalytics { get; set; } = true;
+
     static string ConfigurationFileName = $"{Plugin.MOD_NAME}.json";
 
     public static ModSettings Load()

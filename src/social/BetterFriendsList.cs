@@ -69,16 +69,9 @@ public static class BetterFriendsList
     {
         if (IsEnabled) return;
 
-        // Fix Puck's empty-IP rich presence: rewrite steam_player_group/connect
-        // with the real endpoint the client dialed. Restores Steam "Join Game"
-        // and lets other mod users resolve our server name. See
-        // BFL_RichPresenceIpFixPatch for the why.
-        _harmony.Patch(
-            AccessTools.Method(typeof(SteamIntegrationManager), nameof(SteamIntegrationManager.SetRichPresencePlaying)),
-            postfix: new HarmonyMethod(typeof(BFL_RichPresenceIpFixPatch), nameof(BFL_RichPresenceIpFixPatch.Postfix)));
-        _harmony.Patch(
-            AccessTools.Method(typeof(SteamIntegrationManager), nameof(SteamIntegrationManager.SetRichPresenceSpectating)),
-            postfix: new HarmonyMethod(typeof(BFL_RichPresenceIpFixPatch), nameof(BFL_RichPresenceIpFixPatch.Postfix)));
+        // NOTE: the empty-IP rich-presence fix used to be applied here. It now lives in
+        // its own standalone feature (RichPresenceIpFix, toggled in the Fixes section)
+        // so it works even when this feature is off.
 
         _harmony.Patch(
             AccessTools.Method(typeof(UIFriendsController), "Event_OnSteamConnected"),
@@ -259,41 +252,6 @@ public static class BetterFriendsList
         catch (Exception ex)
         {
             Plugin.LogError($"BFL vanilla rebuild on disable failed: {ex.Message}");
-        }
-    }
-}
-
-/// <summary>
-/// Puck builds its "playing"/"spectating" Steam rich presence from the networked
-/// Server struct, whose IpAddress the host never populates (ServerManager.IpAddress
-/// is declared but never assigned anywhere in the game) — so steam_player_group and
-/// connect ship with an EMPTY ip (e.g. ":30609", "+ipAddress  +port 30609"). That
-/// breaks Steam "Join Game" and makes a friend's server unresolvable.
-///
-/// A CLIENT, however, knows the real address it dialed
-/// (GlobalStateManager.ConnectionState.Connection.EndPoint). This postfix runs right
-/// after the game sets its (broken) presence and overwrites the two IP-bearing keys
-/// with that real endpoint. Only fixes the local player's OWN broadcast, so friends
-/// see a resolvable server only if they also run this mod. Listen-server hosts have
-/// no client connection and are left as-is (they have no public IP to advertise).
-/// </summary>
-public static class BFL_RichPresenceIpFixPatch
-{
-    public static void Postfix()
-    {
-        try
-        {
-            var ep = GlobalStateManager.ConnectionState.Connection?.EndPoint;
-            if (ep == null || string.IsNullOrEmpty(ep.ipAddress))
-                return;
-
-            SteamFriends.SetRichPresence("steam_player_group", $"{ep.ipAddress}:{ep.port}");
-            SteamFriends.SetRichPresence("connect", $"+ipAddress {ep.ipAddress} +port {ep.port}");
-            Plugin.LogDebug($"BFL: rewrote rich-presence IP to {ep.ipAddress}:{ep.port}");
-        }
-        catch (Exception ex)
-        {
-            Plugin.LogError($"BFL rich-presence IP fix failed: {ex.Message}");
         }
     }
 }

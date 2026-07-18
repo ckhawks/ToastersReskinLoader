@@ -1,5 +1,27 @@
 # Changelog
 
+## 2.4.0
+
+### Added
+- **Usage analytics + Privacy section** (new "Privacy" settings page, on by
+  default). TRL can share anonymous usage stats with puckstats.io once per game
+  launch: which reskins you have equipped (to rank skins by real usage on the
+  public gallery) and which mod features you have enabled (internal only, to help
+  prioritize what to improve). Two independent opt-out toggles live on the new
+  Privacy page at the bottom of the settings sidebar; turning either off stops
+  that data being sent and tells the server to forget what it already stored.
+  Server passwords and other private data are never sent.
+- **Global free-fly camera** with a rebindable toggle key. Detach the camera and
+  fly around freely; rebind the toggle in Input & Camera.
+- **Friends-in-game board** (Multiplayer, on by default). A board to the right of
+  the main menu listing which of your friends are currently in Puck. Now has its
+  own toggle in the Multiplayer settings section.
+- **Fix Steam server presence** (Fixes, on by default). Puck broadcasts an empty
+  server IP to Steam, which breaks the "Join Game" button and hides which server
+  you're on from friends. This rewrites your Steam presence with the real address
+  you connected to. Only affects your own presence, and friends only benefit if
+  they also run this mod. Toggle in the Fixes settings section.
+
 ## 2.3.4
 
 ### Added

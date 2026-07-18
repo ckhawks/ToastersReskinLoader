@@ -42,6 +42,13 @@ public static class AppearanceAPI
     private static bool ticketRequested;
     private static Callback<GetTicketForWebApiResponse_t> ticketCallback;
 
+    // Shared with UsageAnalyticsAPI so it can ride this class's single Steam ticket +
+    // coroutine runner instead of requesting its own (which would re-fire the global
+    // Steamworks auth callback). See UsageAnalyticsAPI.
+    internal static MonoBehaviour Runner => coroutineRunner;
+    internal static string CachedTicket => cachedTicket;
+    internal static string BaseUrl => BASE_URL;
+
     public static void Initialize(MonoBehaviour runner)
     {
         coroutineRunner = runner;
@@ -65,6 +72,7 @@ public static class AppearanceAPI
             coroutineRunner.StopCoroutine(heartbeatCoroutine);
         if (timeTrackingCoroutine != null && coroutineRunner != null)
             coroutineRunner.StopCoroutine(timeTrackingCoroutine);
+        UsageAnalyticsAPI.Cleanup(); // stop its pending debounce while our runner is still set
         heartbeatCoroutine = null;
         timeTrackingCoroutine = null;
         ticketCallback?.Dispose();

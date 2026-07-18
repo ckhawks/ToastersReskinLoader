@@ -26,7 +26,7 @@ namespace ToasterReskinLoader;
 public class Plugin : IPuckPlugin
 {
     public static string MOD_NAME = "ToasterReskinLoader";
-    public static string MOD_VERSION = "2.3.4";
+    public static string MOD_VERSION = "2.4.0";
     public static string MOD_GUID = "pw.stellaric.toaster.reskinloader";
 
     static readonly Harmony harmony = new Harmony(MOD_GUID);
@@ -119,6 +119,10 @@ public class Plugin : IPuckPlugin
                 // Load settings, run the runtime feature init batch (each isolated
                 // so one failure doesn't abort the rest), then start the tick host.
                 core.Settings.Load();
+                // Both the reskin profile and QoL settings are loaded now. Fire the
+                // once-per-launch usage-analytics export (low-priority telemetry: a short
+                // delayed one-shot, no per-change or heartbeat re-sends).
+                UsageAnalyticsAPI.QueuePost();
                 SafeInit("SavedServerPasswords", ToasterReskinLoader.serverbrowser.SavedServerPasswords.Initialize);
                 SafeInit("ServerSlotQueue", ToasterReskinLoader.serverbrowser.ServerSlotQueue.Initialize);
                 SafeInit("MainMenuButtons", ToasterReskinLoader.serverbrowser.MainMenuButtons.Initialize);
@@ -147,6 +151,9 @@ public class Plugin : IPuckPlugin
 
                 if (ToasterReskinLoader.core.Settings.Current?.enableProbePing ?? true)
                     ToasterReskinLoader.social.probe.ProbePing.Enable();
+
+                if (ToasterReskinLoader.core.Settings.Current?.enableServerIpPresenceFix ?? true)
+                    ToasterReskinLoader.social.RichPresenceIpFix.Enable();
 
                 if (ToasterReskinLoader.core.Settings.Current?.enableVanillaUIRetheme ?? true)
                     ToasterReskinLoader.ui.VanillaUIRetheme.Enable();
@@ -196,6 +203,7 @@ public class Plugin : IPuckPlugin
             BetterFriendsList.Disable();
             ToasterReskinLoader.social.friendspanel.FriendsBoard.Disable();
             ToasterReskinLoader.social.probe.ProbePing.Disable();
+            ToasterReskinLoader.social.RichPresenceIpFix.Disable();
             ToasterReskinLoader.ui.VanillaUIRetheme.Disable();
             ToasterReskinLoader.serverbrowser.AutoConnectMatchmaking.Disable();
             ToasterReskinLoader.diagnostics.profiler.FrameProfiler.Disable();

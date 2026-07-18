@@ -4,6 +4,7 @@
 using UnityEngine.UIElements;
 using ToasterReskinLoader.core;
 using ToasterReskinLoader.social;
+using ToasterReskinLoader.social.friendspanel;
 using ToasterReskinLoader.social.probe;
 using ToasterReskinLoader.serverbrowser;
 
@@ -26,6 +27,16 @@ public static class MultiplayerSection
                 else   BetterFriendsList.Disable();
             });
         SettingsUI.Note(root, "Shows clearer online/offline status and sorts online friends to the top.");
+
+        SettingsUI.ToggleRow(root, "Show friends-in-game board", cfg.enableFriendsBoard,
+            v =>
+            {
+                cfg.enableFriendsBoard = v;
+                Settings.Save();
+                if (v) FriendsBoard.Enable();
+                else   FriendsBoard.Disable();
+            });
+        SettingsUI.Note(root, "Adds a board to the right of the main menu listing which of your friends are currently in Puck.");
 
         SettingsUI.ToggleRow(root, "Show party members in locker room", cfg.enablePartyLineup,
             v =>

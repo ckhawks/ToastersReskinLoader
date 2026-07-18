@@ -28,7 +28,7 @@ public static class ReskinManagerMenu
         "Skybox",
         "Minimap", "Chat", "Scoreboard", "Player HUD", "Rendering", "Interface", "Fixes",
         "Server Browser", "Multiplayer", "Input & Camera", "Developer",
-        "Extras", "About" };
+        "Extras", "Privacy", "About" };
 
     // The built-in sections plus any pages other mods registered via the public API, appended
     // in registry order. Selection is by index into this combined list, so the order other code
@@ -98,6 +98,7 @@ public static class ReskinManagerMenu
 
         SidebarEntry.Divider("More"),
         SidebarEntry.Item("Extras"),
+        SidebarEntry.Item("Privacy"),
         SidebarEntry.Item("About"),
     };
 
@@ -485,6 +486,9 @@ public static class ReskinManagerMenu
                 break;
             case "Extras":
                 ExtrasSection.CreateSection(contentScrollViewContent);
+                break;
+            case "Privacy":
+                PrivacySection.CreateSection(contentScrollViewContent);
                 break;
             default:
                 // Externally registered panel? Hand it the content container to fill. Wrapped so a
