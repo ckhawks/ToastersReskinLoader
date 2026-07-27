@@ -45,6 +45,16 @@ public class SettingsConfig
     public bool enablePartyLineup = true;
     public bool enableSavedServerPasswords = true;
     public bool enableServerBrowserSortTweaks = true;
+    // Treat 12+ players as full in the server browser. Puck caps active
+    // skaters at 12, so a 15-slot server (12 players + 3 spectator slots)
+    // reading 12/15 has no room left to play even though vanilla's
+    // "full" test (players >= maxPlayers) says otherwise. When this is on
+    // AND the vanilla "show full servers" toggle is OFF, those rows are
+    // hidden too. Default off — it's a stricter reading of "full" than
+    // vanilla, and the ping payload has no spectator breakdown, so a
+    // server carrying 10 skaters + 2 spectators also reads as 12 and gets
+    // hidden. See ServerBrowserSort.GameplayFullCap.
+    public bool enableBrowserTreat12AsFull = false;
     // Per-store toggles for the four server-browser-side memory stores.
     // Each is independently enable-able from the QoL UI's "Server
     // Browser" section.

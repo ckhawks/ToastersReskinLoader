@@ -402,6 +402,13 @@ internal static class MainMenuButtons
                 // Mirror vanilla FilterServer + user's saved filters.
                 if (preview.ping > cfg.browserMaxPing) continue;
                 if (preview.players >= preview.maxPlayers) continue; // skip full per user pref
+                // "Treat 12+ as full" applies here regardless of the
+                // show-full toggle, exactly like the maxPlayers check
+                // above: that toggle governs what the list *displays*,
+                // while Quick Join never auto-connects you to a server
+                // you can't actually play on.
+                if (cfg.enableBrowserTreat12AsFull &&
+                    preview.players >= ServerBrowserSort.GameplayFullCap) continue;
                 if (preview.players <= 0 && !cfg.browserShowEmpty) continue;
                 if (preview.isPasswordProtected && !cfg.browserShowLocked) continue;
                 if ((preview.clientRequiredModIds?.Length ?? 0) > 0 && !cfg.browserShowModded) continue;

@@ -21,6 +21,17 @@ public static class ServerBrowserSection
 
         SettingsUI.ToggleRow(root, "Remember filters between sessions", cfg.enableBrowserFilterPersistence,
             v => { cfg.enableBrowserFilterPersistence = v; Settings.Save(); });
+        SettingsUI.ToggleRow(root, "Treat 12+ players as full", cfg.enableBrowserTreat12AsFull,
+            v =>
+            {
+                cfg.enableBrowserTreat12AsFull = v;
+                Settings.Save();
+                ServerBrowserSort.RefreshFiltersForCurrentBrowser();
+            });
+        SettingsUI.Note(root,
+            "Puck caps active skaters at 12, so a 15-slot server sitting at 12/15 has no room left to play. "
+            + "With this on, those servers count as full and are hidden whenever \"show full servers\" is unchecked in the browser. "
+            + "Spectators count toward the total, so a server holding 10 skaters and 2 spectators is hidden too.");
         SettingsUI.ToggleRow(root, "Auto-queue when joining a full server", cfg.enableServerSlotQueue,
             v => { cfg.enableServerSlotQueue = v; Settings.Save(); });
         SettingsUI.ToggleRow(root, "Title-screen Quick Join button", cfg.enableMainMenuQuickJoin,

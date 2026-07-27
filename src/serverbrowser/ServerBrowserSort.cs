@@ -4,7 +4,7 @@
 //     Name-ascending because both sort enums default to 0.)
 //   * Repurpose the vanilla PLAYERS column: rename its header to
 //     PLAYERS% and override its sort comparator to use the
-//     players / maxPlayers ratio (capped at RatioGameplayCap) instead of
+//     players / maxPlayers ratio (capped at GameplayFullCap) instead of
 //     absolute player count.
 //   * Saved-password indicator: rows that match an entry in
 //     SavedServerPasswords have the vanilla "passwordProtected" USS class
@@ -470,18 +470,21 @@ internal static class ServerBrowserSort
         }
     }
 
-    // The "full enough for gameplay" cap. A 6v6 server with 12 active
-    // players is just as joinable as a 30-slot server holding 12, so the
-    // ratio caps both numerator and denominator at this value before
-    // dividing. 12/12, 12/14, 12/62 → all 100%. 6/anything → 50%.
-    private const int RatioGameplayCap = 12;
+    // The "full enough for gameplay" cap — Puck's hard limit on active
+    // skaters. Two features read it:
+    //   * the PLAYERS% ratio, which caps both numerator and denominator
+    //     before dividing (12/12, 12/14, 12/62 → all 100%; 6/anything →
+    //     50%), because a 6v6 server with 12 players is just as joinable
+    //     as a 30-slot server holding 12; and
+    //   * the opt-in "treat 12+ as full" filter below.
+    internal const int GameplayFullCap = 12;
 
     // ─────────────────────────── SortServers postfix ──────────────────────
     //
     // Vanilla's SortServers ran first. We re-sort with a primary tier of
     // "favorites above non-favorites" plus a secondary tier matching the
     // active column. The PLAYERS column uses our capped ratio (see
-    // RatioGameplayCap); NAME / PING replicate vanilla's comparator so
+    // GameplayFullCap); NAME / PING replicate vanilla's comparator so
     // the visible order matches the column the user clicked on.
     // Per-row sort key, precomputed once per SortServers call so the
     // comparator is a pure dictionary lookup instead of — per comparison —
@@ -576,32 +579,87 @@ internal static class ServerBrowserSort
     private static float ComputeRatio(ServerPreviewData pd)
     {
         if (pd == null || pd.maxPlayers <= 0) return -1f;
-        int p = Math.Min(pd.players, RatioGameplayCap);
-        int m = Math.Min(pd.maxPlayers, RatioGameplayCap);
+        int p = Math.Min(pd.players, GameplayFullCap);
+        int m = Math.Min(pd.maxPlayers, GameplayFullCap);
         return m <= 0 ? -1f : (float)p / m;
     }
 
-    // ─────────────────────────── FilterServer postfix: blocks ────────────
+    // ─────────────────────────── FilterServer postfix: extra hides ───────
     //
     // Vanilla FilterServer assigns the row's display style based on its
-    // filter conditions. We layer on top: if the user has blocked this
-    // ip:port, force display = None regardless of vanilla's decision.
+    // filter conditions. We layer on top, forcing display = None
+    // regardless of vanilla's decision, for two cases:
+    //   1. the user blocked this ip:port; or
+    //   2. "treat 12+ as full" is on, the vanilla "show full servers"
+    //      toggle is off, and the row is at or over GameplayFullCap.
+    // Both are hide-only — neither ever un-hides a row vanilla rejected.
     [HarmonyPatch(typeof(UIServerBrowser), "FilterServer")]
-    private static class FilterServer_HideBlocked_Postfix
+    private static class FilterServer_HideExtra_Postfix
     {
         private static void Postfix(UIServerBrowser __instance, EndPoint endPoint)
         {
-            if (!BlocksEnabled || endPoint == null) return;
+            if (endPoint == null) return;
+            if (!BlocksEnabled && !Treat12AsFullEnabled) return;
             try
             {
-                string key = MakeKey(endPoint);
-                if (!IsBlocked(key)) return;
                 var map = GetMap(__instance);
                 if (map == null || !map.TryGetValue(endPoint, out var row) || row == null) return;
-                row.style.display = DisplayStyle.None;
+
+                if (BlocksEnabled && IsBlocked(MakeKey(endPoint)))
+                {
+                    row.style.display = DisplayStyle.None;
+                    return;
+                }
+
+                if (Treat12AsFullEnabled && !ShowFullServers(__instance))
+                {
+                    var pd = GetPreviewFromRow(row);
+                    // players == 0 also means "not pinged yet" for
+                    // cache-seeded rows, so an unknown row is never hidden
+                    // by this filter — it only ever hides on a real count.
+                    if (pd != null && pd.players >= GameplayFullCap)
+                        row.style.display = DisplayStyle.None;
+                }
             }
             catch (Exception e) { Debug.LogWarning("[QoL] sort-tweaks FilterServer postfix failed: " + e.Message); }
         }
+    }
+
+    private static bool Treat12AsFullEnabled =>
+        Settings.Current?.enableBrowserTreat12AsFull ?? false;
+
+    // The live state of vanilla's "show full servers" toggle. Read off the
+    // control rather than cfg.browserShowFull: the saved value only tracks
+    // the control while filter persistence is on, and the user can flip the
+    // toggle mid-session either way. Falls back to the saved value, then to
+    // vanilla's default (true = show them), so a reflection miss can never
+    // hide rows the user didn't ask to hide.
+    private static bool ShowFullServers(UIServerBrowser ui)
+    {
+        try
+        {
+            var toggle = AccessTools.Field(typeof(UIServerBrowser), "showFullToggle")?.GetValue(ui) as Toggle;
+            if (toggle != null) return toggle.value;
+        }
+        catch { }
+        return Settings.Current?.browserShowFull ?? true;
+    }
+
+    // Re-run vanilla's filter pass over the open browser. Used when the
+    // "treat 12+ as full" toggle flips in the settings menu: vanilla
+    // FilterServers resets every row's display from its own conditions and
+    // our postfix re-applies (or no longer applies) the extra hides, so
+    // this handles both directions without tracking which rows we hid.
+    public static void RefreshFiltersForCurrentBrowser()
+    {
+        try
+        {
+            var browser = MonoBehaviourSingleton<UIManager>.Instance?.ServerBrowser;
+            if (browser == null || !browser.IsVisible) return;
+            AccessTools.Method(typeof(UIServerBrowser), "FilterServers")?.Invoke(browser, null);
+            AccessTools.Method(typeof(UIServerBrowser), "SortServers")?.Invoke(browser, null);
+        }
+        catch (Exception e) { Debug.LogWarning("[QoL] sort-tweaks filter refresh failed: " + e.Message); }
     }
 
     // ─────────────────────────── StyleSortButtons postfix ─────────────────
