@@ -27,4 +27,23 @@ public class ServerPrefsProfile
     // Same shape as FavoriteServers, but matching rows are hidden from the browser.
     [JsonProperty("blockedServers")]
     public Dictionary<string, string> BlockedServers { get; set; } = new Dictionary<string, string>();
+
+    // The last server the player connected to. Quick Play on the title
+    // screen joins this directly; the cached name keeps the button readable
+    // even when the server isn't in the current browser listing.
+    [JsonProperty("lastPlayedServer")]
+    public QuickPlayServerInfo LastPlayedServer { get; set; }
+}
+
+/// <summary>One remembered server: the dialed endpoint + last-seen friendly name.</summary>
+public class QuickPlayServerInfo
+{
+    [JsonProperty("ipAddress")]
+    public string IpAddress { get; set; } = "";
+
+    [JsonProperty("port")]
+    public ushort Port { get; set; }
+
+    [JsonProperty("name")]
+    public string Name { get; set; } = "";
 }

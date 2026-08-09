@@ -106,6 +106,8 @@ public static class SwapperManager
         public static void Postfix(PlayerBody __instance)
         {
             JerseySwapper.SetJerseyForPlayer(__instance.Player);
+            // Flat team-color tint for vanilla jerseys/pants (custom jerseys untouched)
+            JerseyColorSwapper.ApplyForPlayer(__instance.Player);
             GoalieEquipmentSwapper.SetLegPadsForPlayer(__instance.Player);
             GoalieHelmetSwapper.SetHeadgearForPlayer(__instance.Player);
             SkaterHelmetSwapper.SetHelmetForPlayer(__instance.Player);
@@ -208,6 +210,7 @@ public static class SwapperManager
         {
             StickTapeSwapper.ClearTapeCache();
             JerseySwapper.ClearJerseyCache();
+            JerseyColorSwapper.ClearCache();
             GoalieEquipmentSwapper.ClearEquipmentCache();
             GoalieHelmetSwapper.ClearHelmetCache();
             SkaterHelmetSwapper.ClearHelmetCache();
@@ -262,6 +265,7 @@ public static class SwapperManager
             try
             {
                 JerseySwapper.SetJerseyForPlayer(player);
+                JerseyColorSwapper.ApplyForPlayer(player);
             }
             catch (Exception e)
             {

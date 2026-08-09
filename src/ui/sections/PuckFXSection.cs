@@ -90,8 +90,16 @@ public static class PuckFXSection
         verticalityHeader.style.marginBottom = 4;
         contentScrollViewContent.Add(verticalityHeader);
 
-        var verticalityColorRow = UITools.CreateColorConfigurationRow(
-            "Line Color",
+        Label verticalityNote = UITools.CreateConfigurationLabel(
+            "The line blends from the start color (top) to the end color (bottom).");
+        verticalityNote.style.fontSize = 12;
+        verticalityNote.style.color = new Color(0.7f, 0.7f, 0.7f);
+        verticalityNote.style.whiteSpace = WhiteSpace.Normal;
+        verticalityNote.style.marginBottom = 4;
+        contentScrollViewContent.Add(verticalityNote);
+
+        var verticalityStartRow = UITools.CreateColorConfigurationRow(
+            "Start Color",
             ReskinProfileManager.currentProfile.puckFXVerticalityLineColor,
             true,
             newColor =>
@@ -101,7 +109,20 @@ public static class PuckFXSection
             },
             () => { ReskinProfileManager.SaveProfile(); }
         );
-        contentScrollViewContent.Add(verticalityColorRow);
+        contentScrollViewContent.Add(verticalityStartRow);
+
+        var verticalityEndRow = UITools.CreateColorConfigurationRow(
+            "End Color",
+            ReskinProfileManager.currentProfile.puckFXVerticalityLineEndColor,
+            true,
+            newColor =>
+            {
+                ReskinProfileManager.currentProfile.puckFXVerticalityLineEndColor = newColor;
+                PuckFXSwapper.ApplyAll();
+            },
+            () => { ReskinProfileManager.SaveProfile(); }
+        );
+        contentScrollViewContent.Add(verticalityEndRow);
 
         CreateSliderRow(
             contentScrollViewContent,
@@ -186,8 +207,16 @@ public static class PuckFXSection
         trailEnabledRow.Add(trailToggle);
         contentScrollViewContent.Add(trailEnabledRow);
 
-        var trailColorRow = UITools.CreateColorConfigurationRow(
-            "Trail Color",
+        Label trailGradientNote = UITools.CreateConfigurationLabel(
+            "The trail blends from the start color (head) to the end color (tail).");
+        trailGradientNote.style.fontSize = 12;
+        trailGradientNote.style.color = new Color(0.7f, 0.7f, 0.7f);
+        trailGradientNote.style.whiteSpace = WhiteSpace.Normal;
+        trailGradientNote.style.marginBottom = 4;
+        contentScrollViewContent.Add(trailGradientNote);
+
+        var trailStartRow = UITools.CreateColorConfigurationRow(
+            "Start Color",
             ReskinProfileManager.currentProfile.puckFXTrailColor,
             false,
             newColor =>
@@ -197,7 +226,20 @@ public static class PuckFXSection
             },
             () => { ReskinProfileManager.SaveProfile(); }
         );
-        contentScrollViewContent.Add(trailColorRow);
+        contentScrollViewContent.Add(trailStartRow);
+
+        var trailEndRow = UITools.CreateColorConfigurationRow(
+            "End Color",
+            ReskinProfileManager.currentProfile.puckFXTrailEndColor,
+            false,
+            newColor =>
+            {
+                ReskinProfileManager.currentProfile.puckFXTrailEndColor = newColor;
+                PuckFXSwapper.ApplyAll();
+            },
+            () => { ReskinProfileManager.SaveProfile(); }
+        );
+        contentScrollViewContent.Add(trailEndRow);
 
         CreateSliderRow(
             contentScrollViewContent,
@@ -296,14 +338,8 @@ public static class PuckFXSection
         contentScrollViewContent.Add(resetButton);
     }
 
-    /// <summary>
-    /// Syncs the game's own settings UI to reflect changes we made via SettingsManager.
-    /// The game UI only reads values on init, so we need to force a refresh.
-    /// </summary>
     private static void SyncGameSettingsUI()
     {
-        // In b310, settings UI is event-driven and auto-syncs via EventManager
-        // No explicit refresh needed
     }
 
     private static void CreateSliderRow(

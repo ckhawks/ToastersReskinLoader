@@ -1,5 +1,7 @@
-// MainMenuButtons — injects two optional shortcuts into the title screen
-// (UIMainMenu) right under the vanilla Play button:
+// MainMenuButtons — injects optional shortcuts into the title screen
+// (UIMainMenu) right under the vanilla Play button, and the LAST PLAYED
+// button into the play screen (UIPlay) right under the vanilla Practice
+// button:
 //
 //   * QUICK JOIN (default on)   — refresh the master server list, score
 //                                  every server that passes the user's
@@ -11,14 +13,16 @@
 //   * SERVER BROWSER (default off) — opens the vanilla UIServerBrowser
 //                                  from the title screen so the user
 //                                  doesn't have to step through Play.
+//   * LAST PLAYED (default off)  — on the play screen, under Practice.
+//                                  Joins the last server the player
+//                                  connected to directly; the remembered
+//                                  server name shows in the subtitle slot.
 //
-// Both buttons are styled to match the vanilla menu buttons by copying
-// the PlayButton's USS class list — that way they pick up whatever skin
-// the game / TR is currently rendering with. UIMainMenu.Initialize is
-// patched (postfix) to inject them; on first injection we cache the
-// MainMenu container + the original button index range so we can keep
-// the buttons in a sensible position even after vanilla updates the
-// layout.
+// Menu buttons are styled to match the vanilla buttons by copying the
+// USS class list — that way they pick up whatever skin the game / TR is
+// currently rendering with. The play-screen button is a native PlayButton
+// clone (container + button + the three named labels), so it matches the
+// surrounding play buttons exactly.
 //
 // Quick Join hijacks the UIMatchmaking panel briefly to show "FINDING
 // BEST SERVER…" while the refresh wave runs. The ServerSlotQueue uses
@@ -35,6 +39,7 @@ using HarmonyLib;
 using ToasterReskinLoader.serverbrowser;
 using UnityEngine;
 using UnityEngine.UIElements;
+using UI;
 
 using ToasterReskinLoader.core;
 
@@ -44,11 +49,14 @@ internal static class MainMenuButtons
 {
     private const string QuickJoinButtonName = "ToasterQuickJoinButton";
     private const string BrowserButtonName   = "ToasterMainMenuBrowserButton";
+    private const string QuickPlayButtonName = "ToasterQuickPlayButton";
 
     // Cached references — refreshed when the underlying buttons are
     // detached (e.g. after a panel rebuild).
     private static Button _quickJoinButton;
     private static Button _browserButton;
+    // LAST PLAYED lives on the play screen (UIPlay), under the Practice button.
+    private static VisualElement _quickPlayContainer;
 
     // Quick-join scoring config. The name bonus nudges official Toaster's
     // Rink servers up the ranking; they're named "Toaster's Rink …", not
@@ -84,6 +92,9 @@ internal static class MainMenuButtons
         try
         {
             EventManager.AddEventListener("Event_OnMainMenuShow", OnMainMenuShow);
+            // The play screen (where LAST PLAYED lives) opens from the main menu
+            // Play button — rebuild its buttons when that happens.
+            EventManager.AddEventListener("Event_OnMainMenuClickPlay", OnPlayShow);
             // Subscribe AFTER vanilla so our handler runs after vanilla
             // has shown UIPlay/UIPauseMenu — we can then swap to
             // MainMenu when the user opened the browser via our button.
@@ -93,6 +104,10 @@ internal static class MainMenuButtons
             // disconnected, etc.) so a stale flag doesn't survive long
             // enough to redirect a subsequent vanilla-opened close.
             EventManager.AddEventListener("Event_OnConnectionStateChanged", OnConnectionStateChanged);
+            // The server config sync (ServerManager.Server NetworkVariable) —
+            // fires on the client right after joining with the server's name,
+            // which Quick Play caches for its title-screen button label.
+            EventManager.AddEventListener("Event_Everyone_OnServerChanged", OnServerChanged);
             // The matchmaking panel's X button raises this event; we
             // use it to cancel an in-flight Quick Join. The slot queue
             // also listens but only acts when ITS state is active, so
@@ -111,8 +126,10 @@ internal static class MainMenuButtons
     public static void Teardown()
     {
         try { EventManager.RemoveEventListener("Event_OnMainMenuShow", OnMainMenuShow); } catch { }
+        try { EventManager.RemoveEventListener("Event_OnMainMenuClickPlay", OnPlayShow); } catch { }
         try { EventManager.RemoveEventListener("Event_OnServerBrowserClickClose", OnServerBrowserClose); } catch { }
         try { EventManager.RemoveEventListener("Event_OnConnectionStateChanged", OnConnectionStateChanged); } catch { }
+        try { EventManager.RemoveEventListener("Event_Everyone_OnServerChanged", OnServerChanged); } catch { }
         try { EventManager.RemoveEventListener("Event_OnMatchmakingMatchingClickClose", OnMatchmakingClose); } catch { }
     }
 
@@ -128,6 +145,12 @@ internal static class MainMenuButtons
     {
         try { RefreshForCurrentMenu(); }
         catch (Exception e) { Plugin.LogError("[QoL] OnMainMenuShow failed: " + e); }
+    }
+
+    private static void OnPlayShow(Dictionary<string, object> _)
+    {
+        try { RefreshForCurrentMenu(); }
+        catch (Exception e) { Plugin.LogError("[QoL] OnPlayShow failed: " + e); }
     }
 
     private static void OnServerBrowserClose(Dictionary<string, object> _)
@@ -157,6 +180,66 @@ internal static class MainMenuButtons
         // intent — by the time the browser is closeable again the user
         // is in a totally different flow.
         _openedFromMainMenu = false;
+
+        // Quick Play capture: when the connection flips to Connected, the
+        // dialed endpoint is the authoritative "last played" target (same
+        // source the game's own reconnect flow uses).
+        try
+        {
+            if (_ == null) return;
+            if (!_.TryGetValue("newConnectionState", out var raw) || raw is not ConnectionState cs) return;
+            if (cs.Phase != ConnectionPhase.Connected) return;
+            var ep = cs.Connection?.EndPoint;
+            if (ep == null || string.IsNullOrEmpty(ep.ipAddress) || ep.port == 0) return;
+
+            var cfg = Settings.Current;
+            if (cfg == null) return;
+            cfg.quickPlayLastServer ??= new QuickPlayServerInfo();
+            bool changed = cfg.quickPlayLastServer.IpAddress != ep.ipAddress
+                           || cfg.quickPlayLastServer.Port != ep.port;
+            cfg.quickPlayLastServer.IpAddress = ep.ipAddress;
+            cfg.quickPlayLastServer.Port = ep.port;
+            if (changed)
+            {
+                Settings.Save();
+                Plugin.Log($"[QoL] quick-play: last server endpoint = {ep.ipAddress}:{ep.port}");
+            }
+            RefreshForCurrentMenu();
+        }
+        catch (Exception e) { Plugin.LogWarning($"[QoL] quick-play endpoint capture failed: {e.Message}"); }
+    }
+
+    private static void OnServerChanged(Dictionary<string, object> message)
+    {
+        // Cache the friendly server name for the Quick Play button. The
+        // endpoint comes from the connection state (above); here we only
+        // take the struct's ip/port if we somehow missed the Connected
+        // capture (e.g. the mod was enabled mid-session).
+        try
+        {
+            if (message == null) return;
+            if (!message.TryGetValue("newServer", out var raw) || raw is not Server srv) return;
+
+            var cfg = Settings.Current;
+            if (cfg == null) return;
+            cfg.quickPlayLastServer ??= new QuickPlayServerInfo();
+
+            if (string.IsNullOrEmpty(cfg.quickPlayLastServer.IpAddress) && srv.IpAddress.Length > 0)
+            {
+                cfg.quickPlayLastServer.IpAddress = srv.IpAddress.ToString();
+                cfg.quickPlayLastServer.Port = srv.Port;
+            }
+
+            string name = srv.Name.ToString();
+            if (!string.IsNullOrEmpty(name) && cfg.quickPlayLastServer.Name != name)
+            {
+                cfg.quickPlayLastServer.Name = name;
+                Settings.Save();
+                Plugin.Log($"[QoL] quick-play: last server name = {name}");
+            }
+            RefreshForCurrentMenu();
+        }
+        catch (Exception e) { Plugin.LogWarning($"[QoL] quick-play name capture failed: {e.Message}"); }
     }
 
     // Public so the QoL settings toggles can ask us to re-apply state
@@ -165,13 +248,14 @@ internal static class MainMenuButtons
     {
         try
         {
-            var menu = MonoBehaviourSingleton<UIManager>.Instance?.MainMenu;
-            if (menu == null)
+            var ui = MonoBehaviourSingleton<UIManager>.Instance;
+            if (ui == null)
             {
-                Plugin.Log("[QoL] MainMenuButtons: UIManager.MainMenu is null, skipping inject");
+                Plugin.Log("[QoL] MainMenuButtons: UIManager is null, skipping inject");
                 return;
             }
-            RebuildButtons(menu);
+            if (ui.MainMenu != null) RebuildButtons(ui.MainMenu);
+            if (ui.Play != null) RebuildPlayButtons(ui.Play);
         }
         catch (Exception e) { Plugin.LogError("[QoL] MainMenuButtons refresh failed: " + e); }
     }
@@ -209,8 +293,8 @@ internal static class MainMenuButtons
             if (_quickJoinButton == null || _quickJoinButton.parent != mainMenuContainer)
             {
                 _quickJoinButton = MakeMenuButton(playButton, "QUICK JOIN", QuickJoinButtonName, OnClickQuickJoin);
-                int idx = mainMenuContainer.IndexOf(playButton) + 1;
-                mainMenuContainer.Insert(idx, _quickJoinButton);
+                int anchor = mainMenuContainer.IndexOf(playButton) + 1;
+                mainMenuContainer.Insert(anchor, _quickJoinButton);
             }
         }
         else if (_quickJoinButton != null)
@@ -219,7 +303,7 @@ internal static class MainMenuButtons
             _quickJoinButton = null;
         }
 
-        // Server Browser button — slot immediately after Quick Join.
+        // Server Browser button — slot after Quick Join.
         if (cfg.enableMainMenuServerBrowser)
         {
             if (_browserButton == null || _browserButton.parent != mainMenuContainer)
@@ -236,6 +320,162 @@ internal static class MainMenuButtons
             _browserButton.RemoveFromHierarchy();
             _browserButton = null;
         }
+    }
+
+    // Clean (rich-text-stripped) name of the remembered server, or null
+    // when Quick Play has nothing to join yet.
+    private static string GetQuickPlayServerName(SettingsConfig cfg)
+    {
+        var last = cfg?.quickPlayLastServer;
+        if (last == null || string.IsNullOrEmpty(last.IpAddress) || string.IsNullOrEmpty(last.Name))
+            return null;
+        string clean = Regex.Replace(last.Name, "<.*?>", "").Trim();
+        return string.IsNullOrEmpty(clean) ? null : clean;
+    }
+
+    // ─────────────────────── play screen (LAST PLAYED) ──────────────────────
+
+    private static void RebuildPlayButtons(UIPlay uiPlay)
+    {
+        var cfg = Settings.Current;
+        if (cfg == null) return;
+
+        var playView = (VisualElement)typeof(UIView)
+            .GetProperty("View", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)
+            ?.GetValue(uiPlay);
+        if (playView == null) return;
+
+        var playContainer = playView.Q<VisualElement>("Play");
+        if (playContainer == null) return;
+
+        var practiceContainer = playContainer.Q<TemplateContainer>("PracticePlayButtonContainer");
+        if (practiceContainer == null) return;
+
+        var serverBrowserContainer = playContainer.Q<TemplateContainer>("ServerBrowserPlayButtonContainer");
+
+        // Style reference: the native SpectatorButton from the team-select screen.
+        Button spectatorButton = null;
+        try
+        {
+            var teamSelect = MonoBehaviourSingleton<UIManager>.Instance?.TeamSelect;
+            if (teamSelect != null)
+            {
+                var teamSelectView = (VisualElement)typeof(UIView)
+                    .GetProperty("View", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)
+                    ?.GetValue(teamSelect);
+                spectatorButton = teamSelectView?.Q<VisualElement>("TeamSelect")?.Q<Button>("SpectatorButton");
+            }
+        }
+        catch (Exception e)
+        {
+            Plugin.LogWarning($"[QoL] Could not resolve SpectatorButton style: {e.Message}");
+        }
+
+        if (cfg.enableMainMenuQuickPlay)
+        {
+            if (_quickPlayContainer == null || _quickPlayContainer.parent != playContainer)
+            {
+                _quickPlayContainer = MakePlayButton(playContainer, practiceContainer, serverBrowserContainer, spectatorButton, cfg);
+                playContainer.Add(_quickPlayContainer);
+            }
+            else
+            {
+                UpdatePlayButtonSubtitle(_quickPlayContainer, cfg);
+            }
+        }
+        else if (_quickPlayContainer != null)
+        {
+            _quickPlayContainer.RemoveFromHierarchy();
+            _quickPlayContainer = null;
+        }
+    }
+
+    private const float LastPlayedGap = 10f;
+
+    private static VisualElement MakePlayButton(
+        VisualElement playContainer,
+        TemplateContainer practiceContainer,
+        TemplateContainer serverBrowserContainer,
+        Button spectatorButton,
+        SettingsConfig cfg)
+    {
+        var container = new VisualElement
+        {
+            name = "ToasterLastPlayedContainer",
+            pickingMode = PickingMode.Position,
+        };
+        container.style.position = Position.Absolute;
+        container.style.left = 0;
+        container.style.top = 0;
+
+        var btn = new Button(OnClickQuickPlay)
+        {
+            name = QuickPlayButtonName,
+        };
+        if (spectatorButton != null)
+        {
+            foreach (var cls in spectatorButton.GetClasses())
+                btn.AddToClassList(cls);
+        }
+        // The SpectatorButton classes carry list-spacing margins; we own the gap.
+        btn.style.marginTop = 0;
+        btn.style.marginBottom = 0;
+        btn.style.marginLeft = 0;
+        btn.style.marginRight = 0;
+        btn.text = BuildLastPlayedText(cfg);
+        container.Add(btn);
+
+        PositionAndSizeBelowPractice(container, btn, playContainer, practiceContainer, serverBrowserContainer);
+        return container;
+    }
+
+    private static string BuildLastPlayedText(SettingsConfig cfg)
+    {
+        string name = GetQuickPlayServerName(cfg);
+        return string.IsNullOrEmpty(name) ? "LAST PLAYED" : $"LAST PLAYED:  {name}";
+    }
+
+    private static void PositionAndSizeBelowPractice(
+        VisualElement container, VisualElement btn,
+        VisualElement playContainer, TemplateContainer practiceContainer,
+        TemplateContainer serverBrowserContainer)
+    {
+        void TryPosition()
+        {
+            var pb = practiceContainer.worldBound;
+            if (pb.width <= 1f || pb.height <= 1f) return;
+
+            float spanLeft = pb.x;
+            float spanRight = pb.xMax;
+            if (serverBrowserContainer != null)
+            {
+                var sb = serverBrowserContainer.worldBound;
+                if (sb.width > 1f) spanRight = sb.xMax;
+            }
+            float spanWidth = spanRight - spanLeft;
+
+            var cell = playContainer != null ? playContainer.worldBound : pb;
+            float top = (pb.yMax - cell.y) + LastPlayedGap;
+            container.style.left = spanLeft - cell.x;
+            container.style.top = top;
+            container.style.width = spanWidth;
+            btn.style.width = spanWidth;
+        }
+
+        btn.RegisterCallback<GeometryChangedEvent>(_ => TryPosition());
+        // Retry until the play screen has laid out (world bounds valid).
+        for (int i = 1; i <= 8; i++)
+        {
+            int delay = i * 250;
+            btn.schedule.Execute(TryPosition).ExecuteLater(delay);
+        }
+    }
+
+    private static void UpdatePlayButtonSubtitle(VisualElement container, SettingsConfig cfg)
+    {
+        var label = container.Q<Label>();
+        if (label == null) return;
+        label.text = BuildLastPlayedText(cfg);
     }
 
     // Clones the vanilla PlayButton's class list so the new buttons
@@ -287,6 +527,42 @@ internal static class MainMenuButtons
             _qjCts = null;
             Plugin.LogError("[QoL] quick-join kickoff failed: " + e);
         }
+    }
+
+    private static void OnClickQuickPlay()
+    {
+        try
+        {
+            var cfg = Settings.Current;
+            var last = cfg?.quickPlayLastServer;
+            if (last == null || string.IsNullOrEmpty(last.IpAddress) || last.Port == 0)
+            {
+                var ui = MonoBehaviourSingleton<UIManager>.Instance;
+                if (ui?.ToastManager != null)
+                {
+                    ui.ToastManager.ShowToast(
+                        "Quick Play",
+                        "No server played yet — join a server once and it'll be remembered here.",
+                        4f);
+                }
+                Plugin.Log("[QoL] quick-play: no last server recorded yet");
+                return;
+            }
+
+            // Reuse a saved password for the target when the user opted in.
+            string key = last.IpAddress + ":" + last.Port;
+            string password = cfg.savedServerPasswords?.TryGetValue(key, out var pw) == true ? pw : "";
+
+            var cm = MonoBehaviourSingleton<ConnectionManager>.Instance;
+            if (cm == null)
+            {
+                Plugin.LogError("[QoL] quick-play: ConnectionManager null, cannot join");
+                return;
+            }
+            Plugin.Log($"[QoL] quick-play: Client_StartClient({key}, pw={(string.IsNullOrEmpty(password) ? "no" : "yes")})");
+            cm.Client_StartClient(last.IpAddress, last.Port, password);
+        }
+        catch (Exception e) { Plugin.LogError("[QoL] quick-play failed: " + e); }
     }
 
     // ──────────────────────── quick-join flow ─────────────────────────────

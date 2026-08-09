@@ -120,6 +120,18 @@ public class SettingsConfig
     // already exposes one inside the Play sub-menu, this is a shortcut
     // for users who'd rather skip it).
     public bool enableMainMenuServerBrowser = false;
+    // Title-screen Quick Play button: directly joins the last server the
+    // player connected to, without a server-list refresh. The cached
+    // server name is shown on the button. Default off — auto-connecting
+    // straight off the title screen is a big action to take unprompted
+    // (same reasoning as Quick Join).
+    [JsonProperty("enableMainMenuQuickPlayV2")]
+    public bool enableMainMenuQuickPlay = false;
+    // Last server the player actually connected to (ip:port captured at
+    // the Connected phase, name from the server-config sync). Per-server
+    // data — round-trips through ServerPrefs.json like the other server
+    // stores, so it stays out of the shareable QoL file.
+    [JsonIgnore] public QuickPlayServerInfo quickPlayLastServer;
     // Game-UI text shadow — single toggle that adds a CSS-like
     // text-shadow to the in-game score / period / clock labels AND to
     // every chat message label.

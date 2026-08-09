@@ -45,6 +45,7 @@ internal static class SettingsStorage
             cfg.trustedServerMods    = prefs.TrustedServerMods    ?? new Dictionary<string, string>();
             cfg.favoriteServers      = prefs.FavoriteServers      ?? new Dictionary<string, string>();
             cfg.blockedServers       = prefs.BlockedServers       ?? new Dictionary<string, string>();
+            cfg.quickPlayLastServer  = prefs.LastPlayedServer     ?? new QuickPlayServerInfo();
             return cfg;
         }
         catch (Exception e)
@@ -77,6 +78,7 @@ internal static class SettingsStorage
                 BlockedServers = cfg.blockedServers != null
                     ? new Dictionary<string, string>(cfg.blockedServers)
                     : new Dictionary<string, string>(),
+                LastPlayedServer = cfg.quickPlayLastServer ?? new QuickPlayServerInfo(),
             };
             File.WriteAllText(ServerPrefsPath, JsonConvert.SerializeObject(prefs, JsonSettings));
         }

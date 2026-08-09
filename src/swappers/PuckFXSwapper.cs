@@ -123,13 +123,13 @@ public static class PuckFXSwapper
             LineRenderer lineRenderer =
                 (LineRenderer)_lineRendererField.GetValue(puckElevationIndicator);
 
-            lineRenderer.material.color = lineColor;
             var gradient = new Gradient();
             gradient.colorKeys = new[]
             {
-                new GradientColorKey(Color.white, 0f),
-                new GradientColorKey(Color.white, 1f)
+                new GradientColorKey(lineColor, 0f),
+                new GradientColorKey(profile.puckFXVerticalityLineEndColor, 1f)
             };
+            lineRenderer.material.color = Color.white;
             gradient.alphaKeys = new[]
             {
                 new GradientAlphaKey(profile.puckFXVerticalityLineStartAlpha, 0f),
@@ -191,14 +191,13 @@ public static class PuckFXSwapper
             trail.startWidth = profile.puckFXTrailStartWidth;
             trail.endWidth = profile.puckFXTrailEndWidth;
 
-            var c = profile.puckFXTrailColor;
-            var rgb = new Color(c.r, c.g, c.b);
+            var startRgb = new Color(profile.puckFXTrailColor.r, profile.puckFXTrailColor.g, profile.puckFXTrailColor.b);
             trail.colorGradient = new Gradient
             {
                 colorKeys = new[]
                 {
-                    new GradientColorKey(rgb, 0f),
-                    new GradientColorKey(rgb, 1f),
+                    new GradientColorKey(startRgb, 0f),
+                    new GradientColorKey(profile.puckFXTrailEndColor, 1f),
                 },
                 alphaKeys = new[]
                 {

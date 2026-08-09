@@ -166,6 +166,9 @@ public static class ChangingRoomHelper
             var playerMesh = GetPlayerMesh();
             if (playerMesh != null)
             {
+                // Jersey/pants team-color tint (vanilla jerseys only — custom reskins untouched)
+                JerseyColorSwapper.ApplyForMesh(playerMesh, team, role);
+
                 // Helmet/mask/cage colors (patches apply textures but not standalone colors)
                 ApplyHelmetColors(playerMesh, team, role);
 

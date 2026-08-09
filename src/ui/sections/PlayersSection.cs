@@ -185,6 +185,102 @@ public static class PlayersSection
         colorRow.style.opacity = colorEnabled ? 1f : 0.5f;
         resetColorBtn.SetEnabled(colorEnabled);
         resetColorBtn.style.opacity = colorEnabled ? 1f : 0.5f;
+
+        RenderJerseyColorControls(profile, blue);
+    }
+
+    // "Enable custom torso/groin color" — colored areas of the equipped jersey texture
+    // (vanilla or custom reskin) become exactly the chosen color; whites/blacks stay.
+    // The "Use team color" child makes it follow the custom team color instead.
+    // Standard color row, same as every other color in the mod.
+    private static void RenderJerseyColorControls(ReskinProfileManager.Profile profile, bool blue)
+    {
+        bool enabled = blue ? profile.blueJerseyColorEnabled : profile.redJerseyColorEnabled;
+        bool useTeamColor = blue ? profile.blueJerseyUseTeamColor : profile.redJerseyUseTeamColor;
+
+        var jerseyRow = UITools.CreateConfigurationRow();
+        jerseyRow.style.marginTop = 8;
+        jerseyRow.Add(UITools.CreateConfigurationLabel("Enable custom torso/groin color"));
+        var jerseyToggle = UITools.CreateConfigurationCheckbox(enabled);
+        jerseyToggle.RegisterValueChangedCallback(evt =>
+        {
+            if (blue) profile.blueJerseyColorEnabled = evt.newValue;
+            else      profile.redJerseyColorEnabled  = evt.newValue;
+            RefreshTeamColors();
+            Render(); // refresh the toggle + dim state
+        });
+        jerseyRow.Add(jerseyToggle);
+        _root.Add(jerseyRow);
+
+        // Child checkbox: adopt the custom team color instead of the picked color.
+        var useTeamRow = UITools.CreateConfigurationRow();
+        useTeamRow.style.marginLeft = 20; // indented under the master toggle
+        var useTeamLabel = UITools.CreateConfigurationLabel("Use team color");
+        useTeamLabel.style.fontSize = 14;
+        useTeamRow.Add(useTeamLabel);
+        var useTeamToggle = UITools.CreateConfigurationCheckbox(useTeamColor);
+        useTeamToggle.RegisterValueChangedCallback(evt =>
+        {
+            if (blue) profile.blueJerseyUseTeamColor = evt.newValue;
+            else      profile.redJerseyUseTeamColor  = evt.newValue;
+            RefreshTeamColors();
+            Render(); // refresh the dim state of the color row
+        });
+        useTeamRow.Add(useTeamToggle);
+        _root.Add(useTeamRow);
+
+        Label jerseyNote = UITools.CreateConfigurationLabel(
+            "Applies this exact color to the jersey and pants (vanilla and custom "
+            + "jerseys). The texture keeps its shading pick the same color as the "
+            + "vanilla jersey or team color and it looks identical.");
+        jerseyNote.style.fontSize = 12;
+        jerseyNote.style.color = new Color(0.7f, 0.7f, 0.7f);
+        jerseyNote.style.whiteSpace = WhiteSpace.Normal;
+        jerseyNote.style.marginBottom = 4;
+        _root.Add(jerseyNote);
+
+        // Debounce: while dragging, only the preview + profile update per tick;
+        // the actual texture recolor runs 150ms after the last change (and on
+        // release), so live feedback stays but the heavy work doesn't stutter.
+        var pendingApply = false;
+        VisualElement debounceAnchor = _root;
+
+        void RequestApply()
+        {
+            if (pendingApply) return;
+            pendingApply = true;
+            debounceAnchor.schedule.Execute(() =>
+            {
+                pendingApply = false;
+                try { JerseyColorSwapper.ApplyAll(); } catch { }
+            }).ExecuteLater(150);
+        }
+
+        var colorRow = UITools.CreateColorConfigurationRow(
+            "Jersey color",
+            blue ? profile.blueJerseyColor : profile.redJerseyColor,
+            false,
+            c =>
+            {
+                if (blue) profile.blueJerseyColor = c;
+                else      profile.redJerseyColor  = c;
+                RequestApply();
+            },
+            // NOTE: CreateColorConfigurationRow fires onSave on EVERY change, not
+            // just release — keep it to the cheap profile save; the heavy texture
+            // recolor stays on the debounce above.
+            () => ReskinProfileManager.SaveProfile()
+        );
+        _root.Add(colorRow);
+
+        // Dim + disable the color row unless the master checkbox is on and the
+        // team-color mode isn't overriding it. The child checkbox is only usable
+        // when the master is on.
+        bool colorUsable = enabled && !useTeamColor;
+        colorRow.SetEnabled(colorUsable);
+        colorRow.style.opacity = colorUsable ? 1f : 0.5f;
+        useTeamRow.SetEnabled(enabled);
+        useTeamRow.style.opacity = enabled ? 1f : 0.5f;
     }
 
     private static void RefreshTeamColors()

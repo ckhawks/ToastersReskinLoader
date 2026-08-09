@@ -159,6 +159,9 @@ public static class ToasterReskinLoaderAPI
             // Refresh TRL's own UI overrides
             swappers.TeamColorSwapper.RefreshAll();
 
+            // Re-tint vanilla jerseys/pants with the new team colors
+            swappers.JerseyColorSwapper.ApplyAll();
+
             // Notify external mods
             OnTeamColorsChanged?.Invoke();
         }

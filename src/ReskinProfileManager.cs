@@ -328,6 +328,14 @@ public static class ReskinProfileManager
             profile.puckList = new List<ReskinRegistry.ReskinEntry> { profile.puck };
             Plugin.Log("Migrated old single puck entry to new puck randomizer list");
         }
+
+        // Legacy gradient migration: profiles saved before gradients existed only stored
+        // the single start color. Fill the end colors from the start colors so the
+        // always-on gradient is seamless — same color both ends = identical to old look.
+        if (root["puckFXVerticalityLineEndColor"] == null)
+            profile.puckFXVerticalityLineEndColor = profile.puckFXVerticalityLineColor;
+        if (root["puckFXTrailEndColor"] == null)
+            profile.puckFXTrailEndColor = profile.puckFXTrailColor;
     }
 
     public static void SaveProfile()
@@ -702,6 +710,8 @@ public static class ReskinProfileManager
         currentProfile.puckFXTrailStartAlpha = defaultValues.puckFXTrailStartAlpha;
         currentProfile.puckFXTrailEndAlpha = defaultValues.puckFXTrailEndAlpha;
         currentProfile.puckFXSilhouetteColor = defaultValues.puckFXSilhouetteColor;
+        currentProfile.puckFXVerticalityLineEndColor = defaultValues.puckFXVerticalityLineEndColor;
+        currentProfile.puckFXTrailEndColor = defaultValues.puckFXTrailEndColor;
 
         SaveProfile();
 
@@ -724,6 +734,13 @@ public static class ReskinProfileManager
         currentProfile.redTeamColor = defaultValues.redTeamColor;
         currentProfile.blueTeamName = defaultValues.blueTeamName;
         currentProfile.redTeamName = defaultValues.redTeamName;
+
+        currentProfile.blueJerseyColorEnabled = defaultValues.blueJerseyColorEnabled;
+        currentProfile.redJerseyColorEnabled = defaultValues.redJerseyColorEnabled;
+        currentProfile.blueJerseyColor = defaultValues.blueJerseyColor;
+        currentProfile.redJerseyColor = defaultValues.redJerseyColor;
+        currentProfile.blueJerseyUseTeamColor = defaultValues.blueJerseyUseTeamColor;
+        currentProfile.redJerseyUseTeamColor = defaultValues.redJerseyUseTeamColor;
 
         SaveProfile();
 
@@ -1126,6 +1143,22 @@ public static class ReskinProfileManager
         [PresetField("Team Colors", "Name")]
         public string redTeamName = "";
 
+        // Torso/groin recolor — colored areas of the equipped jersey texture (vanilla
+        // or custom reskin) become exactly the chosen color; whites/blacks stay, so
+        // the style remains. "Use team color" makes it follow the custom team color.
+        [PresetField("Team Colors", "Custom torso/groin color enabled")]
+        public bool blueJerseyColorEnabled = false;
+        [PresetField("Team Colors", "Custom torso/groin color enabled")]
+        public bool redJerseyColorEnabled = false;
+        [PresetField("Team Colors", "Jersey color")]
+        public Color blueJerseyColor = new Color(0.231f, 0.510f, 0.965f, 1f); // matches blueTeamColor
+        [PresetField("Team Colors", "Jersey color")]
+        public Color redJerseyColor = new Color(0.820f, 0.200f, 0.200f, 1f);  // matches redTeamColor
+        [PresetField("Team Colors", "Use team color")]
+        public bool blueJerseyUseTeamColor = false;
+        [PresetField("Team Colors", "Use team color")]
+        public bool redJerseyUseTeamColor = false;
+
         // Minimap moved to the QoL profile (HUD) — see SettingsConfig.
 
         // Chat moved to the QoL profile (HUD) — see SettingsConfig.
@@ -1177,6 +1210,14 @@ public static class ReskinProfileManager
         public float puckFXTrailEndAlpha = 0f;
         [PresetField("Puck FX", "Silhouette color")]
         public Color puckFXSilhouetteColor = new Color(1f, 1f, 1f, 0.502f);
+
+        // Gradient colors for FX that support multi-color gradients (trail, verticality line).
+        // Always on — old profiles get end = start via ApplyLegacyMigrations.
+        [PresetField("Puck FX", "Verticality line end color")]
+        public Color puckFXVerticalityLineEndColor = new Color(0f, 0f, 0f, 0.8f);
+        [PresetField("Puck FX", "Trail end color")]
+        public Color puckFXTrailEndColor = Color.black;
+
         // Shrinks the visible puck body mesh by 1% so it stops clipping into the
         // stick at contact. Cosmetic only — the collider is on the puck root, not the
         // body mesh child, so physics/hitreg are unaffected. Default on.

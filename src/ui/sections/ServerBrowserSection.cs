@@ -43,6 +43,15 @@ public static class ServerBrowserSection
             });
         SettingsUI.Note(root,
             "Refreshes the list and connects to the best-populated server matching your saved filters.");
+        SettingsUI.ToggleRow(root, "Play screen Last Played button", cfg.enableMainMenuQuickPlay,
+            v =>
+            {
+                cfg.enableMainMenuQuickPlay = v;
+                Settings.Save();
+                MainMenuButtons.RefreshForCurrentMenu();
+            });
+        SettingsUI.Note(root,
+            "Adds a LAST PLAYED button under Practice on the play screen — joins the last server you played on directly. The server name is shown on the button.");
         SettingsUI.ToggleRow(root, "Title-screen Server Browser button", cfg.enableMainMenuServerBrowser,
             v =>
             {
