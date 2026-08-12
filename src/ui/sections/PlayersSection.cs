@@ -256,6 +256,20 @@ public static class PlayersSection
             }).ExecuteLater(150);
         }
 
+        // SaveProfile on every slider tick is a full JSON write per tick — debounce
+        // it the same way so a drag ends with one save instead of dozens.
+        var saveScheduled = false;
+        void RequestSave()
+        {
+            if (saveScheduled) return;
+            saveScheduled = true;
+            debounceAnchor.schedule.Execute(() =>
+            {
+                saveScheduled = false;
+                ReskinProfileManager.SaveProfile();
+            }).ExecuteLater(300);
+        }
+
         var colorRow = UITools.CreateColorConfigurationRow(
             "Jersey color",
             blue ? profile.blueJerseyColor : profile.redJerseyColor,
@@ -266,10 +280,9 @@ public static class PlayersSection
                 else      profile.redJerseyColor  = c;
                 RequestApply();
             },
-            // NOTE: CreateColorConfigurationRow fires onSave on EVERY change, not
-            // just release — keep it to the cheap profile save; the heavy texture
-            // recolor stays on the debounce above.
-            () => ReskinProfileManager.SaveProfile()
+            // CreateColorConfigurationRow fires onSave on every change AND on
+            // release — debounce it so only the final value hits disk.
+            RequestSave
         );
         _root.Add(colorRow);
 
@@ -449,6 +462,10 @@ public static class PlayersSection
             var chosen = evt.newValue;
             field.SetValue(profile, chosen != null && chosen.Path != null ? chosen : null);
             ReskinProfileManager.SaveProfile();
+            // Live-apply stick changes (the player editor skips the old
+            // SticksSection handler that triggers the swappers).
+            if (field.ReskinType is "stick_attacker" or "stick_goalie")
+                NotifyStickChanged(field);
             Preview();
         });
 
@@ -488,6 +505,9 @@ public static class PlayersSection
             var from = others[idx];
             int n = ProfileTeamTools.CopyCell(from.Team, from.Role, _team, _role);
             ReskinProfileManager.SaveProfile();
+            // Copying a cell can change stick skins — apply them live.
+            foreach (var f in CellFields(_team, _role).Where(f => f.ReskinType is "stick_attacker" or "stick_goalie"))
+                NotifyStickChanged(f);
             Toast("Copied", $"Copied {n} setting{(n == 1 ? "" : "s")} from {CellLabel(from)}.");
             Render(); // refresh control values + preview
         });
@@ -554,6 +574,22 @@ public static class PlayersSection
 
     private static PlayerTeam ToPlayerTeam(PresetTeam t) => t == PresetTeam.Red ? PlayerTeam.Red : PlayerTeam.Blue;
     private static PlayerRole ToPlayerRole(PresetRole r) => r == PresetRole.Goalie ? PlayerRole.Goalie : PlayerRole.Attacker;
+
+    private static void NotifyStickChanged(PresetField field)
+    {
+        if (field.Id.Contains("Personal"))
+        {
+            SwapperManager.OnPersonalStickChanged();
+        }
+        else if (field.Team == PresetTeam.Blue)
+        {
+            SwapperManager.OnBlueTeamStickChanged();
+        }
+        else
+        {
+            SwapperManager.OnRedTeamStickChanged();
+        }
+    }
 
     private static void Preview()
     {

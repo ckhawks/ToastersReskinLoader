@@ -263,6 +263,10 @@ public static class ArenaSwapper
     // Barrier Top, Barrier Bottom, Ice Bottom/Top), so we locate arena surfaces by
     // material instead — resilient to the node restructure.
 
+    // Public so IceSwapper can share the same material-based lookup.
+    public static List<MeshRenderer> FindRenderersByMaterialName(params string[] materialNames)
+        => FindRenderersByMaterial(materialNames);
+
     private static List<MeshRenderer> FindRenderersByMaterial(params string[] materialNames)
     {
         var result = new List<MeshRenderer>();
@@ -328,12 +332,22 @@ public static class ArenaSwapper
         {
             var p = ReskinProfileManager.currentProfile;
 
-            // Glass smoothness — every renderer using the Glass material.
+            // Glass smoothness — every renderer using the Glass material. The arena
+            // shader is metallic-roughness, so set both _Smoothness (URP Lit) and
+            // roughnessFactor (glTF PBR), and force the float through any bound
+            // gloss map.
+            float smoothness = p.glassSmoothness;
+            float roughness = 1f - smoothness;
             foreach (var mr in FindRenderersByMaterial("Glass"))
             {
                 var mat = mr.material;
-                if (mat != null && mat.HasProperty("_Smoothness"))
-                    mat.SetFloat("_Smoothness", p.glassSmoothness);
+                if (mat == null) continue;
+                if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", smoothness);
+                if (mat.HasProperty("roughnessFactor")) mat.SetFloat("roughnessFactor", roughness);
+                mat.DisableKeyword("_METALLICSPECGLOSSMAP");
+                mat.DisableKeyword("_SPECGLOSSMAP");
+                mat.DisableKeyword("_METALLICGLOSSMAP");
+                mat.DisableKeyword("_SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A");
             }
 
             // Pillars color.

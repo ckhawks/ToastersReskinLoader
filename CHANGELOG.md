@@ -1,5 +1,38 @@
 # Changelog
 
+## 2.4.5
+
+### Added
+- **Puck FX gradients** (Puck FX). The verticality line and puck trail now blend
+  between a Start and End color instead of a single flat color. Always on —
+  profiles saved before gradients existed get their end colors filled from the
+  old single color automatically, so nothing changes until you touch the sliders.
+- **Last Played button on the play screen** (Server Browser settings, off by
+  default). A button under the Practice/Server Browser cards that joins the last
+  server you connected to directly — no server-list refresh. The remembered
+  server name shows on the button, and the endpoint persists in ServerPrefs.json.
+- **Custom torso/groin color** (Players). Recolor the jersey and pants — vanilla
+  or custom reskins — to a picked color: hue and saturation are applied exactly
+  while the texture keeps its shading, so a matching pick looks identical to the
+  vanilla jersey. Black and white work too. "Use team color" makes it follow the
+  custom team color instead of the picked one.
+
+### Fixed
+- **Stick skin changes now apply live from the Player editor.** Changing a stick
+  skin in the Players section re-applies the stick immediately, mid-match and in
+  the locker room — the game itself only re-applied on respawn. Switching a slot
+  back to "Unchanged" also shows the current vanilla skin instead of the stale
+  pre-match one, and the Copy-from action refreshes sticks too.
+- **Arena ice and glass smoothness sliders actually do something.** The arena's
+  metallic-roughness shader reads `roughnessFactor`, not `_Smoothness` — both are
+  now set, and the gloss-map keywords are disabled so the slider value wins.
+  Ice is located by material name (robust to the rebuilt rink) instead of
+  `GameObject.Find`.
+- **Jersey color sliders no longer write the profile on every tick.** Dragging
+  the torso/groin color saved the full profile on every slider event; the save is
+  now debounced the same way the texture recolor is, so a drag ends with one
+  write instead of dozens.
+
 ## 2.4.4
 
 ### Fixed

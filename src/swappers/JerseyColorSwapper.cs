@@ -125,15 +125,13 @@ namespace ToasterReskinLoader.swappers
         }
 
         // Background thread: pure CPU math, no Unity API that touches the GPU.
-        // Gentle recolor: colored pixels take the target color's HUE exactly, while
-        // their saturation blends halfway toward the target's and their brightness
-        // is kept — so the jersey clearly takes the picked color but the texture's
-        // own shading and color variation stay (no flat paint-over). A pixel that
-        // already matches the picked color is unchanged, so picking the vanilla
-        // jersey color (or the team color) leaves the normal jersey looking
-        // identical. Whites/blacks (saturation below the threshold) are untouched.
-        private static Color[] RecolorLoop(Color[] src, float targetHue01, float targetSat01)
+        // Colored pixels take the target color's HUE and SATURATION exactly, keeping
+        // their own brightness so the texture's shading stays visible. Achromatic
+        // targets (black/white/gray) have no meaningful hue, so they desaturate
+        // fully and take the target's value — black becomes black, white white.
+        private static Color[] RecolorLoop(Color[] src, float targetHue01, float targetSat01, float targetVal01)
         {
+            bool achromatic = targetSat01 < 0.05f;
             var dst = new Color[src.Length];
             for (int i = 0; i < src.Length; i++)
             {
@@ -141,8 +139,9 @@ namespace ToasterReskinLoader.swappers
                 Color.RGBToHSV(c, out _, out float s, out float v);
                 if (s > 0.08f)
                 {
-                    float blendedSat = Mathf.Lerp(s, targetSat01, 0.5f);
-                    var rgb = Color.HSVToRGB(targetHue01, blendedSat, v);
+                    float sat = achromatic ? 0f : targetSat01;
+                    float val = achromatic ? targetVal01 : v;
+                    var rgb = Color.HSVToRGB(targetHue01, sat, val);
                     rgb.a = c.a;
                     dst[i] = rgb;
                 }
@@ -154,16 +153,17 @@ namespace ToasterReskinLoader.swappers
             return dst;
         }
 
-        private static string BuildKey(Texture source, float targetHue01, float targetSat01)
+        private static string BuildKey(Texture source, float targetHue01, float targetSat01, float targetVal01)
         {
             return source.GetInstanceID() + "|recolor|"
                 + Mathf.RoundToInt(targetHue01 * 360f) + "|"
-                + Mathf.RoundToInt(targetSat01 * 100f);
+                + Mathf.RoundToInt(targetSat01 * 100f) + "|"
+                + Mathf.RoundToInt(targetVal01 * 100f);
         }
 
         private static void ApplyPart(
             PlayerMesh mesh, ulong playerId, PlayerTeam team, string part,
-            bool enabled, float targetHue01, float targetSat01)
+            bool enabled, float targetHue01, float targetSat01, float targetVal01)
         {
             if (mesh == null) return;
             var texturer = GetPartTexturer(mesh, part);
@@ -201,7 +201,7 @@ namespace ToasterReskinLoader.swappers
 
             if (baseTex == null) return;
 
-            string key = BuildKey(baseTex, targetHue01, targetSat01);
+            string key = BuildKey(baseTex, targetHue01, targetSat01, targetVal01);
 
             // Already recolored — apply immediately.
             if (shiftedTextureCache.TryGetValue(key, out var ready))
@@ -223,12 +223,12 @@ namespace ToasterReskinLoader.swappers
             }
 
             Color[] src = baseReadable.GetPixels(); // main-thread memcpy (safe)
-            float hue = targetHue01, sat = targetSat01;
+            float hue = targetHue01, sat = targetSat01, val = targetVal01;
             try
             {
                 Task.Run(() =>
                 {
-                    Color[] dst = RecolorLoop(src, hue, sat);
+                    Color[] dst = RecolorLoop(src, hue, sat, val);
                     MainThreadDispatcher.Run(() =>
                     {
                         try
@@ -325,14 +325,15 @@ namespace ToasterReskinLoader.swappers
                 // Target: the custom team color, or the picked jersey color. Its HUE
                 // and SATURATION are applied exactly — the texture keeps its own
                 // brightness/shading, so a matching color looks identical to the
-                // normal jersey.
+                // normal jersey. Black/white picks also pull brightness toward the
+                // target (see RecolorLoop).
                 Color target = (blue ? profile.blueJerseyUseTeamColor : profile.redJerseyUseTeamColor)
                     ? (blue ? profile.blueTeamColor : profile.redTeamColor)
                     : (blue ? profile.blueJerseyColor : profile.redJerseyColor);
-                Color.RGBToHSV(target, out float targetHue, out float targetSat, out _);
+                Color.RGBToHSV(target, out float targetHue, out float targetSat, out float targetVal);
 
-                ApplyPart(mesh, playerId, team, "torso", enabled, targetHue, targetSat);
-                ApplyPart(mesh, playerId, team, "groin", enabled, targetHue, targetSat);
+                ApplyPart(mesh, playerId, team, "torso", enabled, targetHue, targetSat, targetVal);
+                ApplyPart(mesh, playerId, team, "groin", enabled, targetHue, targetSat, targetVal);
             }
             catch (Exception e)
             {

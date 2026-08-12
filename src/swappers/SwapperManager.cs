@@ -180,6 +180,10 @@ public static class SwapperManager
     public static void Setup()
     {
         global::UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+        // The game only re-applies the stick on respawn when the player changes
+        // their stick skin mid-match; hook the change event so the new skin (and
+        // any configured reskin) shows immediately.
+        EventManager.AddEventListener("Event_OnStickSkinIDChanged", OnStickSkinIDChanged);
         FullArenaSwapper.Initialize();
         HatSwapper.Initialize();
         GenderSwapper.Initialize();
@@ -189,9 +193,74 @@ public static class SwapperManager
     public static void Destroy()
     {
         global::UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+        EventManager.RemoveEventListener("Event_OnStickSkinIDChanged", OnStickSkinIDChanged);
         HatSwapper.Cleanup();
         GenderSwapper.Cleanup();
         TeamIndicatorSwapper.Cleanup();
+    }
+
+    private static void OnStickSkinIDChanged(Dictionary<string, object> message)
+    {
+        try
+        {
+            if (message == null) return;
+            var team = (PlayerTeam)message["team"];
+            var role = (PlayerRole)message["role"];
+            int skinId = (int)message["value"];
+
+            List<Player> players = PlayerManager.Instance != null
+                ? PlayerManager.Instance.GetPlayersByTeam(team)
+                : null;
+            if (players == null) return;
+
+            foreach (Player player in players)
+            {
+                if (player == null || player.Stick == null) continue;
+                if (player.Team != team || player.Role != role) continue;
+
+                // The server-side CustomizationState only updates on reconnect, so
+                // the player's getter is stale mid-match. Apply the event's new ID
+                // directly, then layer the configured reskin on top (if any). When
+                // no reskin is set, do NOT call SetStickReskinForPlayer — its
+                // "reset to normal skin" path re-reads the stale getter and would
+                // revert the change we just applied.
+                player.Stick.SetSkinID(skinId, team);
+                var entry = GetStickReskinEntry(player);
+                if (entry?.Path != null)
+                    StickSwapper.SetStickTexture(player.Stick, entry);
+            }
+        }
+        catch (Exception e)
+        {
+            Plugin.LogDebug($"OnStickSkinIDChanged failed: {e.Message}");
+        }
+    }
+
+    private static ReskinRegistry.ReskinEntry GetStickReskinEntry(Player player)
+    {
+        bool personal = player.IsLocalPlayer ||
+            (player.IsReplay.Value && PlayerManager.Instance.GetLocalPlayer()?.OwnerClientId == player.OwnerClientId - 1337UL);
+        switch (player.Team)
+        {
+            case PlayerTeam.Blue:
+                if (personal)
+                    return player.Role == PlayerRole.Attacker
+                        ? ReskinProfileManager.currentProfile.stickAttackerBluePersonal
+                        : ReskinProfileManager.currentProfile.stickGoalieBluePersonal;
+                return player.Role == PlayerRole.Attacker
+                    ? ReskinProfileManager.currentProfile.stickAttackerBlue
+                    : ReskinProfileManager.currentProfile.stickGoalieBlue;
+            case PlayerTeam.Red:
+                if (personal)
+                    return player.Role == PlayerRole.Attacker
+                        ? ReskinProfileManager.currentProfile.stickAttackerRedPersonal
+                        : ReskinProfileManager.currentProfile.stickGoalieRedPersonal;
+                return player.Role == PlayerRole.Attacker
+                    ? ReskinProfileManager.currentProfile.stickAttackerRed
+                    : ReskinProfileManager.currentProfile.stickGoalieRed;
+            default:
+                return null;
+        }
     }
 
     public static void OnSceneLoaded(Scene scene, LoadSceneMode mode)

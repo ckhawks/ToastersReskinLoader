@@ -73,10 +73,15 @@ public static class StickSwapper
                 return;
             }
 
-            // Reset to normal skin
+            // Reset to normal skin. The player's getter reads the server-synced
+            // CustomizationState, which only updates on reconnect — mid-match it's
+            // stale. SettingsManager holds the locally-selected value, so prefer it.
             if (reskin == null || reskin.Path == null)
             {
-                stickMesh.SetSkinID(stick.Player.GetPlayerStickSkinID(), stick.Player.Team);
+                int skinId = stick.Player.IsLocalPlayer
+                    ? SettingsManager.GetStickSkinID(stick.Player.Team, stick.Player.Role)
+                    : stick.Player.GetPlayerStickSkinID();
+                stickMesh.SetSkinID(skinId, stick.Player.Team);
                 return;
             }
 

@@ -66,23 +66,34 @@ public static class IceSwapper
 
     public static bool UpdateIceSmoothness()
     {
-        GameObject iceTopGameObject = GameObject.Find("Ice Top");
-
-        if (iceTopGameObject == null)
+        // The rink model was rebuilt (B1117) — GameObject.Find("Ice Top") no longer
+        // reliably resolves. Locate by material name instead, like the rest of the
+        // arena code.
+        var renderers = ArenaSwapper.FindRenderersByMaterialName("Ice Top");
+        if (renderers.Count == 0)
         {
-            Plugin.LogError($"Could not locate Ice Top GameObject.");
+            Plugin.LogWarning("Could not locate any Ice Top material renderer.");
             return false;
         }
-        
-        MeshRenderer iceTopMeshRenderer = iceTopGameObject.GetComponent<MeshRenderer>();
 
-        if (iceTopMeshRenderer == null)
+        float smoothness = ReskinProfileManager.currentProfile.iceSmoothness;
+        float roughness = 1f - smoothness;
+
+        foreach (var renderer in renderers)
         {
-            Plugin.LogError("No MeshRenderer found on GameObject Ice Top.");
-            return false;
+            var mat = renderer.material; // instanced
+            if (mat == null) continue;
+
+            if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", smoothness);
+            if (mat.HasProperty("roughnessFactor")) mat.SetFloat("roughnessFactor", roughness);
+
+            // URP ignores _Smoothness when a gloss-map texture is bound — force the
+            // float through.
+            mat.DisableKeyword("_METALLICSPECGLOSSMAP");
+            mat.DisableKeyword("_SPECGLOSSMAP");
+            mat.DisableKeyword("_METALLICGLOSSMAP");
+            mat.DisableKeyword("_SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A");
         }
-        
-        iceTopMeshRenderer.material.SetFloat("_Smoothness", ReskinProfileManager.currentProfile.iceSmoothness);
 
         return true;
     }
