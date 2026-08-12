@@ -473,9 +473,9 @@ internal static class MainMenuButtons
 
     private static void UpdatePlayButtonSubtitle(VisualElement container, SettingsConfig cfg)
     {
-        var label = container.Q<Label>();
-        if (label == null) return;
-        label.text = BuildLastPlayedText(cfg);
+        var btn = container.Q<Button>(QuickPlayButtonName);
+        if (btn == null) return;
+        btn.text = BuildLastPlayedText(cfg);
     }
 
     // Clones the vanilla PlayButton's class list so the new buttons
