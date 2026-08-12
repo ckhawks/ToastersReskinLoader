@@ -163,7 +163,7 @@ public static class PlayersSection
             blue ? profile.blueTeamColor : profile.redTeamColor,
             false,
             c => { if (blue) profile.blueTeamColor = c; else profile.redTeamColor = c; RefreshTeamColors(); },
-            ReskinProfileManager.SaveProfile);
+            () => ReskinProfileManager.SaveProfile());
         _root.Add(colorRow);
 
         var resetColorBtn = new Button(() =>
@@ -358,7 +358,7 @@ public static class PlayersSection
             (Color)colorField.GetValue(profile),
             false,
             c => { colorField.SetValue(profile, c); Preview(); },
-            ReskinProfileManager.SaveProfile);
+            () => ReskinProfileManager.SaveProfile());
         _root.Add(colorSection);
 
         var texRow = UITools.CreateConfigurationRow();
@@ -411,7 +411,7 @@ public static class PlayersSection
                     (Color)field.GetValue(profile),
                     false,
                     c => { field.SetValue(profile, c); Preview(); },
-                    ReskinProfileManager.SaveProfile);
+                    () => ReskinProfileManager.SaveProfile());
                 _root.Add(colorRow);
                 break;
 
@@ -424,7 +424,7 @@ public static class PlayersSection
                     field.SetValue(profile, evt.newValue);
                     Preview();
                 });
-                slider.RegisterCallback<PointerUpEvent>(_ => ReskinProfileManager.SaveProfile());
+                UITools.RegisterSliderSave(slider, () => ReskinProfileManager.SaveProfile());
                 row.Add(slider);
                 _root.Add(row);
                 break;

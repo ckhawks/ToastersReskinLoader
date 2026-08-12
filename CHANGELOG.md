@@ -1,5 +1,40 @@
 # Changelog
 
+## 2.4.4
+
+### Fixed
+- **Sliders now actually save.** Dragging a slider updated the game right away but
+  never wrote the value to disk, so it reverted the next time you hit Reload or
+  restarted. This hit every slider on the Skybox and Puck FX pages, the gloss and
+  reflection sliders under Rendering, and the player appearance sliders. Typing a
+  number into a slider's box had the same problem. Colors and checkboxes were
+  always saved correctly, which is why the setting sometimes appeared to stick —
+  changing anything else wrote the whole profile and picked up the stranded value
+  along with it.
+- **Reload no longer discards an edit you just made.** Dragging a slider and
+  immediately clicking Reload threw the change away. Pending edits are now written
+  out before the profile is re-read.
+
+### Added
+- **Save indicator next to the Reload button.** Shows "Unsaved" while a slider
+  edit is still settling, a brief "Saved!" once it's written, and a red
+  "Save failed" that stays up if the write didn't work — previously a failed save
+  was completely silent and only appeared in the log.
+
+## 2.4.3
+
+### Fixed
+- **Workshop reskin packs now load on macOS.** The mod worked out where the game
+  was installed in a way that only held on Windows, so on Mac it looked for
+  subscribed workshop packs inside the game's app bundle and found nothing —
+  no workshop pack has ever loaded there. It now locates the install correctly
+  on both platforms.
+- **Mac settings, profiles and presets are saved next to the game** instead of
+  inside the app bundle, where Steam could wipe them when it verified or updated
+  the game. Mac users upgrading from an earlier version will start from default
+  settings once; the old files can be recovered from inside the bundle at
+  `Puck.app/Contents/Resources/reskinprofiles` and `.../config`.
+
 ## 2.4.2
 
 ### Fixed

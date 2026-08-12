@@ -20,12 +20,16 @@ public static class PathManager
     private static string _localReskinFolder;
     private static string _gameRootFolder;
 
+    /// <summary>
+    /// Returns the game install folder (the one Steam creates under steamapps\common).
+    /// Example: C:\Program Files (x86)\Steam\steamapps\common\Puck
+    /// </summary>
     public static string GameRootFolder
     {
         get
         {
             if (_gameRootFolder == null)
-                _gameRootFolder = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+                _gameRootFolder = ResolveGameRootFolder();
             return _gameRootFolder;
         }
     }
@@ -63,6 +67,41 @@ public static class PathManager
             }
             return _localReskinFolder;
         }
+    }
+
+    /// <summary>
+    /// Resolves the game install folder from Application.dataPath.
+    ///
+    /// dataPath sits at a different depth per platform, so a fixed ".." is wrong on macOS:
+    ///   Windows/Linux: &lt;install&gt;\Puck_Data                              -> up 1
+    ///   macOS:         &lt;install&gt;/Puck.app/Contents/Resources/Data       -> up 4
+    ///
+    /// Rather than hardcode a per-platform depth, walk up from dataPath looking for a
+    /// ".app" bundle component; the game install folder is that bundle's parent. When no
+    /// bundle is in the path (Windows/Linux) this falls back to the single-level parent.
+    /// </summary>
+    private static string ResolveGameRootFolder()
+    {
+        string dataPath = Path.GetFullPath(Application.dataPath);
+
+        // Walk up looking for the .app bundle (macOS). Bounded by the loop condition
+        // reaching the filesystem root, where GetDirectoryName returns null.
+        for (string dir = dataPath; !string.IsNullOrEmpty(dir); dir = Path.GetDirectoryName(dir))
+        {
+            if (!Path.GetFileName(dir).EndsWith(".app", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            string bundleParent = Path.GetDirectoryName(dir);
+            if (string.IsNullOrEmpty(bundleParent))
+                break;
+
+            Plugin.Log($"[PathManager] Resolved game root from .app bundle: {bundleParent}");
+            return bundleParent;
+        }
+
+        string gameRoot = Path.GetFullPath(Path.Combine(dataPath, ".."));
+        Plugin.Log($"[PathManager] Resolved game root: {gameRoot}");
+        return gameRoot;
     }
 
     /// <summary>

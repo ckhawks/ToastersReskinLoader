@@ -115,7 +115,7 @@ public static class RenderingSection
             setter(evt.newValue);
             ColorGrade.Apply();
         });
-        slider.RegisterCallback<PointerUpEvent>(evt => Save());
+        UITools.RegisterSliderSave(slider, Save);
         row.Add(slider);
         root.Add(row);
         return row;
@@ -215,7 +215,7 @@ public static class RenderingSection
             cfg.glossSmoothness = evt.newValue;
             GlossSwapper.ReapplyAll();
         });
-        smoothSlider.RegisterCallback<PointerUpEvent>(evt => Save());
+        UITools.RegisterSliderSave(smoothSlider, Save);
         smoothRow.Add(smoothSlider);
         root.Add(smoothRow);
         dependentControls.Add(smoothRow);
@@ -291,7 +291,7 @@ public static class RenderingSection
             cfg.reflectionIntensity = evt.newValue;
             GlossSwapper.ApplyReflectionIntensity();
         });
-        amountSlider.RegisterCallback<PointerUpEvent>(evt => Save());
+        UITools.RegisterSliderSave(amountSlider, Save);
         amountRow.Add(amountSlider);
         root.Add(amountRow);
         dependentControls.Add(amountRow);

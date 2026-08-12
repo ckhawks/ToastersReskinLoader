@@ -252,6 +252,10 @@ public static class ReskinManagerMenu
                 void reload()
                 {
                     Plugin.Log($"Reloading packs, profile, and textures...");
+                    // A slider edit inside its debounce window hasn't been written yet, and
+                    // LoadProfile below overwrites the in-memory profile. Commit first so
+                    // Reload doesn't silently throw away the value the user just dragged.
+                    UITools.FlushPendingSliderSaves();
                     ReskinRegistry.ReloadPacks();
                     Plugin.LogDebug($"Reloading profile...");
                     ReskinProfileManager.LoadProfile();
@@ -291,7 +295,14 @@ public static class ReskinManagerMenu
                 reloadButton.text = "Reload Error";
             }
         }
-        titleContainer.Add(reloadButton);
+        // Save indicator + Reload grouped on the right, so SpaceBetween keeps the indicator
+        // immediately left of the button instead of floating it to the center.
+        VisualElement reloadGroup = new VisualElement();
+        reloadGroup.style.flexDirection = FlexDirection.Row;
+        reloadGroup.style.alignItems = Align.Center;
+        reloadGroup.Add(BuildSaveIndicator());
+        reloadGroup.Add(reloadButton);
+        titleContainer.Add(reloadGroup);
         mainContainer.Add(titleContainer);
         
         VisualElement pageContainer = new VisualElement();
@@ -552,6 +563,66 @@ public static class ReskinManagerMenu
     {
         int idx = Array.IndexOf(sections, name);
         if (idx >= 0) UpdateToSection(idx);
+    }
+
+    // How long the "Saved!" confirmation stays up before clearing itself.
+    private const long SavedFlashMs = 1000;
+
+    /// <summary>
+    /// The save-state text that sits left of the Reload button. Silence means everything is
+    /// on disk: it only speaks up while a slider edit is still inside its debounce window,
+    /// for a brief confirmation on write, and on failure — which is otherwise invisible,
+    /// since both save paths swallow their exceptions into the log.
+    /// </summary>
+    private static VisualElement BuildSaveIndicator()
+    {
+        Label indicator = new Label();
+        indicator.style.fontSize = 16;
+        indicator.style.marginRight = 10;
+        indicator.style.unityTextAlign = TextAnchor.MiddleRight;
+
+        IVisualElementScheduledItem clearSaved = null;
+
+        void Render()
+        {
+            switch (core.SaveStatus.State)
+            {
+                case core.SaveState.Pending:
+                    indicator.text = "Unsaved";
+                    indicator.style.color = new StyleColor(new Color(0.6f, 0.6f, 0.6f));
+                    break;
+                case core.SaveState.Saved:
+                    indicator.text = "Saved!";
+                    indicator.style.color = new StyleColor(new Color(0.45f, 0.85f, 0.45f));
+                    // Re-armed on every save so a rapid second write extends the flash
+                    // rather than being cut short by the first timer.
+                    clearSaved?.Pause();
+                    clearSaved = indicator.schedule.Execute(core.SaveStatus.ClearSaved);
+                    clearSaved.ExecuteLater(SavedFlashMs);
+                    break;
+                case core.SaveState.Failed:
+                    indicator.text = "Save failed";
+                    indicator.style.color = new StyleColor(new Color(0.9f, 0.35f, 0.35f));
+                    break;
+                default:
+                    indicator.text = string.Empty;
+                    break;
+            }
+        }
+
+        // Only subscribed while the menu is on screen. Delegate equality is by target +
+        // method, so the local function unsubscribes cleanly across the two conversions.
+        indicator.RegisterCallback<AttachToPanelEvent>(evt =>
+        {
+            core.SaveStatus.Changed += Render;
+            Render();
+        });
+        indicator.RegisterCallback<DetachFromPanelEvent>(evt =>
+        {
+            core.SaveStatus.Changed -= Render;
+        });
+
+        return indicator;
     }
 
     private static void ApplySidebarButtonStyle(Button button, bool selected)

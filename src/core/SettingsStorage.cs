@@ -21,7 +21,7 @@ namespace ToasterReskinLoader.core;
 internal static class SettingsStorage
 {
     private static readonly string Dir =
-        Path.Combine(Path.GetFullPath(Path.Combine(Application.dataPath, "..")), "config");
+        Path.Combine(PathManager.GameRootFolder, "config");
 
     internal static readonly string QoLPath         = Path.Combine(Dir, "ToastersReskinLoaderQoL.json");
     internal static readonly string ServerPrefsPath = Path.Combine(Dir, "ToastersReskinLoaderServerPrefs.json");
@@ -55,9 +55,9 @@ internal static class SettingsStorage
         }
     }
 
-    public static void Save(SettingsConfig cfg)
+    public static bool Save(SettingsConfig cfg)
     {
-        if (cfg == null) return;
+        if (cfg == null) return false;
         try
         {
             Directory.CreateDirectory(Dir);
@@ -81,8 +81,15 @@ internal static class SettingsStorage
                 LastPlayedServer = cfg.quickPlayLastServer ?? new QuickPlayServerInfo(),
             };
             File.WriteAllText(ServerPrefsPath, JsonConvert.SerializeObject(prefs, JsonSettings));
+            SaveStatus.ReportSaved();
+            return true;
         }
-        catch (Exception e) { Plugin.LogError($"[QoL] SettingsStorage.Save failed: {e.Message}"); }
+        catch (Exception e)
+        {
+            Plugin.LogError($"[QoL] SettingsStorage.Save failed: {e.Message}");
+            SaveStatus.ReportFailed();
+            return false;
+        }
     }
 
     private static T ReadJson<T>(string path) where T : class

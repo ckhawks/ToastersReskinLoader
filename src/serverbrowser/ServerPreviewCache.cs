@@ -30,7 +30,7 @@ public static class ServerPreviewCache
     }
 
     private static readonly string CacheDir = Path.Combine(
-        Path.GetFullPath(Path.Combine(Application.dataPath, "..")), "reskinprofiles");
+        PathManager.GameRootFolder, "reskinprofiles");
     private static readonly string CachePath = Path.Combine(CacheDir, "server_previews.json");
 
     private static Dictionary<string, CachedPreview> _entries = new();

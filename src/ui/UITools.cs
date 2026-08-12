@@ -291,6 +291,80 @@ public static class UITools
         return slider;
     }
 
+    // How long after the last value change a slider waits before writing the profile.
+    private const long SliderSaveDebounceMs = 350;
+
+    /// <summary>
+    /// Wires up persistence for a configuration slider.
+    ///
+    /// Do NOT save from a PointerUpEvent on the Slider — it never fires. Unity's drag
+    /// manipulator lives on the slider's internal dragContainer (a child element) and stops
+    /// propagation on pointer up, so a bubble-phase handler registered on the Slider itself
+    /// never runs, no matter where the pointer is released. Sliders wired that way silently
+    /// discarded every drag until something else happened to save the profile.
+    ///
+    /// ChangeEvent does fire, so persistence hangs off that instead. The write is debounced
+    /// so a drag doesn't rewrite the whole profile every frame, and flushed on detach so
+    /// closing the menu or rebuilding the section mid-debounce still saves. This also covers
+    /// the slider's text input field, which produces no pointer events on the slider at all.
+    /// </summary>
+    // Flush delegates for every slider currently attached to a panel, so a caller that is
+    // about to overwrite the in-memory state (the Reload button) can commit pending writes
+    // first instead of silently dropping them.
+    private static readonly HashSet<Action> AttachedSliderFlushes = new HashSet<Action>();
+
+    /// <summary>
+    /// Commits any slider edit still inside its debounce window. Call this before anything
+    /// that reloads or replaces the in-memory profile — otherwise a value the user just
+    /// dragged is discarded before it ever reaches disk.
+    /// </summary>
+    public static void FlushPendingSliderSaves()
+    {
+        // Copy first: flushing can detach elements, which mutates the set.
+        foreach (var flush in new List<Action>(AttachedSliderFlushes))
+        {
+            flush();
+        }
+    }
+
+    public static void RegisterSliderSave(Slider slider, Action save)
+    {
+        bool dirty = false;
+        IVisualElementScheduledItem pending = null;
+
+        void Flush()
+        {
+            pending?.Pause();
+            if (!dirty)
+            {
+                return;
+            }
+            dirty = false;
+            save();
+        }
+
+        // Created paused; each change re-arms the delay. Flush is a no-op while not dirty,
+        // so an early tick before the first change can't cause a stray write.
+        pending = slider.schedule.Execute(Flush);
+        pending.Pause();
+
+        slider.RegisterCallback<ChangeEvent<float>>(evt =>
+        {
+            dirty = true;
+            core.SaveStatus.ReportPending();
+            pending.ExecuteLater(SliderSaveDebounceMs);
+        });
+
+        // Delegate equality is by target + method, so the local function compares equal
+        // across these two conversions and the set stays deduplicated.
+        slider.RegisterCallback<AttachToPanelEvent>(evt => AttachedSliderFlushes.Add(Flush));
+        slider.RegisterCallback<DetachFromPanelEvent>(evt =>
+        {
+            AttachedSliderFlushes.Remove(Flush);
+            Flush();
+        });
+    }
+
     public static void StyleDropdownField(DropdownField dropdown)
     {
         dropdown.style.backgroundColor = new StyleColor(new Color(0.15f, 0.15f, 0.15f));
@@ -438,14 +512,9 @@ public static class UITools
                 colorPreview.style.backgroundColor = currentColor;
                 // Fire the external callback for live updates
                 onValueChanged?.Invoke(currentColor);
-                onSave?.Invoke();
             });
 
-            // Register callback for when the user is done dragging (save)
-            slider.RegisterCallback<PointerUpEvent>(evt =>
-            {
-                onSave?.Invoke();
-            });
+            RegisterSliderSave(slider, () => onSave?.Invoke());
 
             row.Add(slider);
             slidersContainer.Add(row);
@@ -515,9 +584,8 @@ public static class UITools
         widthSlider.RegisterCallback<ChangeEvent<float>>(evt =>
         {
             onWidthChanged?.Invoke(evt.newValue);
-            onSave?.Invoke();
         });
-        widthSlider.RegisterCallback<PointerUpEvent>(evt => onSave?.Invoke());
+        RegisterSliderSave(widthSlider, () => onSave?.Invoke());
         widthRow.Add(widthSlider);
         container.Add(widthRow);
 

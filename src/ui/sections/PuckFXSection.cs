@@ -359,10 +359,7 @@ public static class PuckFXSection
         {
             setter(evt.newValue);
         });
-        slider.RegisterCallback<PointerUpEvent>(evt =>
-        {
-            ReskinProfileManager.SaveProfile();
-        });
+        UITools.RegisterSliderSave(slider, () => ReskinProfileManager.SaveProfile());
 
         row.Add(slider);
         container.Add(row);

@@ -17,7 +17,7 @@ namespace ToasterReskinLoader.social.probe;
 public static class ProbeCache
 {
     private static readonly string CacheDir = Path.Combine(
-        Path.GetFullPath(Path.Combine(Application.dataPath, "..")), "reskinprofiles");
+        PathManager.GameRootFolder, "reskinprofiles");
     private static readonly string CachePath = Path.Combine(CacheDir, "probes.json");
 
     private static Probe[] _probes = Array.Empty<Probe>();

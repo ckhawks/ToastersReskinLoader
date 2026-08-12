@@ -19,7 +19,7 @@ public static class ReskinProfileManager
     // TODO make this inside of a dictionary or profile setting or something
     public static Profile currentProfile { get; private set; } = new Profile();
 
-    private static string ProfilePath = Path.Combine(Path.GetFullPath(Path.Combine(Application.dataPath, "..")), "reskinprofiles", "ReskinProfile.json");
+    private static string ProfilePath = Path.Combine(PathManager.GameRootFolder, "reskinprofiles", "ReskinProfile.json");
 
     public static void SetSelectedReskinInCurrentProfile(ReskinRegistry.ReskinEntry reskinEntry, string type, string slot)
     {
@@ -233,7 +233,7 @@ public static class ReskinProfileManager
 
     public static void LoadProfile()
     {
-        string profilesFolder = Path.Combine(Path.GetFullPath(Path.Combine(Application.dataPath, "..")), "reskinprofiles");
+        string profilesFolder = Path.Combine(PathManager.GameRootFolder, "reskinprofiles");
         if (!Directory.Exists(profilesFolder))
         {
             Plugin.LogError($"Local reskin profiles folder not found: {profilesFolder}, creating it...");
@@ -338,7 +338,12 @@ public static class ReskinProfileManager
             profile.puckFXTrailEndColor = profile.puckFXTrailColor;
     }
 
-    public static void SaveProfile()
+    /// <summary>
+    /// Writes the current profile to disk. Returns false if the write failed — callers that
+    /// surface save state to the user need to know, since the failure is otherwise silent
+    /// (it only reaches the log).
+    /// </summary>
+    public static bool SaveProfile()
     {
         try
         {
@@ -346,10 +351,14 @@ public static class ReskinProfileManager
             string json = JsonConvert.SerializeObject(currentProfile, ProfileSerializerSettings);
             File.WriteAllText(ProfilePath, json);
             Plugin.LogDebug($"Reskin profile saved to: {ProfilePath}");
+            core.SaveStatus.ReportSaved();
+            return true;
         }
         catch (Exception ex)
         {
             Plugin.LogError($"Failed to save reskin profile: {ex.Message}");
+            core.SaveStatus.ReportFailed();
+            return false;
         }
     }
 

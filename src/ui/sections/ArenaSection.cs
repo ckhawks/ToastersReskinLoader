@@ -132,13 +132,9 @@ public static class ArenaSection
         iceSmoothnessSlider.RegisterCallback<ChangeEvent<float>>(evt =>
         {
             ReskinProfileManager.currentProfile.iceSmoothness = evt.newValue;
-            ReskinProfileManager.SaveProfile();
             IceSwapper.UpdateIceSmoothness();
         });
-        iceSmoothnessSlider.RegisterCallback<PointerUpEvent>(evt =>
-        {
-            ReskinProfileManager.SaveProfile();
-        });
+        UITools.RegisterSliderSave(iceSmoothnessSlider, () => ReskinProfileManager.SaveProfile());
 
         iceSmoothnessRow.Add(iceSmoothnessSlider);
         contentScrollViewContent.Add(iceSmoothnessRow);
@@ -212,13 +208,9 @@ public static class ArenaSection
         glassSmoothnessSlider.RegisterCallback<ChangeEvent<float>>(evt =>
         {
             ReskinProfileManager.currentProfile.glassSmoothness = evt.newValue;
-            ReskinProfileManager.SaveProfile();
             ArenaSwapper.UpdateGlassAndPillars();
         });
-        glassSmoothnessSlider.RegisterCallback<PointerUpEvent>(evt =>
-        {
-            ReskinProfileManager.SaveProfile();
-        });
+        UITools.RegisterSliderSave(glassSmoothnessSlider, () => ReskinProfileManager.SaveProfile());
 
         glassSmoothnessRow.Add(glassSmoothnessSlider);
         contentScrollViewContent.Add(glassSmoothnessRow);

@@ -23,7 +23,8 @@ public static class Settings
         Loaded = true;
     }
 
-    public static void Save() => SettingsStorage.Save(_current);
+    /// Returns false if the write failed, so callers can surface it (see SaveStatus).
+    public static bool Save() => SettingsStorage.Save(_current);
 
     public static void Reload() => Load();
 }

@@ -248,10 +248,10 @@ public static class FrameProfilerMods
         // Steam Workshop content folder is a mod. This catches mods whose
         // main assembly doesn't directly implement IPuckPlugin (e.g. the
         // interface impl lives in a separate file).
-        string gameRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
-        string pluginsDir = Path.Combine(gameRoot, "Plugins");
-        // e.g. ...steamapps\workshop\content\3164490\1234567890
-        const string WORKSHOP_HINT = @"workshop\content";
+        string pluginsDir = Path.Combine(PathManager.GameRootFolder, "Plugins");
+        // e.g. ...steamapps\workshop\content\3164490\1234567890, or the '/' equivalent on
+        // macOS/Linux, so match against a separator-normalized copy of the location.
+        const string WORKSHOP_HINT = "workshop/content";
 
         int kept = 0;
         int considered = 0;
@@ -269,7 +269,7 @@ public static class FrameProfilerMods
 
             bool pathSaysMod = !string.IsNullOrEmpty(location)
                 && (location.StartsWith(pluginsDir, StringComparison.OrdinalIgnoreCase)
-                    || location.IndexOf(WORKSHOP_HINT, StringComparison.OrdinalIgnoreCase) >= 0);
+                    || location.Replace('\\', '/').IndexOf(WORKSHOP_HINT, StringComparison.OrdinalIgnoreCase) >= 0);
 
             bool hasPlugin = false;
             try
