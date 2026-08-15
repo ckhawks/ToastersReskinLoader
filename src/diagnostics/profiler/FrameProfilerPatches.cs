@@ -125,7 +125,7 @@ public static class FrameProfilerPatches
         stats[(int)TrackedSystem.GameManagerTick]         = new SystemStats { Name = "GameManager.Server_Tick" };
         stats[(int)TrackedSystem.SteamCallbackLoop]       = new SystemStats { Name = "SteamMgr.StartCallbackLoop" };
         stats[(int)TrackedSystem.PhysicsSimulate]         = new SystemStats { Name = "PhysicsManager.Update" };
-        stats[(int)TrackedSystem.SyncObjectTick]          = new SystemStats { Name = "SyncObjMgr.Server_ServerTick" };
+        stats[(int)TrackedSystem.SyncObjectTick]          = new SystemStats { Name = "SyncObjMgr.Server_Tick" };
         stats[(int)TrackedSystem.SyncObjectGather]        = new SystemStats { Name = "SyncObjMgr.GatherData" };
         stats[(int)TrackedSystem.ReplayRecorderTick]      = new SystemStats { Name = "ReplayRecorder.Server_Tick" };
         stats[(int)TrackedSystem.EventManagerTrigger]     = new SystemStats { Name = "EventManager.TriggerEvent" };
@@ -140,7 +140,16 @@ public static class FrameProfilerPatches
             ("GameManager.Server_Tick",                        typeof(GameManager),                "Server_Tick",                       typeof(Patch_GameManagerTick)),
             ("SteamManager.StartCallbackLoop",                 typeof(SteamManager),               "StartCallbackLoop",                 typeof(Patch_SteamCallbackLoop)),
             ("PhysicsManager.Update",                          typeof(PhysicsManager),             "Update",                            typeof(Patch_PhysicsUpdate)),
-            ("SyncObjMgr.Server_ServerTick",                   typeof(SynchronizedObjectManager),  "Server_ServerTick",                 typeof(Patch_SyncObjectTick)),
+            // B1213 renamed Server_ServerTick to Server_Tick as part of replacing
+            // the whole SynchronizedObject surface. Resolved by string, so an
+            // older build simply logs SKIP for this row rather than failing.
+            ("SyncObjMgr.Server_Tick",                         typeof(SynchronizedObjectManager),  "Server_Tick",                       typeof(Patch_SyncObjectTick)),
+            // B1213 removed Server_GatherSynchronizedObjectData outright — the
+            // gather step was restructured into Server_GetTickHeader /
+            // Server_TakeTickHeader / Server_SynchronizePlayer. Left pointing at
+            // the old name deliberately: it SKIPs harmlessly, and picking one of
+            // the new methods would measure something different under the old
+            // label, which is worse than a missing row in a profiler.
             ("SyncObjMgr.Server_GatherSynchronizedObjectData", typeof(SynchronizedObjectManager),  "Server_GatherSynchronizedObjectData", typeof(Patch_SyncObjectGather)),
             ("ReplayRecorder.Server_Tick",                     typeof(ReplayRecorder),             "Server_Tick",                       typeof(Patch_ReplayRecorderTick)),
             ("EventManager.TriggerEvent",                      typeof(EventManager),               "TriggerEvent",                      typeof(Patch_EventManagerTrigger)),

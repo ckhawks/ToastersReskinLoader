@@ -13,9 +13,15 @@ namespace ToasterReskinLoader.diagnostics.profiler;
 // arrival timing, payload size, and dropped-tick events. RTT is sampled
 // every frame from the underlying transport.
 //
-// SynchronizedObjectData is 16 bytes (8 shorts/ushorts). Per-RPC overhead
-// is ~10 bytes (varint tickId + double serverTime), so payload bytes are
-// approximated as 10 + count*16.
+// Byte accounting is a rough estimate and, since B1213, a loose one. It was
+// exact when SynchronizedObjectData was a fixed 16 bytes (8 shorts/ushorts) with
+// ~10 bytes of per-RPC overhead (varint tickId + double serverTime). That format
+// is gone: the payload is now change-mask delta encoded, so a barely-moving
+// object costs far less than 16 bytes and a fully dirty one — position, rotation,
+// linear and angular velocity — costs more. The constants below are kept as a
+// nominal figure so the bandwidth trace still has a shape to plot, but treat the
+// absolute numbers as indicative only. Tick timing, inter-arrival and drop
+// detection below are all exact; they do not depend on these.
 public static class FrameProfilerNetwork
 {
     public const int RING_SIZE = 512;
@@ -275,7 +281,12 @@ public static class FrameProfilerNetwork
 
     public static class Patch_SyncRpcReceived
     {
-        public static void Postfix(ushort tickId, double serverTime, SynchronizedObjectData[] synchronizedObjectsData)
+        // B1213 folded the loose (ushort tickId, double serverTime) arguments into
+        // a SynchronizedObjectTickHeader. Harmony binds these parameters by name
+        // against the live method, so the old names silently stopped matching and
+        // harmony.Patch threw — caught by ApplyPatches, logged as "FAIL net patch",
+        // and every network readout sat at zero from then on.
+        public static void Postfix(SynchronizedObjectTickHeader tickHeader, SynchronizedObjectData[] synchronizedObjectsData)
         {
             try
             {
@@ -284,7 +295,9 @@ public static class FrameProfilerNetwork
                 var nm = NetworkManager.Singleton;
                 if (nm != null && nm.IsServer && !nm.IsClient) return;
                 int count = synchronizedObjectsData != null ? synchronizedObjectsData.Length : 0;
-                RecordTickArrival(tickId, count);
+                // SequenceNumber is the old tickId: same ushort, same +1-per-tick
+                // cadence, so the wrap-around gap arithmetic below still holds.
+                RecordTickArrival(tickHeader.SequenceNumber, count);
             }
             catch { }
         }

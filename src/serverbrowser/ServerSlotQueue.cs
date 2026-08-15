@@ -29,10 +29,25 @@
 // Cancel paths:
 //   * User clicks the X on the panel → cancel + hide.
 //   * User joins the TARGET server successfully → cancel + hide.
+//   * Vanilla matchmaking takes the panel over → stand down (see below).
 //   * Joining a different server / entering practice → queue keeps
 //     running, panel stays floating. We're explicitly NOT cancelling
 //     here because the user asked to be able to do other things while
 //     waiting on the slot.
+//
+// Mutual exclusion with vanilla matchmaking:
+//   The ranked/party queue drives this exact same panel, so only one of
+//   us may own it at a time. Matchmaking always wins — it has a hard 60s
+//   join deadline and a match already allocated server-side, whereas a
+//   slot queue is a background convenience the user can restart just by
+//   re-joining the full server. Concretely:
+//     * We refuse to arm on a ServerFull rejection while matchmaking is
+//       showing the panel.
+//     * If matchmaking takes over mid-queue we stand down and hand the
+//       panel back (see OnMatchmakingStateChanged).
+//   Without this the queue hijacks the panel, vanilla's "MATCH READY!"
+//   Connect button never appears, and the X only clears our overlay —
+//   leaving a found match unreachable until the game is restarted.
 //
 // Failure mode (per user pref): show a "SERVER UNREACHABLE — RETRYING"
 // status but keep trying — only the user's cancel ends the queue.
@@ -43,11 +58,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -116,6 +129,18 @@ internal static class ServerSlotQueue
             // a different server (or play local-host practice) while
             // we keep monitoring the target in the background.
             EventManager.AddEventListener("Event_OnClientConnected", OnClientConnected);
+            // Matchmaking hand-over watch. Deliberately the exact same three
+            // events UIMatchmakingController.UpdateMatching runs off, so we
+            // stand down precisely when vanilla decides it wants to paint:
+            //   * group/match data → covers every way the player enters a
+            //     queue, including a party leader queueing on their behalf,
+            //     which never routes through a click we could intercept.
+            //   * connection state → covers leaving a ranked match while
+            //     MatchData is still set, which flips the panel back to
+            //     "MATCH READY!" without either data event firing.
+            EventManager.AddEventListener("Event_OnPlayerGroupDataChanged", OnMatchmakingStateChanged);
+            EventManager.AddEventListener("Event_OnPlayerMatchDataChanged", OnMatchmakingStateChanged);
+            EventManager.AddEventListener("Event_OnConnectionStateChanged", OnMatchmakingStateChanged);
             Plugin.Log("[QoL] slot-queue: initialized + listeners attached");
         }
         catch (Exception e) { Plugin.LogError("[QoL] slot-queue init failed: " + e); }
@@ -123,13 +148,63 @@ internal static class ServerSlotQueue
 
     internal static void Teardown()
     {
-        CancelInternal(silent: true);
+        // Only take the panel-clearing path if a queue was actually up:
+        // CancelInternal's non-silent branch blanks the panel and un-injects
+        // our labels unconditionally, which would stomp vanilla matchmaking
+        // if it happened to be the thing showing. When a queue IS up we do
+        // need it — a silent cancel would leave the hijacked panel and the
+        // reparented vanilla PhaseLabel behind for the rest of the session.
+        CancelInternal(silent: !IsActive);
         try
         {
             EventManager.RemoveEventListener("Event_OnConnectionRejected", OnConnectionRejected);
             EventManager.RemoveEventListener("Event_OnMatchmakingMatchingClickClose", OnUserCancelClicked);
             EventManager.RemoveEventListener("Event_OnClientConnected", OnClientConnected);
+            EventManager.RemoveEventListener("Event_OnPlayerGroupDataChanged", OnMatchmakingStateChanged);
+            EventManager.RemoveEventListener("Event_OnPlayerMatchDataChanged", OnMatchmakingStateChanged);
+            EventManager.RemoveEventListener("Event_OnConnectionStateChanged", OnMatchmakingStateChanged);
         }
+        catch { }
+    }
+
+    // ────────────────────── matchmaking exclusion ─────────────────────────
+    //
+    // The arbitration rule and the Harmony patches that enforce it live in
+    // MatchmakingPanelOverlay, shared with Quick Join. This half is just the
+    // slot queue's own side: when to refuse to arm, and when to stand down.
+
+    // Stand down the moment matchmaking needs the panel. Wired to the same
+    // events vanilla repaints on, so it covers the local player clicking
+    // 3v3/5v5, a party leader queueing for the group, a match being assigned,
+    // and dropping out of a match that's still joinable. Cheap on the noisy
+    // connection-state event — it bails immediately unless a queue is up.
+    private static void OnMatchmakingStateChanged(Dictionary<string, object> _)
+    {
+        if (!IsActive) return;
+        if (!MatchmakingPanelOverlay.IsVanillaMatchmakingActive()) return;
+        Plugin.Log("[QoL] slot-queue: matchmaking claimed the panel — standing down");
+        // Cancel silently, then hand the panel over. Order matters twice:
+        //   * CancelInternal must run first to stop the 4Hz render loop —
+        //     RenderTick re-asserts visibility and phase text every tick and
+        //     would paint straight back over vanilla otherwise.
+        //   * The DOM restore must land before the repaint so vanilla writes
+        //     its phase text into a label that is back where it belongs.
+        // Deliberately NOT the silent:false path: that blanks visibility and
+        // the time label first, and vanilla's UpdateMatching only restores the
+        // former. Its ticker events own time visibility and have already fired
+        // for this transition, so hiding the label here would drop the
+        // matchmaking countdown for the rest of the queue.
+        CancelInternal(silent: true);
+        RestoreVanillaPanelDom();
+        MatchmakingPanelOverlay.RepaintVanilla();
+        ShowExclusionToast("Server queue cancelled — matchmaking started.");
+    }
+
+    // Stable toast name so a repeat replaces the previous one instead of
+    // stacking (UIToastManager dedupes by name).
+    private static void ShowExclusionToast(string message)
+    {
+        try { MonoBehaviourSingleton<UIManager>.Instance?.ToastManager?.ShowToast("Toaster_SlotQueue", message, 5f); }
         catch { }
     }
 
@@ -158,6 +233,15 @@ internal static class ServerSlotQueue
             if (rejection.code != ConnectionRejectionCode.ServerFull)
             {
                 Plugin.Log($"[QoL] slot-queue: rejection code is {rejection.code} (need ServerFull) — ignoring");
+                return;
+            }
+
+            // The panel is spoken for — don't arm. See the mutual-exclusion
+            // note at the top of the file.
+            if (MatchmakingPanelOverlay.IsVanillaMatchmakingActive())
+            {
+                Plugin.Log("[QoL] slot-queue: matchmaking owns the panel — not arming for this rejection");
+                ShowExclusionToast("Can't queue for a full server while you're in matchmaking.");
                 return;
             }
 
@@ -545,6 +629,12 @@ internal static class ServerSlotQueue
             MatchmakingPanelOverlay.SetVisible(true);
             MatchmakingPanelOverlay.SetConnectButton(false);
             MatchmakingPanelOverlay.SetCloseButton(true);
+            // B1231's START MATCHMAKING button lives on the root view we just
+            // re-asserted, not inside the panel, and vanilla's repaint (the
+            // only thing that hides it) is suppressed while we hold the panel.
+            // Re-hidden every tick alongside the rest, since a scene change can
+            // rebuild the DOM and bring it back.
+            MatchmakingPanelOverlay.SetStartMatchmakingButton(false);
             EnsureLabelInjections();
         }
         catch (Exception e) { Debug.LogWarning("[QoL] ServerSlotQueue EnsurePanelShown failed: " + e.Message); }
@@ -647,14 +737,41 @@ internal static class ServerSlotQueue
             MatchmakingPanelOverlay.SetCloseButton(false);
             MatchmakingPanelOverlay.SetConnectButton(false);
             MatchmakingPanelOverlay.SetTimeVisible(false);
+            RestoreVanillaPanelDom();
+            // Hand the panel back instead of leaving our blanked state on it.
+            // CancelInternal nulls _cts before calling us, so IsActive is already
+            // false and this repaint is not suppressed.
+            //
+            // Required since B1231, not just tidy: the START MATCHMAKING button
+            // is a sibling of the container we just hid, and vanilla's repaint is
+            // the only thing that shows it. Leaving the panel blanked stranded
+            // the user with no way to start matchmaking after a queue — the
+            // whole flow now begins from a button inside this view, where it used
+            // to start from UIPlay's own 3v3/5v5 buttons.
+            //
+            // Deliberately NOT blanking the start button here: if the repaint
+            // fails, an unhidden button over gameplay is cosmetic, whereas a
+            // hidden one means matchmaking cannot be started at all.
+            MatchmakingPanelOverlay.RepaintVanilla();
+        }
+        catch (Exception e) { Debug.LogWarning("[QoL] ServerSlotQueue HideQueuePanel failed: " + e.Message); }
+    }
 
-            // Tear down our DOM mutations so the panel goes back to a
-            // pristine vanilla state for any future matchmaking use:
-            //   1. Move the phase label back to its original parent at
-            //      its original index.
-            //   2. Drop the wrapper + subtitle.
-            //   3. Clear the inline style overrides we put on phaseLabel
-            //      so the base USS font/weight take over again.
+    // Tear down our DOM mutations so the panel goes back to a pristine
+    // vanilla state for any future matchmaking use:
+    //   1. Move the phase label back to its original parent at its original
+    //      index.
+    //   2. Drop the wrapper + subtitle.
+    //   3. Clear the inline style overrides we put on phaseLabel so the base
+    //      USS font/weight take over again.
+    //
+    // Split out of HideQueuePanel because the matchmaking hand-over needs the
+    // DOM restored without the panel being blanked first — see
+    // OnMatchmakingStateChanged. Idempotent.
+    private static void RestoreVanillaPanelDom()
+    {
+        try
+        {
             if (_stackWrap != null)
             {
                 if (_phaseLabel != null && _phaseOriginalParent != null)
@@ -688,7 +805,7 @@ internal static class ServerSlotQueue
             _phaseOriginalParent = null;
             _phaseOriginalIndex = 0;
         }
-        catch (Exception e) { Debug.LogWarning("[QoL] ServerSlotQueue HideQueuePanel failed: " + e.Message); }
+        catch (Exception e) { Debug.LogWarning("[QoL] ServerSlotQueue RestoreVanillaPanelDom failed: " + e.Message); }
     }
 
     private static void MarshalToMainThread(Action action)
@@ -697,19 +814,7 @@ internal static class ServerSlotQueue
         catch (Exception e) { Debug.LogWarning("[QoL] ServerSlotQueue marshal failed: " + e.Message); }
     }
 
-    // ─────────────────────── vanilla controller patch ─────────────────────
-    //
-    // UIMatchmakingController.UpdateMatching runs on player/match/connection
-    // state changes and resets the panel based on its own idle logic. While
-    // our queue is up, suppress that update so it doesn't overwrite our
-    // phase text or hide the close button.
-    [HarmonyPatch]
-    private static class Patch_UpdateMatching
-    {
-        static MethodBase TargetMethod()
-            => AccessTools.Method(AccessTools.TypeByName("UIMatchmakingController"), "UpdateMatching");
-
-        [HarmonyPrefix]
-        static bool Prefix() => !IsActive;
-    }
+    // The Harmony patches that keep vanilla from stomping this panel — and
+    // that keep our X out of the player's matchmaking state — are shared with
+    // Quick Join and live in MatchmakingPanelOverlay.
 }

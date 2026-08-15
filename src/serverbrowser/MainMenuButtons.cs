@@ -21,9 +21,12 @@
 // layout.
 //
 // Quick Join hijacks the UIMatchmaking panel briefly to show "FINDING
-// BEST SERVER…" while the refresh wave runs. The ServerSlotQueue uses
-// the same panel — if the slot queue is already running we surface a
-// brief notice instead of clobbering it.
+// BEST SERVER…" while the refresh wave runs. Two other things want that
+// same panel — vanilla matchmaking and ServerSlotQueue — so Quick Join
+// refuses to start behind either one and stands down if one claims the
+// panel mid-run. MatchmakingPanelOverlay owns that arbitration policy and
+// the Harmony patches enforcing it; this file only reports itself as a
+// claimant (IsQuickJoinActive) and handles its own refuse / stand-down.
 
 using System;
 using System.Collections.Generic;
@@ -62,6 +65,21 @@ internal static class MainMenuButtons
     private static bool QuickJoinInFlight;
     private static CancellationTokenSource _qjCts;
 
+    // Reported to MatchmakingPanelOverlay.IsClaimedByMod so the shared
+    // ownership patches count Quick Join as a claimant of the matchmaking
+    // panel. True for the whole run even on the ticks where SetOverlay
+    // deferred to the slot queue — in that case the slot queue is claiming it
+    // instead, so the combined answer is still "a mod owns this".
+    internal static bool IsQuickJoinActive => QuickJoinInFlight;
+
+    // Latched when we abort because vanilla matchmaking took the panel. Needed
+    // because QuickJoinInFlight isn't cleared synchronously — the background
+    // task clears it as it unwinds — so the hand-over watch would otherwise
+    // re-fire (re-logging, re-toasting) on every subsequent state change until
+    // then. Also tells ClearOverlay to hand the panel straight back instead of
+    // blanking it first.
+    private static bool _qjYieldedToMatchmaking;
+
     // Set true when the user opened the browser via OUR main-menu button.
     // Vanilla's Event_OnServerBrowserClickClose handler routes to UIPlay
     // / UIPauseMenu depending on the game phase, but if we put the user
@@ -93,12 +111,20 @@ internal static class MainMenuButtons
             // disconnected, etc.) so a stale flag doesn't survive long
             // enough to redirect a subsequent vanilla-opened close.
             EventManager.AddEventListener("Event_OnConnectionStateChanged", OnConnectionStateChanged);
-            // The matchmaking panel's X button raises this event; we
-            // use it to cancel an in-flight Quick Join. The slot queue
-            // also listens but only acts when ITS state is active, so
-            // there's no conflict (we're mutually exclusive in
-            // practice — slot queue suppresses our overlay).
+            // The matchmaking panel's X button raises this event; we use it to
+            // cancel an in-flight Quick Join. The slot queue also listens but
+            // only acts when ITS state is active, and the two can no longer be
+            // running at once (OnClickQuickJoin refuses to start behind a
+            // queue), so there's no conflict. MatchmakingPanelOverlay keeps
+            // this same click from reaching vanilla's stop-matchmaking handler
+            // while either overlay owns the panel.
             EventManager.AddEventListener("Event_OnMatchmakingMatchingClickClose", OnMatchmakingClose);
+            // Matchmaking hand-over watch — the same three events vanilla's
+            // UIMatchmakingController repaints on, so we abort exactly when it
+            // wants the panel back. Mirrors ServerSlotQueue's watch.
+            EventManager.AddEventListener("Event_OnPlayerGroupDataChanged", OnMatchmakingStateChanged);
+            EventManager.AddEventListener("Event_OnPlayerMatchDataChanged", OnMatchmakingStateChanged);
+            EventManager.AddEventListener("Event_OnConnectionStateChanged", OnMatchmakingStateChanged);
             // Catch the case where the main menu is already open by the
             // time our plugin loaded — schedule the inject for the next
             // frame so any in-flight UI setup has settled.
@@ -110,10 +136,18 @@ internal static class MainMenuButtons
 
     public static void Teardown()
     {
+        // Cancel an in-flight quick join. Without this its background task
+        // outlives OnDisable and can still drive the matchmaking panel or fire
+        // Client_StartClient after the user has turned the mod off. Its own
+        // finally clause handles the overlay teardown and CTS disposal.
+        try { _qjCts?.Cancel(); } catch { }
         try { EventManager.RemoveEventListener("Event_OnMainMenuShow", OnMainMenuShow); } catch { }
         try { EventManager.RemoveEventListener("Event_OnServerBrowserClickClose", OnServerBrowserClose); } catch { }
         try { EventManager.RemoveEventListener("Event_OnConnectionStateChanged", OnConnectionStateChanged); } catch { }
         try { EventManager.RemoveEventListener("Event_OnMatchmakingMatchingClickClose", OnMatchmakingClose); } catch { }
+        try { EventManager.RemoveEventListener("Event_OnPlayerGroupDataChanged", OnMatchmakingStateChanged); } catch { }
+        try { EventManager.RemoveEventListener("Event_OnPlayerMatchDataChanged", OnMatchmakingStateChanged); } catch { }
+        try { EventManager.RemoveEventListener("Event_OnConnectionStateChanged", OnMatchmakingStateChanged); } catch { }
     }
 
     private static void OnMatchmakingClose(Dictionary<string, object> _)
@@ -122,6 +156,23 @@ internal static class MainMenuButtons
         Plugin.Log("[QoL] quick-join: cancelled by user");
         try { _qjCts?.Cancel(); } catch { }
         MarshalToMain(ClearOverlay);
+    }
+
+    // Vanilla matchmaking outranks quick-join for the panel, and a quick-join
+    // would also drag the player onto an unrelated server mid-queue. Bail out
+    // if a queue appears while we're running — realistically a party leader
+    // queueing for the group, which never routes through our button and so
+    // can't be caught by the check in OnClickQuickJoin.
+    private static void OnMatchmakingStateChanged(Dictionary<string, object> _)
+    {
+        if (!QuickJoinInFlight || _qjYieldedToMatchmaking) return;
+        if (!MatchmakingPanelOverlay.IsVanillaMatchmakingActive()) return;
+        _qjYieldedToMatchmaking = true;
+        Plugin.Log("[QoL] quick-join: matchmaking claimed the panel — aborting");
+        try { _qjCts?.Cancel(); } catch { }
+        // ClearOverlay hands the panel back to vanilla for us.
+        MarshalToMain(ClearOverlay);
+        ShowExclusionToast("Quick Join cancelled — matchmaking started.");
     }
 
     private static void OnMainMenuShow(Dictionary<string, object> _)
@@ -276,7 +327,25 @@ internal static class MainMenuButtons
             Plugin.Log("[QoL] quick-join: already in flight");
             return;
         }
+        // Mutually exclusive with the vanilla matchmaking queue: quick-join
+        // both hijacks the panel matchmaking is using AND would connect the
+        // player to an unrelated server mid-queue. You can back out to the
+        // title screen while still queued, so this button is reachable in
+        // that state — refuse rather than fight over the panel.
+        if (MatchmakingPanelOverlay.IsVanillaMatchmakingActive())
+        {
+            Plugin.Log("[QoL] quick-join: matchmaking is active — refusing to start");
+            ShowExclusionToast("Can't quick join while you're in matchmaking.");
+            return;
+        }
+        if (ServerSlotQueue.IsActive)
+        {
+            Plugin.Log("[QoL] quick-join: slot queue is active — refusing to start");
+            ShowExclusionToast("Cancel your server queue before using Quick Join.");
+            return;
+        }
         QuickJoinInFlight = true;
+        _qjYieldedToMatchmaking = false;
         _qjCts = new CancellationTokenSource();
         var token = _qjCts.Token;
         try { Task.Run(() => QuickJoinAsync(token)); }
@@ -493,12 +562,20 @@ internal static class MainMenuButtons
     // ─────────────────────────── matchmaking-panel overlay ────────────────
     //
     // Uses the same vanilla UIMatchmaking panel ServerSlotQueue uses, but
-    // only briefly (≤ QuickJoinTimeoutMs + 1s) and only when the slot
-    // queue isn't already showing it. If the queue is active we just
-    // log a notice and skip — concurrent panels make for confusing UI.
+    // only briefly (≤ QuickJoinTimeoutMs + 1s) and only when nothing with a
+    // stronger claim is showing it. OnClickQuickJoin already refuses to start
+    // in either of those cases; these checks catch a claim that appears
+    // mid-run (a party leader queueing for the group is the realistic one)
+    // and are why the overlay is re-driven per phase rather than once.
 
     private static void SetOverlay(string phase, string subtitle)
     {
+        // Vanilla matchmaking outranks us — see MatchmakingPanelOverlay.
+        if (MatchmakingPanelOverlay.IsVanillaMatchmakingActive())
+        {
+            Plugin.Log("[QoL] quick-join: matchmaking owns the panel, suppressing overlay");
+            return;
+        }
         // If the slot queue owns the panel, defer to it. We don't try to
         // stack — the queue is the more important indicator (long-lived).
         if (ServerSlotQueue.IsActive)
@@ -512,6 +589,11 @@ internal static class MainMenuButtons
             MatchmakingPanelOverlay.SetIsVisible(true);
             MatchmakingPanelOverlay.SetVisible(true);
             MatchmakingPanelOverlay.SetConnectButton(false);
+            // Vanilla's own repaint is suppressed while we own the panel, so
+            // nothing else will hide B1231's START MATCHMAKING button — and it
+            // sits on the root view we just forced visible, not inside the
+            // container, so showing our overlay would otherwise reveal it.
+            MatchmakingPanelOverlay.SetStartMatchmakingButton(false);
             // X button visible so the user can bail out of a stuck or
             // slow quick-join — close click is routed back here via
             // Event_OnMatchmakingMatchingClickClose → OnMatchmakingClose.
@@ -535,12 +617,49 @@ internal static class MainMenuButtons
         if (MatchmakingPanelOverlay.Panel == null) return;
         try
         {
+            // Standing down for matchmaking: hand the panel straight back
+            // without blanking it first. UpdateMatching sets visibility, phase
+            // text and both buttons in every branch, so the repaint alone is a
+            // complete teardown of our overlay — and blanking first would fight
+            // the state vanilla painted on the very event that triggered the
+            // stand-down. The time label especially: vanilla drives it from its
+            // ticker events, which fire once per queue and then only update the
+            // text (UpdateMatching never touches its visibility), so hiding it
+            // here would drop the matchmaking countdown for the whole queue.
+            // Note this runs a frame late — it's marshalled — so the ticker's
+            // show has already landed by the time we get here.
+            if (_qjYieldedToMatchmaking)
+            {
+                MatchmakingPanelOverlay.RepaintVanilla();
+                return;
+            }
+
             MatchmakingPanelOverlay.SetVisible(false);
             MatchmakingPanelOverlay.SetPhaseText(string.Empty);
             MatchmakingPanelOverlay.SetConnectButton(false);
             MatchmakingPanelOverlay.SetCloseButton(false);
             MatchmakingPanelOverlay.SetTimeVisible(false);
+            // Hand the panel back rather than just leaving it hidden. If
+            // matchmaking became active while we held it, UpdateMatching has
+            // already fired for that transition and nothing re-runs it on its
+            // own — without this poke the ranked "MATCH READY!" Connect button
+            // would stay invisible until the match expired.
+            //
+            // This reaches vanilla even though QuickJoinInFlight is still set on
+            // this path: RepaintVanilla exempts itself from Patch_UpdateMatching.
+            // Since B1231 that matters for more than the Connect button — the
+            // repaint is also what restores the START MATCHMAKING button, so
+            // without it the user is left unable to queue at all.
+            MatchmakingPanelOverlay.RepaintVanilla();
         }
+        catch { }
+    }
+
+    // Stable toast name so a repeat replaces the previous one instead of
+    // stacking (UIToastManager dedupes by name).
+    private static void ShowExclusionToast(string message)
+    {
+        try { MonoBehaviourSingleton<UIManager>.Instance?.ToastManager?.ShowToast("Toaster_QuickJoin", message, 5f); }
         catch { }
     }
 

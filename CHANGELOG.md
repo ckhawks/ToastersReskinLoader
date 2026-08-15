@@ -1,5 +1,43 @@
 # Changelog
 
+## 2.4.5
+
+Compatibility release for the game's B1235 update.
+
+### Fixed
+- **The "START MATCHMAKING" button no longer sits on top of the game.** After the
+  game's update it appeared over the locker room and the ice and stayed there for
+  the rest of the session, with no way to dismiss it. The game moved that button
+  out of the matchmaking panel and renamed a piece of matchmaking data the mod
+  read while labelling the queue; reading the old name failed in a way the mod
+  could not catch, which killed the game's own routine for drawing that panel
+  part-way through — after it had drawn the button but before it hid it again.
+- **Matchmaking can be started again after cancelling a server queue.** Cancelling
+  a queue blanked the matchmaking panel and left it that way. That was survivable
+  when matchmaking started from the Play screen's own buttons, but the update
+  moved the entry point into that panel, so a blanked panel meant no way to queue
+  at all until the game was restarted.
+- **Mod overlays no longer take the matchmaking panel from the game.** Entering
+  matchmaking while a server queue or Quick Join was running left the mod's status
+  display on top: the "MATCH READY!" Connect button never appeared, the panel's X
+  only dismissed the overlay, and a found match stayed unreachable until restart.
+  The game's own matchmaking now always wins the panel — it has a join deadline
+  and a match already waiting, while both overlays can simply be restarted. Also
+  fixed along the way: the X could swallow a genuine matchmaking cancel, the
+  countdown vanished after the panel changed hands, and cancelling a queue could
+  leave the panel and its relabelled text stranded for the rest of the session.
+- **Frame profiler server rows report again.** Two of the profiler's server
+  measurements silently stopped after the update because the game renamed and
+  restructured what they measured. A profiler row that reads zero looks like a
+  system costing nothing rather than one that is not being measured.
+
+### Removed
+- **Overtime period numbering.** The base game now numbers successive overtimes
+  itself, so the mod's version is gone. It had also become actively wrong: it
+  worked out the regulation-period count by watching play, because the game never
+  told the client what it was. The game now knows the real number, so the mod's
+  guess could renumber a label the game had already got right.
+
 ## 2.4.4
 
 ### Fixed

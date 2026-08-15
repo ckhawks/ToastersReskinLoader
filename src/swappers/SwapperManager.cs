@@ -332,10 +332,36 @@ public static class SwapperManager
             typeof(UIMatchmaking).GetField("matchingPhaseLabel",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
+        // B1231 renamed PoolStatistics.groupPlayers to groupPlayerCount. Read it
+        // by reflection rather than binding the property directly, because a
+        // direct reference to a member the running build no longer has makes the
+        // runtime fail to JIT this whole postfix: the MissingMethodException is
+        // raised on first call, before any statement runs, so the try/catch below
+        // cannot contain it. Harmony's wrapper then propagates it out into
+        // UIMatchmakingController.UpdateMatching — which calls
+        // SetMatchingPhaseText *ahead of* the calls that show and hide the
+        // panel's buttons in every one of its branches. A stale name here
+        // therefore aborts vanilla's repaint half-way and strands whatever the
+        // previous paint left on screen, most visibly B1231's START MATCHMAKING
+        // button, which then sits over the game for the rest of the session.
+        private static readonly System.Reflection.PropertyInfo GroupPlayerCountProp =
+            ResolveGroupPlayerCount();
+
+        private static System.Reflection.PropertyInfo ResolveGroupPlayerCount()
+        {
+            var t = AccessTools.TypeByName("PoolStatistics");
+            // B1231+ name first, then the pre-B1231 one.
+            var p = t?.GetProperty("groupPlayerCount") ?? t?.GetProperty("groupPlayers");
+            if (p == null)
+                Plugin.LogWarning("[QoL] matchmaking queue count: no player-count property on PoolStatistics; queue size will be omitted");
+            return p;
+        }
+
         [HarmonyPostfix]
         public static void Postfix(UIMatchmaking __instance, string text)
         {
             if (text != "LOOKING FOR A MATCH...") return;
+            if (GroupPlayerCountProp == null) return;
 
             try
             {
@@ -344,7 +370,10 @@ public static class SwapperManager
 
                 int total = 0;
                 foreach (var pool in stats.matchmakingManager.pools)
-                    total += pool.groupPlayers;
+                {
+                    if (pool == null) continue;
+                    total += Convert.ToInt32(GroupPlayerCountProp.GetValue(pool));
+                }
 
                 if (total <= 0) return;
 
