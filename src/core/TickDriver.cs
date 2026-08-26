@@ -18,6 +18,14 @@ public sealed class TickDriver : MonoBehaviour
 {
     private static TickDriver _instance;
 
+    /// <summary>
+    /// The DontDestroyOnLoad host, for callers that need to run a coroutine across a
+    /// scene change. UIManager is not safe for that — it can be destroyed mid-wait,
+    /// stranding the coroutine (see GlossSwapper.ResetScanScheduled). Null before
+    /// Bootstrap; callers must handle that and fall back to running synchronously.
+    /// </summary>
+    public static MonoBehaviour Runner => _instance;
+
     public static void Bootstrap()
     {
         if (_instance != null) return;

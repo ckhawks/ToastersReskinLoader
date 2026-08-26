@@ -105,14 +105,31 @@ public static class SwapperManager
         [HarmonyPostfix]
         public static void Postfix(PlayerBody __instance)
         {
-            JerseySwapper.SetJerseyForPlayer(__instance.Player);
-            GoalieEquipmentSwapper.SetLegPadsForPlayer(__instance.Player);
-            GoalieHelmetSwapper.SetHeadgearForPlayer(__instance.Player);
-            SkaterHelmetSwapper.SetHelmetForPlayer(__instance.Player);
-            // Hat + body type + skin/hair color are handled by AppearanceAPI based on server data
-            AppearanceAPI.OnPlayerSpawned(__instance.Player);
-            // Pick up any newly spawned renderers on this player for gloss removal
-            GlossSwapper.RequestScan();
+            // Must not throw. On a join this postfix runs via
+            // PlayerBody.OnNetworkPostSpawn -> HandlePlayerReference ->
+            // ApplyCustomizations, i.e. inside Netcode's client-synchronization
+            // spawn loop, which does not guard against exceptions. An escape there
+            // stops the client sending SynchronizeComplete, so the server times it
+            // out and the player sees "server unreachable" — a cosmetic swapper
+            // failure presenting as a network failure. (Patches reached through the
+            // game's EventManager are already safe: TriggerEvent wraps every
+            // listener in try/catch. This path is not one of those.)
+            try
+            {
+                Player player = __instance.Player;
+                JerseySwapper.SetJerseyForPlayer(player);
+                GoalieEquipmentSwapper.SetLegPadsForPlayer(player);
+                GoalieHelmetSwapper.SetHeadgearForPlayer(player);
+                SkaterHelmetSwapper.SetHelmetForPlayer(player);
+                // Hat + body type + skin/hair color are handled by AppearanceAPI based on server data
+                AppearanceAPI.OnPlayerSpawned(player);
+                // Pick up any newly spawned renderers on this player for gloss removal
+                GlossSwapper.RequestScan();
+            }
+            catch (Exception e)
+            {
+                Plugin.LogError($"PlayerBody.ApplyCustomizations postfix failed: {e}");
+            }
         }
     }
 
@@ -160,18 +177,34 @@ public static class SwapperManager
         [HarmonyPostfix]
         public static void Postfix(Stick __instance)
         {
-            Plugin.LogDebug($"Stick.ApplyCustomizations");
-            SetStickReskinForPlayer(__instance.Player);
-            // Apply stick tape for local player and their replay counterpart
-            bool isReplayLocal = __instance.Player.IsReplay.Value &&
-                PlayerManager.Instance.GetLocalPlayer()?.OwnerClientId == __instance.Player.OwnerClientId - 1337UL;
-            if (__instance.Player.IsLocalPlayer || isReplayLocal)
-                StickTapeSwapper.SetStickTapeForPlayer(__instance.Player.Stick);
+            // Guarded: Stick.ApplyCustomizations is reached from HandlePlayerReference
+            // during Netcode spawn, which is not exception-guarded. See the note on
+            // PlayerBodyApplyCustomizations above.
+            try
+            {
+                Plugin.LogDebug($"Stick.ApplyCustomizations");
 
-            // Attach stick-based apparel (e.g. Deltapoint) now that the stick exists
-            AppearanceAPI.OnStickReady(__instance.Player);
-            // Pick up the new stick renderer for gloss removal
-            GlossSwapper.RequestScan();
+                Player player = __instance.Player;
+                // SetStickReskinForPlayer null-checks this itself, so it can be null
+                // here — everything after it must not assume otherwise.
+                SetStickReskinForPlayer(player);
+                if (player == null) return;
+
+                // Apply stick tape for local player and their replay counterpart
+                bool isReplayLocal = player.IsReplay.Value &&
+                    PlayerManager.Instance.GetLocalPlayer()?.OwnerClientId == player.OwnerClientId - 1337UL;
+                if (player.IsLocalPlayer || isReplayLocal)
+                    StickTapeSwapper.SetStickTapeForPlayer(player.Stick);
+
+                // Attach stick-based apparel (e.g. Deltapoint) now that the stick exists
+                AppearanceAPI.OnStickReady(player);
+                // Pick up the new stick renderer for gloss removal
+                GlossSwapper.RequestScan();
+            }
+            catch (Exception e)
+            {
+                Plugin.LogError($"Stick.ApplyCustomizations postfix failed: {e}");
+            }
         }
     }
 
@@ -192,7 +225,17 @@ public static class SwapperManager
         TeamIndicatorSwapper.Cleanup();
     }
 
+    // Unity's SceneManager.sceneLoaded is a plain multicast delegate: an exception
+    // from one subscriber stops the rest of the invocation list, so an escape here
+    // would silently kill the scene hook of every mod registered after us. Keep the
+    // whole body guarded.
     public static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        try { OnSceneLoadedCore(scene); }
+        catch (Exception e) { Plugin.LogError($"OnSceneLoaded({scene.name}) failed: {e}"); }
+    }
+
+    private static void OnSceneLoadedCore(Scene scene)
     {
         Plugin.Log($"OnSceneLoaded: {scene.name}");
         ToasterReskinLoader.display.ArenaVisualsToggle.InvalidateCache();
@@ -229,21 +272,19 @@ public static class SwapperManager
         // Rebuild or destroy party lineup based on scene
         PartyLineup.OnSceneChanged(scene.name, MonoBehaviourSingleton<UIManager>.Instance);
 
-        // Re-apply the local player's saved appearance (skin tone, hair, body, hat)
-        // when entering the locker room. Without this, the head color only applies
-        // once the user opens the Appearance tab.
-        if (scene.name.Equals("locker_room"))
-        {
-            MonoBehaviourSingleton<UIManager>.Instance.StartCoroutine(ReapplyLocalAppearanceAfterDelay());
-        }
-
-        SetAll();
+        // The apply pass now runs across frames, so the locker-room appearance
+        // re-apply is chained onto its completion rather than started alongside it.
+        // It has to land after the pass (both touch goalie headgear), which the old
+        // inline SetAll() guaranteed for free by finishing before the coroutine's
+        // first resume.
+        SetAllDeferred(scene.name.Equals("locker_room") ? ReapplyLocalAppearance : null);
     }
 
-    private static System.Collections.IEnumerator ReapplyLocalAppearanceAfterDelay()
+    // Re-apply the local player's saved appearance (skin tone, hair, body, hat)
+    // when entering the locker room. Without this, the head color only applies
+    // once the user opens the Appearance tab.
+    private static void ReapplyLocalAppearance()
     {
-        // Wait a frame so LockerRoomPlayer / PlayerMesh are fully initialized
-        yield return null;
         ui.sections.PlayerCustomizationSection.ReapplyLocalAppearanceToLockerRoom();
         // Re-apply helmet/mask/cage colors + textures to the locker room preview.
         // Without this, returning from a server leaves the goalie headgear at the
@@ -280,42 +321,134 @@ public static class SwapperManager
         GoalieEquipmentSwapper.OnRedLegPadsChanged();
     }
 
-    public static void SetAll()
+    // The full apply pass, as an ordered list so it can be run either in one shot
+    // (SetAll) or spread across frames (SetAllDeferred). Order is load-bearing —
+    // do not reorder without checking the dependent swappers.
+    private static readonly (string Name, Action Run)[] ApplySteps =
     {
-        IceSwapper.SetIceTexture();
-        IceSwapper.UpdateIceSmoothness();
-        ArenaSwapper.UpdateCrowdState();
-        ArenaSwapper.UpdateHangarState();
-        ArenaSwapper.UpdateScoreboardState();
-        ArenaSwapper.UpdateGlassState();
-        ArenaSwapper.UpdateBoards();
-        ArenaSwapper.UpdateGlassAndPillars();
-        ArenaSwapper.UpdateSpectators();
-        ArenaSwapper.SetNetTexture();
-        ArenaSwapper.UpdateGoalFrameColors();
-        OnBlueJerseyChanged();
-        OnRedJerseyChanged();
+        ("IceTexture",        IceSwapper.SetIceTexture),
+        // Returns bool; the old inline SetAll ignored it, so keep ignoring it.
+        ("IceSmoothness",     () => IceSwapper.UpdateIceSmoothness()),
+        ("Crowd",             ArenaSwapper.UpdateCrowdState),
+        ("Hangar",            ArenaSwapper.UpdateHangarState),
+        ("Scoreboard",        ArenaSwapper.UpdateScoreboardState),
+        ("Glass",             ArenaSwapper.UpdateGlassState),
+        ("Boards",            ArenaSwapper.UpdateBoards),
+        ("GlassAndPillars",   ArenaSwapper.UpdateGlassAndPillars),
+        ("Spectators",        ArenaSwapper.UpdateSpectators),
+        ("NetTexture",        ArenaSwapper.SetNetTexture),
+        ("GoalFrameColors",   ArenaSwapper.UpdateGoalFrameColors),
+        ("BlueJersey",        OnBlueJerseyChanged),
+        ("RedJersey",         OnRedJerseyChanged),
         // Sticks and pucks are normally textured at spawn time via Harmony patches,
         // so they must be re-applied here too. Otherwise a re-apply that doesn't
         // respawn them (e.g. the Reload button, which destroys the texture cache
         // first) leaves their materials pointing at destroyed textures — invisible
         // stick, black pucks. All four no-op safely when nothing is spawned.
-        OnPersonalStickChanged();
-        OnBlueTeamStickChanged();
-        OnRedTeamStickChanged();
-        PuckSwapper.SetAllPucksTextures();
-        OnBlueLegPadsChanged();
-        OnRedLegPadsChanged();
-        OnBlueHelmetsChanged();
-        OnRedHelmetsChanged();
-        SkaterHelmetSwapper.OnBlueHelmetsChanged();
-        SkaterHelmetSwapper.OnRedHelmetsChanged();
-        FullArenaSwapper.ApplyFromProfile();
-        SkyboxSwapper.UpdateSkybox();
-        TeamIndicatorSwapper.Refresh();
-        PuckFXSwapper.ApplyAll();
-        MinimapSwapper.RefreshAll();
-        GlossSwapper.RequestScan();
+        ("PersonalStick",     OnPersonalStickChanged),
+        ("BlueTeamStick",     OnBlueTeamStickChanged),
+        ("RedTeamStick",      OnRedTeamStickChanged),
+        ("PuckTextures",      PuckSwapper.SetAllPucksTextures),
+        ("BlueLegPads",       OnBlueLegPadsChanged),
+        ("RedLegPads",        OnRedLegPadsChanged),
+        ("BlueGoalieHelmets", OnBlueHelmetsChanged),
+        ("RedGoalieHelmets",  OnRedHelmetsChanged),
+        ("BlueSkaterHelmets", SkaterHelmetSwapper.OnBlueHelmetsChanged),
+        ("RedSkaterHelmets",  SkaterHelmetSwapper.OnRedHelmetsChanged),
+        ("FullArena",         FullArenaSwapper.ApplyFromProfile),
+        ("Skybox",            SkyboxSwapper.UpdateSkybox),
+        ("TeamIndicator",     TeamIndicatorSwapper.Refresh),
+        ("PuckFX",            PuckFXSwapper.ApplyAll),
+        ("Minimap",           MinimapSwapper.RefreshAll),
+        ("GlossScan",         GlossSwapper.RequestScan),
+    };
+
+    private static void RunStep(in (string Name, Action Run) step)
+    {
+        try { step.Run(); }
+        catch (Exception e) { Plugin.LogError($"[Apply] step '{step.Name}' failed: {e}"); }
+    }
+
+    /// <summary>
+    /// Runs the whole apply pass inline. Use from user-paced callers (menu changes,
+    /// the Reload button, the StartupLoader completion) where a single hitch is
+    /// acceptable and the result must be visible immediately. On a scene change use
+    /// <see cref="SetAllDeferred"/> instead — see the note there.
+    /// </summary>
+    public static void SetAll()
+    {
+        foreach (var step in ApplySteps) RunStep(step);
+    }
+
+    // ── Frame-budgeted apply ────────────────────────────────────────────
+    // Running the full pass inline from the scene-loaded hook blocks the main
+    // thread for as long as it takes. That is not just a hitch: the client loads
+    // the arena scene *during* Netcode's client synchronization, so a long enough
+    // block stops the transport being pumped, the connection times out, and the
+    // player is dropped mid-join. Launch already had this problem and was fixed by
+    // frame-chunking (see core/StartupLoader) — this is the same treatment for
+    // scene changes.
+    //
+    // Same budget as StartupLoader. A single step can overrun it (we can't
+    // subdivide one swapper), but we always yield afterwards so no frame stacks
+    // two heavy steps.
+    private const double ApplyFrameBudgetMs = 6.0;
+
+    // Bumped on each new deferred apply so an in-flight one from the previous
+    // scene abandons itself instead of writing into the new scene half-way
+    // through the new pass.
+    private static int _applyGeneration;
+
+    /// <summary>
+    /// Runs the apply pass across frames, then invokes <paramref name="onComplete"/>.
+    /// Falls back to a synchronous <see cref="SetAll"/> if there's no coroutine host
+    /// yet (i.e. before TickDriver.Bootstrap).
+    /// </summary>
+    public static void SetAllDeferred(Action onComplete = null)
+    {
+        int generation = ++_applyGeneration;
+
+        var runner = core.TickDriver.Runner;
+        if (runner == null)
+        {
+            SetAll();
+            try { onComplete?.Invoke(); }
+            catch (Exception e) { Plugin.LogError($"[Apply] onComplete failed: {e}"); }
+            return;
+        }
+
+        runner.StartCoroutine(SetAllRoutine(generation, onComplete));
+    }
+
+    private static System.Collections.IEnumerator SetAllRoutine(int generation, Action onComplete)
+    {
+        // Always give up the rest of the scene-load frame before doing anything.
+        // That frame is the worst possible one to add work to, and it also lets the
+        // scene finish initializing (LockerRoomPlayer / PlayerMesh) before the pass
+        // scans it — a guarantee the old one-frame-delayed appearance re-apply
+        // relied on.
+        yield return null;
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
+        foreach (var step in ApplySteps)
+        {
+            // A newer apply superseded us — stop before touching anything else.
+            if (generation != _applyGeneration) yield break;
+
+            RunStep(step);
+
+            if (sw.Elapsed.TotalMilliseconds >= ApplyFrameBudgetMs)
+            {
+                yield return null;
+                sw.Restart();
+            }
+        }
+
+        if (generation != _applyGeneration) yield break;
+
+        try { onComplete?.Invoke(); }
+        catch (Exception e) { Plugin.LogError($"[Apply] onComplete failed: {e}"); }
     }
 
     // ── Matchmaking queue info overlay ──────────────────────────────

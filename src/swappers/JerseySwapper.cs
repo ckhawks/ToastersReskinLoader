@@ -108,6 +108,15 @@ public static class JerseySwapper
 
     public static void SetJerseyForPlayer(Player player)
     {
+        // Null-check before anything dereferences `player`. This runs from the
+        // PlayerBody.ApplyCustomizations postfix, which sits inside Netcode's
+        // client-synchronization spawn loop — an NRE here doesn't just skip a
+        // jersey, it aborts synchronization and the client gets dropped mid-join.
+        // Note the interpolated log strings below are built at the call site
+        // regardless of the debug-logging flag, so they count as dereferences.
+        if (player == null)
+            return;
+
         Plugin.LogDebug($"Setting jersey for {player.Username.Value} {player.Team} isReplay {player.IsReplay.Value}");
         PlayerTeam team = player.Team;
 
@@ -117,7 +126,7 @@ public static class JerseySwapper
             return;
         }
 
-        if (player == null || player.PlayerBody == null || player.PlayerBody.PlayerMesh == null ||
+        if (player.PlayerBody == null || player.PlayerBody.PlayerMesh == null ||
             player.PlayerBody.PlayerMesh.PlayerTorso == null)
         {
             Plugin.LogDebug($"Player {player.Username.Value} is missing body parts, will retry on ApplyCustomizations.");
@@ -126,8 +135,14 @@ public static class JerseySwapper
 
         MeshRendererTexturer torsoMeshRendererTexturer =
             (MeshRendererTexturer) _meshRendererTexturerTorsoField.GetValue(player.PlayerBody.PlayerMesh.PlayerTorso);
+        // PlayerGroin can be absent while PlayerTorso is present (goalie / replay
+        // meshes mid-spawn). FieldInfo.GetValue(null) on an instance field throws
+        // TargetException, so resolve it only when the part actually exists —
+        // ApplyJerseyTexture already no-ops on a null texturer.
         MeshRendererTexturer groinMeshRendererTexturer =
-            (MeshRendererTexturer) _meshRendererTexturerGroinField.GetValue(player.PlayerBody.PlayerMesh.PlayerGroin);
+            player.PlayerBody.PlayerMesh.PlayerGroin != null
+                ? (MeshRendererTexturer) _meshRendererTexturerGroinField.GetValue(player.PlayerBody.PlayerMesh.PlayerGroin)
+                : null;
 
         if (team == PlayerTeam.Blue)
         {

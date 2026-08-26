@@ -1,5 +1,39 @@
 # Changelog
 
+## 2.4.6
+
+### Fixed
+- **Joining a server no longer freezes the game while it happens.** Every time a
+  scene loaded, the mod re-applied everything it skins — ice, boards, glass, net,
+  jerseys, sticks, pucks, pads, helmets, skybox, minimap — in one unbroken block,
+  and nothing else in the game could run until it finished. That work now spreads
+  itself across frames, the same way the mod already handles its startup load, so
+  the game keeps running while it happens. This matters most when joining a
+  server, because the rink loads while the connection is still being set up: a
+  long enough freeze there and the connection times out, which the game reports
+  as the server being unreachable. It also showed up as local offline practice
+  taking seconds to start.
+- **A skinning error can no longer drop you from a server.** When a player spawns,
+  the game asks the mod to dress them. That happens partway through joining, at a
+  point where the game does not expect anything to go wrong, so a single failure —
+  a player missing a body part the mod expected, for instance — would abandon the
+  rest of the join. The client would sit there until the server gave up on it, and
+  the game would blame the network. Those steps are now contained: a failure skins
+  one player wrong and is written to the log, instead of ending the session.
+- **One failing skin step no longer silently cancels the rest.** The apply pass
+  ran as a single sequence, so anything that went wrong partway through quietly
+  abandoned every step after it — a bad jersey could cost you your skybox and
+  minimap with nothing to indicate why. Each step is now isolated and logs its own
+  failure by name.
+- **A mod loading after this one no longer loses its scene setup** if this mod hits
+  an error on a scene change. Unity stops notifying the remaining mods once one of
+  them fails, and this mod was not catching its own failures.
+
+### Changed
+- The arena now finishes skinning over the first few frames after a scene loads
+  rather than all at once before the first frame draws. Reskins may be very
+  briefly visible arriving.
+
 ## 2.4.5
 
 Compatibility release for the game's B1235 update.

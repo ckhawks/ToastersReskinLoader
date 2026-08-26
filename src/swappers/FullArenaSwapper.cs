@@ -21,6 +21,7 @@ public static class FullArenaSwapper
     private static MethodInfo requestUnloadMethod;
 #pragma warning restore CS0169
     public static bool isInitialized = false;
+    private static bool initAttempted = false;
 
     /// <summary>
     /// Metadata about a discoverable arena asset bundle.
@@ -60,7 +61,12 @@ public static class FullArenaSwapper
     {
         try
         {
-            if (isInitialized) return;
+            if (isInitialized || initAttempted) return;
+            // Latch on the first attempt, not just on success. Initialize() is
+            // reached from ApplyFromProfile, which runs in every apply pass, so
+            // without this each failure re-probes the disk and re-logs the same
+            // error on every scene change.
+            initAttempted = true;
 
             Plugin.Log("[FullArena] Initializing arena swapping system...");
 
