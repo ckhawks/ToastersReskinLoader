@@ -1,5 +1,30 @@
 # Changelog
 
+## 2.4.7
+
+### Added
+- **A second hat slot.** Reach level 15 and the Appearance tab gets a "Hat 2"
+  row, so you can wear two of your unlocked items at once — a hat with the
+  Backup Stick on your back, say, or one on your head and one on your stick. Any
+  item can go in either slot, just not the same item in both. Until then the row
+  shows the level it unlocks at. Other players see both of your hats in matches,
+  replays and the locker-room party lineup. Players on older versions still see
+  your first one.
+
+### Changed
+- **The Players editor opens on the cell you're actually using.** In a match it
+  starts on your current team and role, instead of always the same one.
+- **Stick and tape changes show up straight away.** Changing your stick, tape
+  color, tape texture or tape mode now updates players already on the ice,
+  instead of waiting for the next respawn.
+
+### Fixed
+- **Hats are more likely to load on a bad install, and say why when they don't.**
+  If the hats file can't be opened normally, the mod now tries a second way of
+  loading it, which gets past file locks and antivirus interference. If that
+  fails too, the log names the file and its size and suggests resubscribing to
+  re-download it, instead of a bare "failed to load".
+
 ## 2.4.6
 
 ### Fixed
