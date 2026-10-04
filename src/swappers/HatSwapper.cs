@@ -17,8 +17,9 @@ namespace ToasterReskinLoader.swappers
         private static readonly FieldInfo BladeHandleField = typeof(Stick)
             .GetField("bladeHandle", BindingFlags.Instance | BindingFlags.NonPublic);
 
-        // Track spawned hats per player (clientId -> spawned instance)
-        private static readonly Dictionary<ulong, GameObject> spawnedHats = new();
+        // Track spawned hats per player and slot ((clientId, slot) -> spawned instance)
+        private static readonly Dictionary<(ulong key, int slot), GameObject> spawnedHats = new();
+        public const int SLOT_COUNT = 2;
 
         private const string BUNDLE_NAME = "hats";
         private const string ASSET_PREFIX = "assets/toaster's rink/hats/";
@@ -118,9 +119,9 @@ namespace ToasterReskinLoader.swappers
         }
 
         /// <summary>
-        /// Attach a hat to an in-game player by hat ID. Pass 0 or negative to remove.
+        /// Attach a hat to an in-game player by hat ID in the given slot. Pass 0 or negative to remove.
         /// </summary>
-        public static void AttachToPlayer(Player player, int hatId)
+        public static void AttachToPlayer(Player player, int hatId, int slot = 0)
         {
             if (player?.PlayerBody?.PlayerMesh == null) return;
             // Skip local player for body/head items (camera clips), but allow stick items
@@ -129,7 +130,7 @@ namespace ToasterReskinLoader.swappers
             if (player.Team is not (PlayerTeam.Blue or PlayerTeam.Red)) return;
 
             ulong clientId = player.OwnerClientId;
-            RemoveFromPlayer(clientId);
+            RemoveFromPlayer(clientId, slot);
 
             if (hatId <= 0) return;
             if (!EnsureInitialized()) return;
@@ -157,7 +158,7 @@ namespace ToasterReskinLoader.swappers
                 if (attachPoint == null) return;
 
                 var hat = SpawnHatFromDef(prefab, attachPoint, def, player.Role);
-                spawnedHats[clientId] = hat;
+                spawnedHats[(clientId, slot)] = hat;
                 Plugin.LogDebug($"[Hats] Attached '{GetHatName(hatId)}' to {player.Username.Value}");
             }
             catch (Exception ex)
@@ -167,11 +168,11 @@ namespace ToasterReskinLoader.swappers
         }
 
         /// <summary>
-        /// Attach a hat to the locker room model by hat ID. Pass 0 or negative to remove.
+        /// Attach a hat to the locker room model by hat ID in the given slot. Pass 0 or negative to remove.
         /// </summary>
-        public static void AttachToPlayerMesh(PlayerMesh playerMesh, int hatId)
+        public static void AttachToPlayerMesh(PlayerMesh playerMesh, int hatId, int slot = 0)
         {
-            RemoveFromPlayer(LOCKER_ROOM_KEY);
+            RemoveFromPlayer(LOCKER_ROOM_KEY, slot);
 
             if (hatId <= 0) return;
             if (playerMesh?.PlayerHead == null) return;
@@ -201,7 +202,7 @@ namespace ToasterReskinLoader.swappers
                 if (attachPoint == null) return;
 
                 var hat = SpawnHatFromDef(prefab, attachPoint, def, SettingsManager.Role);
-                spawnedHats[LOCKER_ROOM_KEY] = hat;
+                spawnedHats[(LOCKER_ROOM_KEY, slot)] = hat;
             }
             catch (Exception ex)
             {
@@ -213,9 +214,9 @@ namespace ToasterReskinLoader.swappers
         /// Attach a hat to a PlayerMesh with a specific tracking key.
         /// Key 0 is used for the local player's locker room model.
         /// </summary>
-        public static void AttachToPlayerMesh(PlayerMesh playerMesh, int hatId, ulong key)
+        public static void AttachToPlayerMesh(PlayerMesh playerMesh, int hatId, ulong key, int slot)
         {
-            RemoveFromPlayer(key);
+            RemoveFromPlayer(key, slot);
 
             if (hatId <= 0) return;
             if (playerMesh?.PlayerHead == null) return;
@@ -237,7 +238,7 @@ namespace ToasterReskinLoader.swappers
                 if (attachPoint == null) return;
 
                 var hat = SpawnHatFromDef(prefab, attachPoint, def, PlayerRole.Attacker);
-                spawnedHats[key] = hat;
+                spawnedHats[(key, slot)] = hat;
             }
             catch (Exception ex)
             {
@@ -250,12 +251,21 @@ namespace ToasterReskinLoader.swappers
             RemoveFromPlayer(LOCKER_ROOM_KEY);
         }
 
+        /// <summary>
+        /// Remove every slot's hat from a player.
+        /// </summary>
         public static void RemoveFromPlayer(ulong clientId)
         {
-            if (spawnedHats.TryGetValue(clientId, out var hat))
+            for (int slot = 0; slot < SLOT_COUNT; slot++)
+                RemoveFromPlayer(clientId, slot);
+        }
+
+        public static void RemoveFromPlayer(ulong clientId, int slot)
+        {
+            if (spawnedHats.TryGetValue((clientId, slot), out var hat))
             {
                 if (hat != null) UnityEngine.Object.Destroy(hat);
-                spawnedHats.Remove(clientId);
+                spawnedHats.Remove((clientId, slot));
             }
         }
 

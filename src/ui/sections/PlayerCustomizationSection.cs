@@ -13,6 +13,7 @@ public static class PlayerCustomizationSection
     private static Color selectedSkinTone = GenderSwapper.SKIN_TONES[0];
     private static Color selectedHairColor = GenderSwapper.HAIR_COLORS[0];
     private static int selectedHatId = 0;
+    private static int selectedHat2Id = 0;
     private static bool subscribedToLoad;
 
     /// <summary>Whether the local player has selected body type 2 (female model).</summary>
@@ -20,6 +21,9 @@ public static class PlayerCustomizationSection
 
     /// <summary>The local player's selected hat ID (-1 = none).</summary>
     public static int SelectedHatId => selectedHatId;
+
+    /// <summary>The local player's hat in the given slot (0 = first, 1 = second). 0 = none.</summary>
+    public static int SelectedHatInSlot(int slot) => slot == 0 ? selectedHatId : selectedHat2Id;
 
     /// <summary>The local player's selected skin tone color.</summary>
     public static Color SelectedSkinTone => selectedSkinTone;
@@ -46,6 +50,7 @@ public static class PlayerCustomizationSection
             selectedSkinTone = data.skinTone;
             selectedHairColor = data.hairColor;
             selectedHatId = data.hatId;
+            selectedHat2Id = data.hat2Id;
             Plugin.Log($"[Appearance] Loaded from server: bodyType={data.bodyType}, skin=({data.skinTone.r:F2},{data.skinTone.g:F2},{data.skinTone.b:F2}), hair=({data.hairColor.r:F2},{data.hairColor.g:F2},{data.hairColor.b:F2})");
 
             // Apply to locker room visuals only — don't POST back what we just loaded
@@ -150,13 +155,21 @@ public static class PlayerCustomizationSection
                 if (h.Name == evt.newValue)
                 {
                     selectedHatId = h.Id;
+                    // Same item can't be in both slots: moving it into slot 1 empties slot 2
+                    if (selectedHat2Id == selectedHatId)
+                        selectedHat2Id = 0;
                     ApplyToLockerRoom();
+                    // Slot 2's choices depend on slot 1
+                    if (AppearanceAPI.IsSecondHatSlotUnlocked)
+                        ReskinManagerMenu.CreateContentForSection(ReskinManagerMenu.selectedSectionIndex);
                     break;
                 }
             }
         });
         hatRow.Add(hatDropdown);
         controlsContainer.Add(hatRow);
+
+        AddSecondHatRow(controlsContainer);
 
         // -- Body Type --
         AddSectionLabel(controlsContainer, "Body Type");
@@ -494,6 +507,53 @@ public static class PlayerCustomizationSection
         ApplyToLockerRoom(syncToServer: false);
     }
 
+    private static void AddSecondHatRow(VisualElement container)
+    {
+        VisualElement row = UITools.CreateConfigurationRow();
+        row.Add(UITools.CreateConfigurationLabel("Hat 2"));
+
+        if (!AppearanceAPI.IsSecondHatSlotUnlocked)
+        {
+            string lockedText = AppearanceAPI.SecondHatSlotLevel == int.MaxValue
+                ? "Unavailable"
+                : $"Unlocks at level {AppearanceAPI.SecondHatSlotLevel}";
+            Label locked = new Label(lockedText);
+            locked.style.fontSize = 14;
+            locked.style.color = new Color(0.6f, 0.6f, 0.6f);
+            row.Add(locked);
+            container.Add(row);
+            return;
+        }
+
+        var names = new List<string>();
+        foreach (var h in HatSwapper.AllHats)
+        {
+            if (h.Id != 0 && h.Id == selectedHatId) continue;
+            if (AppearanceAPI.IsHatUnlocked(h.Id))
+                names.Add(h.Name);
+        }
+
+        string current = AppearanceAPI.IsHatUnlocked(selectedHat2Id) && selectedHat2Id != selectedHatId
+            ? HatSwapper.GetHatName(selectedHat2Id)
+            : "None";
+
+        var dropdown = UITools.CreateStringDropdownField(names, current);
+        dropdown.RegisterCallback<ChangeEvent<string>>(evt =>
+        {
+            foreach (var h in HatSwapper.AllHats)
+            {
+                if (h.Name == evt.newValue)
+                {
+                    selectedHat2Id = h.Id;
+                    ApplyToLockerRoom();
+                    break;
+                }
+            }
+        });
+        row.Add(dropdown);
+        container.Add(row);
+    }
+
     private static void ApplyToLockerRoom(bool syncToServer = true)
     {
         if (!ChangingRoomHelper.IsInMainMenu()) return;
@@ -505,7 +565,8 @@ public static class PlayerCustomizationSection
         GenderSwapper.ApplyHeadColors(playerMesh.PlayerHead, selectedSkinTone, selectedHairColor);
         GenderSwapper.ApplyToPlayerMesh(playerMesh, selectedBodyTypeIndex == 1);
 
-        HatSwapper.AttachToPlayerMesh(playerMesh, selectedHatId);
+        HatSwapper.AttachToPlayerMesh(playerMesh, selectedHatId, 0);
+        HatSwapper.AttachToPlayerMesh(playerMesh, selectedHat2Id, 1);
 
         if (syncToServer)
         {
@@ -514,6 +575,7 @@ public static class PlayerCustomizationSection
                 selectedSkinTone,
                 selectedHairColor,
                 hatId: selectedHatId,
+                hat2Id: selectedHat2Id,
                 hairId: -1
             );
         }

@@ -491,11 +491,15 @@ public static class PartyLineup
             if (playerMesh.PlayerHead != null)
                 GenderSwapper.ApplyHeadColors(playerMesh.PlayerHead, data.skinTone, data.hairColor);
 
-            // Hat
-            if (data.hatId > 0)
-                HatSwapper.AttachToPlayerMesh(playerMesh, data.hatId, slot.Key);
+            // Hats
+            for (int hatSlot = 0; hatSlot < HatSwapper.SLOT_COUNT; hatSlot++)
+            {
+                int hatId = data.HatInSlot(hatSlot);
+                if (hatId > 0)
+                    HatSwapper.AttachToPlayerMesh(playerMesh, hatId, slot.Key, hatSlot);
+            }
 
-            Plugin.LogDebug($"[PartyLineup] Applied appearance to {slot.SteamId}: body={data.bodyType}, hat={data.hatId}");
+            Plugin.LogDebug($"[PartyLineup] Applied appearance to {slot.SteamId}: body={data.bodyType}, hat={data.hatId}, hat2={data.hat2Id}");
         }
         catch (Exception e)
         {

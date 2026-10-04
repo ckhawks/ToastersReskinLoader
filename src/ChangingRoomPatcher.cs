@@ -88,7 +88,8 @@ namespace ToasterReskinLoader
                         ApplySkaterHelmetToPlayerMesh(playerMesh, team);
                     }
 
-                    HatSwapper.AttachToPlayerMesh(playerMesh, PlayerCustomizationSection.SelectedHatId);
+                    for (int slot = 0; slot < HatSwapper.SLOT_COUNT; slot++)
+                        HatSwapper.AttachToPlayerMesh(playerMesh, PlayerCustomizationSection.SelectedHatInSlot(slot), slot);
                 }
                 catch (Exception e)
                 {

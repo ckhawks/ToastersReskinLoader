@@ -87,7 +87,7 @@ public static class AppearanceAPI
     /// Queue a debounced POST of the player's appearance.
     /// Resets the timer each time it's called — only fires after DEBOUNCE_DELAY seconds of no changes.
     /// </summary>
-    public static void QueuePostAppearance(int bodyType, Color skinTone, Color hairColor, int hatId, int hairId)
+    public static void QueuePostAppearance(int bodyType, Color skinTone, Color hairColor, int hatId, int hat2Id, int hairId)
     {
         if (coroutineRunner == null) return;
 
@@ -97,6 +97,7 @@ public static class AppearanceAPI
             skin_tone = new ColorPayload { r = skinTone.r, g = skinTone.g, b = skinTone.b },
             hair_color = new ColorPayload { r = hairColor.r, g = hairColor.g, b = hairColor.b },
             hat_id = hatId,
+            hat2_id = hat2Id,
             hair_id = hairId,
         };
 
@@ -143,7 +144,7 @@ public static class AppearanceAPI
         if (request.result != UnityWebRequest.Result.Success)
         {
             if (request.responseCode == 403)
-                Plugin.LogWarning("[AppearanceAPI] POST rejected: hat not unlocked");
+                Plugin.LogWarning($"[AppearanceAPI] POST rejected: {request.downloadHandler?.text}");
             else
                 Plugin.LogError($"[AppearanceAPI] POST failed: {request.error} - {request.downloadHandler?.text}");
         }
@@ -219,6 +220,8 @@ public static class AppearanceAPI
                         (float)hairColor["b"]
                     ),
                     hatId = (int)obj["hat_id"],
+                    // Absent from servers that predate the second slot
+                    hat2Id = (int?)obj["hat2_id"] ?? 0,
                     hairId = (int)obj["hair_id"],
                 };
             }
@@ -394,29 +397,31 @@ public static class AppearanceAPI
     {
         if (player == null) return;
 
-        // For the local player (or their replay clone), use their selected hat
+        // For the local player (or their replay clone), use their selected hats
         if (player.IsLocalPlayer || IsReplayOfLocalPlayer(player))
         {
-            int localHatId = PlayerCustomizationSection.SelectedHatId;
-            if (localHatId > 0)
-            {
-                var hatDef = HatSwapper.AllHats.Find(h => h.Id == localHatId);
-                if (hatDef.AttachToStick)
-                    HatSwapper.AttachToPlayer(player, localHatId);
-            }
+            for (int slot = 0; slot < HatSwapper.SLOT_COUNT; slot++)
+                AttachIfStickItem(player, PlayerCustomizationSection.SelectedHatInSlot(slot), slot);
             return;
         }
 
         string steamId = ResolveSteamIdForPlayer(player);
         if (appearanceCache.TryGetValue(steamId, out var data) && data != null)
         {
-            if (data.hatId > 0 && Plugin.modSettings.ShowPersonalization && Plugin.modSettings.ShowOtherPlayersHats)
+            if (Plugin.modSettings.ShowPersonalization && Plugin.modSettings.ShowOtherPlayersHats)
             {
-                var hatDef = HatSwapper.AllHats.Find(h => h.Id == data.hatId);
-                if (hatDef.AttachToStick)
-                    HatSwapper.AttachToPlayer(player, data.hatId);
+                for (int slot = 0; slot < HatSwapper.SLOT_COUNT; slot++)
+                    AttachIfStickItem(player, data.HatInSlot(slot), slot);
             }
         }
+    }
+
+    private static void AttachIfStickItem(Player player, int hatId, int slot)
+    {
+        if (hatId <= 0) return;
+        var hatDef = HatSwapper.AllHats.Find(h => h.Id == hatId);
+        if (hatDef.AttachToStick)
+            HatSwapper.AttachToPlayer(player, hatId, slot);
     }
 
     public static void OnPlayerSpawned(Player player)
@@ -471,9 +476,12 @@ public static class AppearanceAPI
             GenderSwapper.ApplyHeadColors(player.PlayerBody.PlayerMesh.PlayerHead,
                 PlayerCustomizationSection.SelectedSkinTone, PlayerCustomizationSection.SelectedHairColor);
 
-            int hatId = PlayerCustomizationSection.SelectedHatId;
-            if (hatId > 0)
-                HatSwapper.AttachToPlayer(player, hatId);
+            for (int slot = 0; slot < HatSwapper.SLOT_COUNT; slot++)
+            {
+                int hatId = PlayerCustomizationSection.SelectedHatInSlot(slot);
+                if (hatId > 0)
+                    HatSwapper.AttachToPlayer(player, hatId, slot);
+            }
 
             Plugin.LogDebug($"[AppearanceAPI] Applied local appearance to replay player");
         }
@@ -609,9 +617,12 @@ public static class AppearanceAPI
             }
 
             if (Plugin.modSettings.ShowOtherPlayersHats)
-                HatSwapper.AttachToPlayer(player, data.hatId);
+            {
+                for (int slot = 0; slot < HatSwapper.SLOT_COUNT; slot++)
+                    HatSwapper.AttachToPlayer(player, data.HatInSlot(slot), slot);
+            }
 
-            Plugin.LogDebug($"[AppearanceAPI] Applied appearance to {username}: body={data.bodyType}, hat={data.hatId}");
+            Plugin.LogDebug($"[AppearanceAPI] Applied appearance to {username}: body={data.bodyType}, hat={data.hatId}, hat2={data.hat2Id}");
         }
         catch (Exception e)
         {
@@ -774,6 +785,7 @@ public static class AppearanceAPI
             int? xpIntoLevel = (int?)resp["xp_into_level"];
             int? levelSpan = (int?)resp["level_span"];
             bool leveledUp = (bool)(resp["leveled_up"] ?? false);
+            bool hatSlotUnlocked = (bool)(resp["hat_slot_unlocked"] ?? false);
 
             UpdateXpState(xp, level, xpToNext, xpIntoLevel, levelSpan);
             Plugin.LogDebug($"[AppearanceAPI] Heartbeat OK: xp={xp}, level={level}, leveled_up={leveledUp}");
@@ -798,6 +810,14 @@ public static class AppearanceAPI
                 }
             }
 
+            if (hatSlotUnlocked)
+            {
+                Plugin.Log($"[AppearanceAPI] Second hat slot unlocked at level {level}");
+                if (Plugin.modSettings.ShowLevelUpNotifications)
+                    MonoBehaviourSingleton<UIManager>.Instance?.ToastManager?.ShowToast(
+                        "TRL", $"TRL: Level {level} — You unlocked a second hat slot!", 5f);
+            }
+
             OnUnlocksChanged?.Invoke();
         }
         catch (Exception e)
@@ -817,6 +837,9 @@ public static class AppearanceAPI
     public static int LevelXpTotal { get; private set; }
     /// <summary>XP earned within the current level (server-clamped to >= 0).</summary>
     public static int XpIntoLevel { get; private set; }
+    /// <summary>Level the second hat slot unlocks at. Stays int.MaxValue against a server without the slot.</summary>
+    public static int SecondHatSlotLevel { get; private set; } = int.MaxValue;
+    public static bool IsSecondHatSlotUnlocked => PlayerLevel >= SecondHatSlotLevel;
 
     private static void UpdateXpState(int xp, int level, int xpToNext, int? xpIntoLevel = null, int? levelSpan = null)
     {
@@ -868,6 +891,8 @@ public static class AppearanceAPI
                 (int)(resp["xp_to_next_level"] ?? 0),
                 (int?)resp["xp_into_level"],
                 (int?)resp["level_span"]);
+
+            SecondHatSlotLevel = (int?)resp["second_hat_slot_level"] ?? int.MaxValue;
 
             var hats = resp["unlocked_hats"] as JArray;
             if (hats != null)
@@ -969,6 +994,7 @@ public static class AppearanceAPI
         public ColorPayload skin_tone;
         public ColorPayload hair_color;
         public int hat_id;
+        public int hat2_id;
         public int hair_id;
     }
 
@@ -1008,6 +1034,9 @@ public static class AppearanceAPI
         public Color skinTone;
         public Color hairColor;
         public int hatId;
+        public int hat2Id;
         public int hairId;
+
+        public int HatInSlot(int slot) => slot == 0 ? hatId : hat2Id;
     }
 }
