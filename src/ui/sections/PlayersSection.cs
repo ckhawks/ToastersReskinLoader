@@ -41,6 +41,7 @@ public static class PlayersSection
     public static void CreateSection(VisualElement contentScrollViewContent)
     {
         _root = contentScrollViewContent;
+        SeedCellFromCurrentContext();
         contentScrollViewContent.schedule.Execute(ChangingRoomHelper.ShowBody).ExecuteLater(2);
         Render();
     }
@@ -261,7 +262,7 @@ public static class PlayersSection
             $"{label} color",
             (Color)colorField.GetValue(profile),
             false,
-            c => { colorField.SetValue(profile, c); Preview(); },
+            c => { colorField.SetValue(profile, c); Preview(); ApplyStickToWorld(); },
             () => ReskinProfileManager.SaveProfile());
         _root.Add(colorSection);
 
@@ -279,6 +280,7 @@ public static class PlayersSection
             texField.SetValue(profile, chosen != null && chosen.Path != null ? chosen : null);
             ReskinProfileManager.SaveProfile();
             Preview();
+            ApplyStickToWorld();
         });
         texRow.Add(texDropdown);
         _root.Add(texRow);
@@ -294,6 +296,7 @@ public static class PlayersSection
             ReskinProfileManager.SaveProfile();
             UpdateVisibility(evt.newValue);
             Preview();
+            ApplyStickToWorld();
         });
         UpdateVisibility(modeDropdown.value);
     }
@@ -354,6 +357,7 @@ public static class PlayersSection
             field.SetValue(profile, chosen != null && chosen.Path != null ? chosen : null);
             ReskinProfileManager.SaveProfile();
             Preview();
+            if (field.Group == "Sticks") ApplyStickToWorld();
         });
 
         row.Add(dropdown);
@@ -463,6 +467,52 @@ public static class PlayersSection
     {
         ChangingRoomHelper.SetPreviewContext(ToPlayerTeam(_team), ToPlayerRole(_role));
         ChangingRoomHelper.RefreshPreview();
+    }
+
+    // Open on the cell the player actually uses: in game, the local player's team/role; in the
+    // locker room, the menu's team/role. Closing the menu restores the locker room to that real
+    // context, so editing any other cell there looked like the change "vanished" on close.
+    private static void SeedCellFromCurrentContext()
+    {
+        PlayerTeam team = SettingsManager.Team;
+        PlayerRole role = SettingsManager.Role;
+        try
+        {
+            var local = PlayerManager.Instance?.GetLocalPlayer();
+            if (local != null && (local.Team == PlayerTeam.Blue || local.Team == PlayerTeam.Red))
+            {
+                team = local.Team;
+                role = local.Role;
+            }
+        }
+        catch { /* PlayerManager may not be ready */ }
+
+        if (team == PlayerTeam.Blue) _team = PresetTeam.Blue;
+        else if (team == PlayerTeam.Red) _team = PresetTeam.Red;
+        _role = role == PlayerRole.Goalie ? PresetRole.Goalie : PresetRole.Skater;
+    }
+
+    // Preview() only drives the locker room mannequin. Sticks and tape on spawned players are
+    // textured at spawn, so push stick/tape edits to them directly (as the Sticks and Tapes
+    // sections do); otherwise an in-game change doesn't show until the next respawn.
+    // All of these no-op when nothing matching is spawned.
+    private static void ApplyStickToWorld()
+    {
+        try
+        {
+            SwapperManager.OnPersonalStickChanged();
+            if (_team == PresetTeam.Blue) SwapperManager.OnBlueTeamStickChanged();
+            else SwapperManager.OnRedTeamStickChanged();
+
+            if (_team == PresetTeam.Blue && _role == PresetRole.Skater) StickTapeSwapper.OnBlueSkaterTapeChanged();
+            else if (_team == PresetTeam.Blue) StickTapeSwapper.OnBlueGoalieTapeChanged();
+            else if (_role == PresetRole.Skater) StickTapeSwapper.OnRedSkaterTapeChanged();
+            else StickTapeSwapper.OnRedGoalieTapeChanged();
+        }
+        catch (System.Exception e)
+        {
+            Plugin.LogError($"[Players] Live stick apply failed: {e.Message}");
+        }
     }
 
     private static void Toast(string title, string message)
