@@ -84,10 +84,33 @@ namespace ToasterReskinLoader.swappers
                     return;
                 }
 
+                long bundleSize = new FileInfo(bundlePath).Length;
+
                 hatsBundle = AssetBundle.LoadFromFile(bundlePath);
                 if (hatsBundle == null)
                 {
-                    Plugin.LogError("[Hats] Failed to load asset bundle.");
+                    // LoadFromFile returns null without telling us why. Retry through memory:
+                    // it survives file locks/AV interference, and surfaces a real exception
+                    // when the file itself is truncated or corrupt.
+                    try
+                    {
+                        hatsBundle = AssetBundle.LoadFromMemory(File.ReadAllBytes(bundlePath));
+                    }
+                    catch (Exception memEx)
+                    {
+                        Plugin.LogError($"[Hats] Memory fallback threw: {memEx.Message}");
+                    }
+                }
+
+                if (hatsBundle == null)
+                {
+                    Plugin.LogError($"[Hats] Failed to load asset bundle at '{bundlePath}' ({bundleSize} bytes). " +
+                                    "The file is most likely corrupt or truncated - unsubscribe/resubscribe " +
+                                    "(or reinstall) ToasterReskinLoader to redownload it.");
+
+                    foreach (var loaded in AssetBundle.GetAllLoadedAssetBundles())
+                        Plugin.LogWarning($"[Hats] Already-loaded bundle: {loaded.name}");
+
                     loadFailed = true;
                     return;
                 }
