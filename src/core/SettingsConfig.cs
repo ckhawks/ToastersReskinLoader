@@ -64,6 +64,9 @@ public class SettingsConfig
     public bool enableServerFavorites  = false;
     public bool enableServerBlocks     = false;
     public bool enableTrustedModLists  = true;
+    // Community logo on official servers' rows, from puckstats.io's
+    // official-server list. See serverbrowser/OfficialServerBadges.cs.
+    public bool enableOfficialServerBadges = true;
     // OS-font fallback registration for both TMP and UI Toolkit text
     // stacks. The b323 LiberationSans bundled with Puck only ships basic
     // Latin glyphs, so things like ▶/▼/★/☆ render as blank boxes

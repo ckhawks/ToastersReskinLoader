@@ -58,6 +58,10 @@ public static class ServerBrowserSection
             v => { cfg.enableFastServerBrowserScanning = v; Settings.Save(); });
         SettingsUI.Note(root,
             "Pings many servers at once instead of one at a time — a 50-server refresh drops from ~50s to a few seconds.");
+        SettingsUI.ToggleRow(root, "Official community server badges", cfg.enableOfficialServerBadges,
+            v => { cfg.enableOfficialServerBadges = v; Settings.Save(); OfficialServerBadges.RefreshForCurrentBrowser(); });
+        SettingsUI.Note(root,
+            "Shows a community's logo on servers it has registered with puckstats.io, so you can tell its real servers from lookalikes. Hover the logo for the community name.");
         SettingsUI.ToggleRow(root, "In-browser \"Refresh Visible\" button", cfg.enableRefreshVisibleButton,
             v => { cfg.enableRefreshVisibleButton = v; Settings.Save(); RefreshVisibleServers.ApplyVisibility(); });
         SettingsUI.Note(root,

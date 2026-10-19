@@ -331,7 +331,7 @@ internal static class ServerBrowserSort
         return v != null ? Convert.ToInt32(v) : SortDir_Ascending;
     }
 
-    private static string MakeKey(EndPoint ep)
+    internal static string MakeKey(EndPoint ep)
         => ep == null ? null : ep.ipAddress + ":" + ep.port;
 
     // ─────────────────────────── live toggle refresh ──────────────────────
@@ -374,8 +374,7 @@ internal static class ServerBrowserSort
                         if (row == null) continue;
                         row.Q<Button>(FavStarName)?.RemoveFromHierarchy();
                         row.Q<Label>(UnlockBadgeName)?.RemoveFromHierarchy();
-                        var nameLbl = row.Q<Label>("NameLabel");
-                        if (nameLbl != null) nameLbl.style.marginLeft = StyleKeyword.Null;
+                        ApplyNameIndent(row, row.Q<Label>("NameLabel"));
                     }
                 }
                 _hoverTooltip?.RemoveFromHierarchy();
@@ -693,6 +692,21 @@ internal static class ServerBrowserSort
     // NameLabel instead.
     private const int StarReservedWidth = 22;
 
+    // NameLabel's left margin makes room for everything absolutely
+    // positioned in front of the name: the favorite star and the
+    // official-community badge after it. Both this file's
+    // StyleServer postfix and OfficialServerBadges call this, so whichever
+    // runs last still lands on the same total.
+    internal static void ApplyNameIndent(VisualElement serverRow, Label nameLabel)
+    {
+        if (serverRow == null || nameLabel == null) return;
+        int star = serverRow.Q<Button>(FavStarName) != null ? StarReservedWidth : 0;
+        float indent = star + OfficialServerBadges.LeftIndentFor(serverRow, nameLabel, star);
+        nameLabel.style.marginLeft = indent > 0
+            ? new StyleLength(indent)
+            : new StyleLength(StyleKeyword.Null);
+    }
+
     // ─────────────────────────── StyleServer postfix: badges ──────────────
     //
     // Two injections:
@@ -715,7 +729,7 @@ internal static class ServerBrowserSort
             // star, context-menu hook, and hover tooltip below each check
             // Enabled/FavoritesEnabled independently, so a saved-passwords-
             // only pass falls through to just the 🔓 badge.
-            if (!Enabled && !SavedPasswordsEnabled) return;
+            if (!Enabled && !SavedPasswordsEnabled && !OfficialServerBadges.Enabled) return;
             if (__instance == null || endPoint == null) return;
             try
             {
@@ -786,13 +800,12 @@ internal static class ServerBrowserSort
                         star.style.borderLeftWidth = 0;
                         serverRow.Add(star);
                     }
-                    if (nameLabel != null) nameLabel.style.marginLeft = StarReservedWidth;
                 }
                 else
                 {
                     existingStar?.RemoveFromHierarchy();
-                    if (nameLabel != null) nameLabel.style.marginLeft = StyleKeyword.Null;
                 }
+                ApplyNameIndent(serverRow, nameLabel);
 
                 // Refresh the favorite's cached name when we see the
                 // server again with a fresh previewData — server owners
@@ -890,7 +903,7 @@ internal static class ServerBrowserSort
                 // to absorb the hover event before the tooltip system
                 // resolves it), so we drive our own floating label via
                 // MouseEnter/MouseLeave instead.
-                AttachHoverTooltip(serverRow, () => ComputeRowTooltip(GetPreview(__instance, endPoint)));
+                AttachHoverTooltip(serverRow, () => ComputeRowTooltip(GetPreview(__instance, endPoint), key));
             }
             catch (Exception e) { Debug.LogWarning("[QoL] sort-tweaks StyleServer postfix failed: " + e.Message); }
         }
@@ -928,7 +941,7 @@ internal static class ServerBrowserSort
             // StyleServer used to attach this handler. Gating on Enabled
             // alone hid the "Required Mods" tooltip in the default config
             // (saved passwords on, favorites/blocks off).
-            if (!Enabled && !SavedPasswordsEnabled) { HideHoverTooltip(); return; }
+            if (!Enabled && !SavedPasswordsEnabled && !OfficialServerBadges.Enabled) { HideHoverTooltip(); return; }
             try
             {
                 if (!IsMouseInIconStrip(row, evt.mousePosition))
@@ -962,6 +975,13 @@ internal static class ServerBrowserSort
     {
         try
         {
+            // The community badge sits outside the icon strip but
+            // carries the same tooltip line, so hovering it counts too.
+            var badge = OfficialServerBadges.BadgeOn(row);
+            if (badge != null && badge.resolvedStyle.display != DisplayStyle.None
+                && badge.worldBound.Contains(mousePos))
+                return true;
+
             var nameLabel    = row.Q<Label>("NameLabel");
             var playersLabel = row.Q<Label>("PlayersLabel");
             if (nameLabel == null || playersLabel == null) return false;
@@ -1033,10 +1053,15 @@ internal static class ServerBrowserSort
     // intentionally left out — the green lock badge already conveys
     // "saved password", and the vanilla lock conveys "locked". Returns
     // null for plain unmodded rows (they get no tooltip).
-    private static string ComputeRowTooltip(ServerPreviewData pd)
+    private static string ComputeRowTooltip(ServerPreviewData pd, string key)
     {
-        if (pd == null) return null;
         var lines = new List<string>();
+
+        string community = OfficialServerBadges.CommunityNameFor(key);
+        if (community != null)
+            lines.Add($"<b>Official {community} server</b>");
+
+        if (pd == null) return lines.Count > 0 ? string.Join("\n", lines) : null;
 
         var required = pd.clientRequiredModIds ?? Array.Empty<string>();
         if (required.Length > 0)

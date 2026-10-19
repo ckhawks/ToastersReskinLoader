@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.4.8
+
+### Added
+- **Official community servers show the community's logo.** In the server browser, a server that a community has registered on puckstats.io gets that community's logo in front of its name, and hovering it says "Official ... server". Anyone can name a server after a league, but only the league can put its servers on the list, so the logo is how you tell the real ones from lookalikes. Servers a community spins up for a match show their logo on your next refresh. Can be turned off under Server Browser in the QoL settings.
+
 ## 2.4.7
 
 ### Added
