@@ -62,6 +62,11 @@ public static class ChatSection
         SettingsUI.Note(root,
             "Turns :name: codes in chat into images, with autocomplete and the emote picker. Applies to new messages.");
 
+        SettingsUI.ToggleRow(root, "Pause animated emotes when chat fades", cfg.pauseEmotesWhenChatFaded,
+            v => { cfg.pauseEmotesWhenChatFaded = v; Settings.Save(); });
+        SettingsUI.Note(root,
+            "Old messages stop animating once they fade out. Turn off if faded messages are still easy to read.");
+
         {
             var row = UITools.CreateConfigurationRow();
             whenOffRow = row;

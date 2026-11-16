@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using HarmonyLib;
+using ToasterReskinLoader.core;
 using UnityEngine.UIElements;
 
 namespace ToasterReskinLoader.emotes;
@@ -61,16 +62,41 @@ public static class EmoteChat
         }
     }
 
-    // Emotes in chat lines that can be seen right now: not faded out, not scrolled away.
+    // A faded line still shows at full strength when "Don't fade out old messages" is on,
+    // so it only counts as faded when that's off.
+    static bool PauseFaded =>
+        (Settings.Current?.pauseEmotesWhenChatFaded ?? true) && !(Settings.Current?.enableChatNoFade ?? false);
+
+    // Hidden by display: none on the label or anything above it, e.g. "Hide when inactive"
+    // collapsing the whole chat.
+    static bool IsDisplayed(VisualElement element)
+    {
+        for (VisualElement e = element; e != null; e = e.parent)
+        {
+            if (e.resolvedStyle.display == DisplayStyle.None)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Emotes in chat lines that can be seen right now: not hidden, not scrolled away, and
+    // not faded out unless the user wants faded lines to keep animating.
     public static void CollectVisible(HashSet<string> ids)
     {
+        bool pauseFaded = PauseFaded;
         foreach (Record record in records)
         {
-            if (record.Ids.Count == 0 || record.Label.panel == null || record.Label.ClassListContains("blurred"))
+            if (record.Ids.Count == 0 || record.Label.panel == null)
             {
                 continue;
             }
-            if (record.Label.resolvedStyle.display == DisplayStyle.None || record.Label.resolvedStyle.opacity <= 0.01f)
+            if (pauseFaded && record.Label.ClassListContains("blurred"))
+            {
+                continue;
+            }
+            if (record.Label.resolvedStyle.opacity <= 0.01f || !IsDisplayed(record.Label))
             {
                 continue;
             }
