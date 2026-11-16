@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using Steamworks;
 using UnityEngine;
@@ -17,8 +18,8 @@ namespace ToasterReskinLoader.emotes;
 //   GET /api/emotes/sets?steamIds=     players' personal sets (approved emotes only)
 //
 // A :name: in a message from player X resolves to the server set first, then X's personal set
-// when the server allows it. Sets are fetched on connect, for each player as they appear, and
-// lazily for any sender not seen yet. Sheets are cached on disk by their content-hash filename,
+// when the server allows it. Sets are fetched on connect, for each player whenever they join
+// (so rejoining picks up changes), and lazily for any sender not seen yet. Sheets are cached on disk by their content-hash filename,
 // so an emote is downloaded once, ever.
 public class EmoteFeed : MonoBehaviour
 {
@@ -28,6 +29,10 @@ public class EmoteFeed : MonoBehaviour
     const float ENDPOINT_WAIT_S = 15f;
     // Free unused emotes before adding more once the atlas is this full.
     const float COMPACT_AT_FILL = 0.8f;
+    // A join can fire more than once in quick succession; one fetch covers it.
+    const float REFRESH_MIN_INTERVAL_S = 10f;
+    // Decoding sheets runs on the main thread; spread it over frames past this much per frame.
+    const double DECODE_BUDGET_MS = 3.0;
 
     static readonly Regex steamIdPattern = new Regex(@"^\d{17}$");
     static readonly Regex sheetFilePattern = new Regex(@"^[0-9a-f]{64}\.png$");
@@ -49,6 +54,7 @@ public class EmoteFeed : MonoBehaviour
     Dictionary<string, RemoteEmote> serverSet = NewNameMap();
     readonly Dictionary<string, Dictionary<string, RemoteEmote>> personal = new Dictionary<string, Dictionary<string, RemoteEmote>>();
     readonly HashSet<string> requested = new HashSet<string>();
+    readonly Dictionary<string, float> requestedAt = new Dictionary<string, float>();
     readonly HashSet<string> pendingBatch = new HashSet<string>();
     bool batchScheduled;
     readonly Dictionary<string, Texture2D> sheets = new Dictionary<string, Texture2D>();
@@ -83,7 +89,7 @@ public class EmoteFeed : MonoBehaviour
             Plugin.LogError($"[Emotes] No local steam id: {e.Message}");
         }
 
-        feed.onSteamIdChanged = msg => feed.Request(msg.TryGetValue("newSteamId", out object id) ? id?.ToString() : null);
+        feed.onSteamIdChanged = msg => feed.Refresh(msg.TryGetValue("newSteamId", out object id) ? id?.ToString() : null);
         feed.onClientStarted = _ => feed.OnClientStarted();
         feed.onClientStopped = _ => feed.OnClientStopped();
         EventManager.AddEventListener("Event_Everyone_OnPlayerSteamIdChanged", feed.onSteamIdChanged);
@@ -167,6 +173,7 @@ public class EmoteFeed : MonoBehaviour
         CommunityName = null;
         personal.Clear();
         requested.Clear();
+        requestedAt.Clear();
         Compact();
         Request(LocalSteamId);
         StartCoroutine(FetchServerSet(connectionGeneration));
@@ -224,6 +231,7 @@ public class EmoteFeed : MonoBehaviour
             {
                 personal.Remove(steamId);
                 requested.Remove(steamId);
+                requestedAt.Remove(steamId);
             }
         }
 
@@ -329,12 +337,31 @@ public class EmoteFeed : MonoBehaviour
 
     // ---- personal sets ----
 
+    // Fetches the player's set even if it was fetched before. Called when a player joins, so
+    // someone who changed their emotes picks them up by rejoining, and everyone else here
+    // sees the change too.
+    public void Refresh(string steamId)
+    {
+        if (steamId == null)
+        {
+            return;
+        }
+        if (requestedAt.TryGetValue(steamId, out float at) && Time.unscaledTime - at < REFRESH_MIN_INTERVAL_S)
+        {
+            return;
+        }
+        requested.Remove(steamId);
+        Request(steamId);
+    }
+
+    // Fetches the player's set unless it was already fetched this connection.
     public void Request(string steamId)
     {
         if (steamId == null || !steamIdPattern.IsMatch(steamId) || !requested.Add(steamId))
         {
             return;
         }
+        requestedAt[steamId] = Time.unscaledTime;
         pendingBatch.Add(steamId);
         if (!batchScheduled)
         {
@@ -389,8 +416,10 @@ public class EmoteFeed : MonoBehaviour
                             emotes.Add(emote);
                         }
                     }
+                    // A refresh that emptied the set still needs that player's lines redrawn.
+                    bool hadEmotes = personal.TryGetValue(id, out var previous) && previous.Count > 0;
                     personal[id] = set;
-                    if (set.Count > 0)
+                    if (set.Count > 0 || hadEmotes)
                     {
                         changed.Add(id);
                     }
@@ -414,6 +443,10 @@ public class EmoteFeed : MonoBehaviour
 
     IEnumerator LoadSheets(List<RemoteEmote> emotes)
     {
+        // Time spent decoding in the current frame. Cached sheets load without waiting on
+        // anything, so without this a whole server's worth would decode in one frame.
+        var frameTime = System.Diagnostics.Stopwatch.StartNew();
+        int frame = Time.frameCount;
         foreach (RemoteEmote emote in emotes)
         {
             if (atlas.Get(emote.Id) != null)
@@ -422,6 +455,17 @@ public class EmoteFeed : MonoBehaviour
             }
             if (!sheets.TryGetValue(emote.Sheet, out Texture2D sheet))
             {
+                if (Time.frameCount != frame)
+                {
+                    frame = Time.frameCount;
+                    frameTime.Restart();
+                }
+                if (frameTime.Elapsed.TotalMilliseconds > DECODE_BUDGET_MS)
+                {
+                    yield return null;
+                    frame = Time.frameCount;
+                    frameTime.Restart();
+                }
                 yield return LoadSheet(emote.Sheet);
                 if (!sheets.TryGetValue(emote.Sheet, out sheet))
                 {
@@ -456,16 +500,22 @@ public class EmoteFeed : MonoBehaviour
         }
         string cachePath = Path.Combine(cacheDir, file);
 
+        // Disk reads and writes run on the thread pool so a slow disk can't stall a frame.
         byte[] bytes = null;
         if (File.Exists(cachePath))
         {
-            try
+            Task<byte[]> read = Task.Run(() => File.ReadAllBytes(cachePath));
+            while (!read.IsCompleted)
             {
-                bytes = File.ReadAllBytes(cachePath);
+                yield return null;
             }
-            catch (Exception e)
+            if (read.IsFaulted)
             {
-                Plugin.LogWarning($"[Emotes] Cache read failed for {file}: {e.Message}");
+                Plugin.LogWarning($"[Emotes] Cache read failed for {file}: {read.Exception?.GetBaseException().Message}");
+            }
+            else
+            {
+                bytes = read.Result;
             }
         }
         if (bytes == null)
@@ -479,15 +529,39 @@ public class EmoteFeed : MonoBehaviour
                 yield break;
             }
             bytes = request.downloadHandler.data;
-            try
+            byte[] toWrite = bytes;
+            string dir = cacheDir;
+            Task.Run(() =>
             {
-                Directory.CreateDirectory(cacheDir);
-                File.WriteAllBytes(cachePath, bytes);
-            }
-            catch (Exception e)
-            {
-                Plugin.LogWarning($"[Emotes] Cache write failed for {file}: {e.Message}");
-            }
+                // Write then rename, so a crash mid-write never leaves a truncated sheet that a
+                // later read would take as cached. The temp name is unique because two
+                // downloads of the same sheet can finish at once.
+                string temp = cachePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+                try
+                {
+                    Directory.CreateDirectory(dir);
+                    File.WriteAllBytes(temp, toWrite);
+                    if (!File.Exists(cachePath))
+                    {
+                        File.Move(temp, cachePath);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Plugin.LogWarning($"[Emotes] Cache write failed for {file}: {e.Message}");
+                }
+                finally
+                {
+                    try
+                    {
+                        File.Delete(temp);
+                    }
+                    catch (Exception)
+                    {
+                        // Already moved into place, or never written.
+                    }
+                }
+            });
         }
 
         Texture2D sheet = DecodeSheet(bytes);
