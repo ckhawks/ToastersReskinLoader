@@ -3,7 +3,14 @@
 ## 2.5.0
 
 ### Added
-- **Emotes in chat.** Type `:name:` and it shows up as the emote image, animated ones included, for everyone with the mod. Upload your own on puckstats.io/emotes (or import them from 7TV and Discord links); once staff approve them, they work for you on any server that allows personal emotes. Servers run by a puckstats community also get that community's emote set. Hover an emote to see it bigger, with its name. Typing `:` plus two letters opens a list of matching emotes (arrow keys to pick, Tab or Enter to fill it in), and the button next to the chat box opens a picker with server and personal emotes. Copying a chat line keeps its emotes as `:name:`. Turn it off, or choose what happens to emote codes when it's off, under Chat in the Tweaks settings. Animated emotes only play while you can see them; to also pause them in faded chat lines, turn on "Pause animated emotes when chat fades" there.
+- **Emotes in chat.** Type `:name:` to show an emote, animated ones included. Everyone with the mod sees it.
+- **Your own emotes.** Upload them on puckstats.io/emotes, or import 7TV and Discord links. Once staff approve them, they work on any server that allows personal emotes.
+- **Server emotes.** Servers run by a puckstats community get that community's emote set.
+- **Autocomplete.** Type `:` and two letters to see matching emotes. Arrow keys pick, Tab or Enter fills it in.
+- **Emote picker.** The button next to the chat box lists server and personal emotes.
+- **Hover preview.** Hover an emote to see it bigger, with its name.
+- **Copying keeps emotes.** A copied chat line pastes its emotes as `:name:`.
+- **Settings.** Under Chat in the Tweaks settings: turn emotes off, choose what happens to emote codes when they're off, or pause animated emotes in faded chat lines.
 
 ## 2.4.8
 
