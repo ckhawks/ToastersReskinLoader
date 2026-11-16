@@ -117,32 +117,45 @@ public static class EmoteUi
     }
 }
 
-// A bordered label with a caret pointing at its target, flipped when it has to sit below it.
+// A bordered box with an optional large emote preview above a line of text, and a caret
+// pointing at its target, flipped when it has to sit below it.
 public class EmoteTooltip : VisualElement
 {
     const float CARET_WIDTH = 12f;
     const float CARET_HEIGHT = 6f;
     const float GAP = 2f;
 
-    readonly Label bubble;
+    readonly VisualElement bubble;
+    readonly Label preview;
+    readonly Label text;
     readonly VisualElement caretDown;
     readonly VisualElement caretUp;
 
     public EmoteTooltip(VisualElement fontSource)
     {
-        name = "ToasterEmotesTooltip";
+        name = "TRLEmotesTooltip";
         pickingMode = PickingMode.Ignore;
         style.position = Position.Absolute;
         style.alignItems = Align.Center;
         style.display = DisplayStyle.None;
 
         caretUp = Caret(pointsUp: true);
-        bubble = new Label { pickingMode = PickingMode.Ignore, enableRichText = false };
+        bubble = new VisualElement { pickingMode = PickingMode.Ignore };
+        bubble.style.alignItems = Align.Center;
         EmoteUi.Box(bubble);
-        EmoteUi.Padding(bubble, 4, 8);
+        EmoteUi.Padding(bubble, 6, 8);
         EmoteUi.CopyFont(fontSource, bubble);
-        bubble.style.color = Color.white;
-        bubble.style.fontSize = 14;
+
+        preview = new Label { pickingMode = PickingMode.Ignore };
+        preview.style.unityTextAlign = TextAnchor.MiddleCenter;
+        preview.style.marginBottom = 2;
+        EmoteUi.Padding(preview, 0, 0);
+        text = new Label { pickingMode = PickingMode.Ignore, enableRichText = false };
+        text.style.color = Color.white;
+        text.style.fontSize = 14;
+        EmoteUi.Padding(text, 0, 0);
+        bubble.Add(preview);
+        bubble.Add(text);
         caretDown = Caret(pointsUp: false);
 
         Add(caretUp);
@@ -150,10 +163,21 @@ public class EmoteTooltip : VisualElement
         Add(caretDown);
     }
 
-    // targetRect is in this tooltip's parent space.
-    public void ShowAt(string text, Rect targetRect)
+    // targetRect is in this tooltip's parent space. previewTag, when given, is a sprite tag
+    // shown above the text at previewFontSize.
+    public void ShowAt(string label, Rect targetRect, string previewTag = null, float previewFontSize = 0f)
     {
-        bubble.text = text;
+        text.text = label;
+        if (previewTag != null)
+        {
+            preview.text = previewTag;
+            preview.style.fontSize = previewFontSize;
+            preview.style.display = DisplayStyle.Flex;
+        }
+        else
+        {
+            preview.style.display = DisplayStyle.None;
+        }
         style.display = DisplayStyle.Flex;
         BringToFront();
 

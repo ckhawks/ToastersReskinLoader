@@ -13,12 +13,14 @@ public class EmoteHover : MonoBehaviour
 {
     // A glyph's UV corners must land within this many texels of a slot's corners.
     const float UV_TOLERANCE_TEXELS = 0.5f;
+    // Sprites scale to the font's ascent, so this shows the emote at roughly 48px.
+    const float PREVIEW_FONT_SIZE = 56f;
 
     class Tracked
     {
         public Label Label;
         public VisualElement Viewport;
-        public readonly List<(Rect rect, string name)> Hits = new List<(Rect, string)>();
+        public readonly List<(Rect rect, EmoteSlot slot)> Hits = new List<(Rect, EmoteSlot)>();
     }
 
     static EmoteHover instance;
@@ -91,7 +93,7 @@ public class EmoteHover : MonoBehaviour
                 continue;
             }
 
-            entry.Hits.Add((Rect.MinMaxRect(posMin.x, posMin.y, posMax.x, posMax.y), slot.Name));
+            entry.Hits.Add((Rect.MinMaxRect(posMin.x, posMin.y, posMax.x, posMax.y), slot));
         }
 
         if (!loggedFirstHit && entry.Hits.Count > 0)
@@ -135,11 +137,11 @@ public class EmoteHover : MonoBehaviour
                 continue;
             }
             Vector2 local = t.Label.WorldToLocal(world);
-            foreach ((Rect rect, string name) in t.Hits)
+            foreach ((Rect rect, EmoteSlot slot) in t.Hits)
             {
                 if (rect.Contains(local))
                 {
-                    Show(t.Label, rect, name);
+                    Show(t.Label, rect, slot);
                     return;
                 }
             }
@@ -147,7 +149,7 @@ public class EmoteHover : MonoBehaviour
         Hide();
     }
 
-    void Show(Label label, Rect localRect, string name)
+    void Show(Label label, Rect localRect, EmoteSlot slot)
     {
         VisualElement root = EmoteUi.DocumentRoot(label);
         if (tooltip == null || tooltip.parent != root)
@@ -156,7 +158,10 @@ public class EmoteHover : MonoBehaviour
             tooltip = new EmoteTooltip(label);
             root.Add(tooltip);
         }
-        tooltip.ShowAt(":" + name + ":", root.WorldToLocal(label.LocalToWorld(localRect)));
+        // Large preview, shrunk for wide emotes so it stays about square.
+        float aspect = slot.Rect.height > 0 ? (float)slot.Rect.width / slot.Rect.height : 1f;
+        float previewSize = aspect > 1f ? PREVIEW_FONT_SIZE / aspect : PREVIEW_FONT_SIZE;
+        tooltip.ShowAt(":" + slot.Name + ":", root.WorldToLocal(label.LocalToWorld(localRect)), atlas.Tag(slot), previewSize);
     }
 
     void Hide()

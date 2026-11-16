@@ -55,13 +55,17 @@ public static class ChatSection
         SettingsUI.Separator(root);
         SettingsUI.Header(root, "Emotes");
 
+        // Only matters while emotes are off, so it's greyed out otherwise.
+        VisualElement whenOffRow = null;
         SettingsUI.ToggleRow(root, "Show emotes", cfg.enableEmotes,
-            v => { cfg.enableEmotes = v; Settings.Save(); });
+            v => { cfg.enableEmotes = v; Settings.Save(); whenOffRow?.SetEnabled(!v); });
         SettingsUI.Note(root,
             "Turns :name: codes in chat into images, with autocomplete and the emote picker. Applies to new messages.");
 
         {
             var row = UITools.CreateConfigurationRow();
+            whenOffRow = row;
+            row.SetEnabled(!cfg.enableEmotes);
             row.Add(UITools.CreateConfigurationLabel("When emotes are off"));
             var labels = new List<string> { "Show the :name: text", "Remove them from messages", "Hide emote-only messages" };
             var values = new List<string> { "showName", "remove", "hideEmoteOnly" };
@@ -78,8 +82,6 @@ public static class ChatSection
             root.Add(row);
         }
 
-        SettingsUI.ToggleRow(root, "Big emotes in emote-only messages", cfg.emotesJumbo,
-            v => { cfg.emotesJumbo = v; Settings.Save(); });
     }
 
     // ── Apply helpers (called from Plugin / SwapperManager) ──────────────

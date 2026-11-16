@@ -3,7 +3,7 @@
 ## 2.5.0
 
 ### Added
-- **Emotes in chat.** Type `:name:` and it shows up as the emote image, animated ones included, for everyone with the mod. Upload your own on puckstats.io/emotes (or import them from 7TV and Discord links); once staff approve them, they work for you on any server that allows personal emotes. Servers run by a puckstats community also get that community's emote set. A message that's only emotes shows them bigger. Hover an emote to see its name. Typing `:` plus two letters opens a list of matching emotes (arrow keys to pick, Tab or Enter to fill it in), and the button next to the chat box opens a picker with server and personal emotes. Copying a chat line keeps its emotes as `:name:`. Turn it off, choose what happens to emote codes when it's off, or turn off the big emote-only lines under Chat in the Tweaks settings.
+- **Emotes in chat.** Type `:name:` and it shows up as the emote image, animated ones included, for everyone with the mod. Upload your own on puckstats.io/emotes (or import them from 7TV and Discord links); once staff approve them, they work for you on any server that allows personal emotes. Servers run by a puckstats community also get that community's emote set. Hover an emote to see it bigger, with its name. Typing `:` plus two letters opens a list of matching emotes (arrow keys to pick, Tab or Enter to fill it in), and the button next to the chat box opens a picker with server and personal emotes. Copying a chat line keeps its emotes as `:name:`. Turn it off, or choose what happens to emote codes when it's off, under Chat in the Tweaks settings.
 
 ## 2.4.8
 

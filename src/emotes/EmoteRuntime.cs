@@ -15,7 +15,8 @@ public static class EmoteRuntime
     {
         Render = Enabled,
         WhenHidden = ParseHiddenMode(Settings.Current?.emotesWhenHidden),
-        Jumbo = Settings.Current?.emotesJumbo ?? true,
+        // Big emote-only lines were too big; emotes always render at text size.
+        Jumbo = false,
     };
 
     static EmoteAnimator animator;
