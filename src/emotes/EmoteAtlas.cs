@@ -37,6 +37,7 @@ public class EmoteAtlas
 
     readonly Dictionary<string, EmoteSlot> byId = new Dictionary<string, EmoteSlot>();
     readonly Dictionary<Vector2Int, EmoteSlot> byOrigin = new Dictionary<Vector2Int, EmoteSlot>();
+    readonly List<EmoteSlot> byIndex = new List<EmoteSlot>();
     bool loggedFull;
 
     public static EmoteAtlas Create()
@@ -64,6 +65,15 @@ public class EmoteAtlas
     public EmoteSlot Get(string id)
     {
         return id != null && byId.TryGetValue(id, out EmoteSlot slot) ? slot : null;
+    }
+
+    // Laid-out text holds each sprite as U+E000 + its index, which is what a selection copies.
+    public const char FIRST_SPRITE_CHAR = '';
+
+    public EmoteSlot GetBySpriteChar(char c)
+    {
+        int index = c - FIRST_SPRITE_CHAR;
+        return index >= 0 && index < byIndex.Count ? byIndex[index] : null;
     }
 
     public bool TryGetByOrigin(Vector2Int origin, out EmoteSlot slot)
@@ -113,6 +123,7 @@ public class EmoteAtlas
 
         byId[emote.Id] = slot;
         byOrigin[new Vector2Int(rect.x, rect.y)] = slot;
+        byIndex.Add(slot);
         return slot;
     }
 
@@ -134,6 +145,7 @@ public class EmoteAtlas
     {
         byId.Clear();
         byOrigin.Clear();
+        byIndex.Clear();
         if (SpriteAsset != null)
         {
             Object.Destroy(SpriteAsset.material);
