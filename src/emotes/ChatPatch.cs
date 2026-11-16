@@ -62,41 +62,44 @@ public static class EmoteChat
         }
     }
 
-    // A faded line still shows at full strength when "Don't fade out old messages" is on,
-    // so it only counts as faded when that's off.
-    static bool PauseFaded =>
-        (Settings.Current?.pauseEmotesWhenChatFaded ?? true) && !(Settings.Current?.enableChatNoFade ?? false);
+    // Below this a line is effectively gone, whatever the fade settings.
+    const float HIDDEN_OPACITY = 0.05f;
 
-    // Hidden by display: none on the label or anything above it, e.g. "Hide when inactive"
-    // collapsing the whole chat.
-    static bool IsDisplayed(VisualElement element)
+    // Opacity the line is actually drawn at: its own times every ancestor's, or 0 when it or
+    // anything above it is display: none (e.g. "Hide when inactive" collapsing the chat).
+    // Catches both the vanilla partial fade and mods that fade old lines out entirely.
+    static float DrawnOpacity(VisualElement element)
     {
+        float opacity = 1f;
         for (VisualElement e = element; e != null; e = e.parent)
         {
-            if (e.resolvedStyle.display == DisplayStyle.None)
+            IResolvedStyle style = e.resolvedStyle;
+            if (style.display == DisplayStyle.None)
             {
-                return false;
+                return 0f;
             }
+            opacity *= style.opacity;
         }
-        return true;
+        return opacity;
     }
 
-    // Emotes in chat lines that can be seen right now: not hidden, not scrolled away, and
-    // not faded out unless the user wants faded lines to keep animating.
+    // Emotes in chat lines that can be seen right now: not hidden or faded to nothing, not
+    // scrolled away. Lines faded but still readable keep animating unless the user opts out.
     public static void CollectVisible(HashSet<string> ids)
     {
-        bool pauseFaded = PauseFaded;
+        bool pauseFaded = Settings.Current?.pauseEmotesWhenChatFaded ?? false;
         foreach (Record record in records)
         {
             if (record.Ids.Count == 0 || record.Label.panel == null)
             {
                 continue;
             }
-            if (pauseFaded && record.Label.ClassListContains("blurred"))
+            float opacity = DrawnOpacity(record.Label);
+            if (opacity <= HIDDEN_OPACITY)
             {
                 continue;
             }
-            if (record.Label.resolvedStyle.opacity <= 0.01f || !IsDisplayed(record.Label))
+            if (pauseFaded && record.Label.ClassListContains("blurred") && opacity < 0.99f)
             {
                 continue;
             }

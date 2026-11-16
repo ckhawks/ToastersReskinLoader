@@ -303,9 +303,9 @@ public class SettingsConfig
     // When emotes are off: "showName" keeps ":name:", "remove" strips it,
     // "hideEmoteOnly" hides messages that are only emotes.
     public string emotesWhenHidden = "showName";
-    // Stop animating emotes in chat lines that have faded out. Saves work, but with
-    // settings that leave faded lines readable the emotes visibly freeze.
-    public bool   pauseEmotesWhenChatFaded = true;
+    // Also stop animating emotes in faded chat lines that are still partly visible.
+    // Lines faded all the way out always pause.
+    public bool   pauseEmotesWhenChatFaded = false;
 
     // One-time marker: display settings have been seeded from a pre-existing reskin profile.
     public bool displaySettingsMigrated = false;

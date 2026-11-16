@@ -65,7 +65,7 @@ public static class ChatSection
         SettingsUI.ToggleRow(root, "Pause animated emotes when chat fades", cfg.pauseEmotesWhenChatFaded,
             v => { cfg.pauseEmotesWhenChatFaded = v; Settings.Save(); });
         SettingsUI.Note(root,
-            "Old messages stop animating once they fade out. Turn off if faded messages are still easy to read.");
+            "Faded messages that are still visible stop animating. Messages faded out completely or hidden always pause.");
 
         {
             var row = UITools.CreateConfigurationRow();
