@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.5.0
+
+### Added
+- **Emotes in chat.** Type `:name:` and it shows up as the emote image, animated ones included, for everyone with the mod. A message that's only emotes shows them bigger. Hover an emote to see its name. Typing `:` plus two letters opens a list of matching emotes (arrow keys to pick, Tab or Enter to fill it in), and the button next to the chat box opens a picker with server and personal emotes. Copying a chat line keeps its emotes as `:name:`. Turn it off, choose what happens to emote codes when it's off, or turn off the big emote-only lines under Chat in the Tweaks settings.
+
 ## 2.4.8
 
 ### Added

@@ -5,6 +5,8 @@
 // Also owns the ApplyChatHeight / ApplyChatBackground / ApplyQuickChatPosition
 // helpers (called from Plugin and SwapperManager on load / scene change).
 
+using System;
+using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -49,6 +51,35 @@ public static class ChatSection
             val => { cfg.quickChatX = val; Settings.Save(); ApplyQuickChatPosition(); });
         SettingsUI.SliderRow(root, "Quick Chat Menu Y Position", 0f, 100f, cfg.quickChatY,
             val => { cfg.quickChatY = val; Settings.Save(); ApplyQuickChatPosition(); });
+
+        SettingsUI.Separator(root);
+        SettingsUI.Header(root, "Emotes");
+
+        SettingsUI.ToggleRow(root, "Show emotes", cfg.enableEmotes,
+            v => { cfg.enableEmotes = v; Settings.Save(); });
+        SettingsUI.Note(root,
+            "Turns :name: codes in chat into images, with autocomplete and the emote picker. Applies to new messages.");
+
+        {
+            var row = UITools.CreateConfigurationRow();
+            row.Add(UITools.CreateConfigurationLabel("When emotes are off"));
+            var labels = new List<string> { "Show the :name: text", "Remove them from messages", "Hide emote-only messages" };
+            var values = new List<string> { "showName", "remove", "hideEmoteOnly" };
+            var currentIdx = Math.Max(0, values.IndexOf(cfg.emotesWhenHidden ?? "showName"));
+            var dd = UITools.CreateStringDropdownField(labels, labels[currentIdx]);
+            dd.RegisterCallback<ChangeEvent<string>>(evt =>
+            {
+                var idx = labels.IndexOf(evt.newValue);
+                if (idx < 0) idx = 0;
+                cfg.emotesWhenHidden = values[idx];
+                Settings.Save();
+            });
+            row.Add(dd);
+            root.Add(row);
+        }
+
+        SettingsUI.ToggleRow(root, "Big emotes in emote-only messages", cfg.emotesJumbo,
+            v => { cfg.emotesJumbo = v; Settings.Save(); });
     }
 
     // ── Apply helpers (called from Plugin / SwapperManager) ──────────────

@@ -298,6 +298,13 @@ public class SettingsConfig
     public float quickChatY = 50f;
     public bool  chatRenderAllEmojis = true;
 
+    // Chat emotes (:name: images).
+    public bool   enableEmotes = true;
+    // When emotes are off: "showName" keeps ":name:", "remove" strips it,
+    // "hideEmoteOnly" hides messages that are only emotes.
+    public string emotesWhenHidden = "showName";
+    public bool   emotesJumbo = true;
+
     // One-time marker: display settings have been seeded from a pre-existing reskin profile.
     public bool displaySettingsMigrated = false;
 }

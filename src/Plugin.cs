@@ -26,7 +26,7 @@ namespace ToasterReskinLoader;
 public class Plugin : IPuckPlugin
 {
     public static string MOD_NAME = "ToasterReskinLoader";
-    public static string MOD_VERSION = "2.4.8";
+    public static string MOD_VERSION = "2.5.0";
     public static string MOD_GUID = "pw.stellaric.toaster.reskinloader";
 
     static readonly Harmony harmony = new Harmony(MOD_GUID);
@@ -129,6 +129,7 @@ public class Plugin : IPuckPlugin
                 SafeInit("ServerBrowserSort", ToasterReskinLoader.serverbrowser.ServerBrowserSort.Initialize);
                 SafeInit("OfficialServerBadges", ToasterReskinLoader.serverbrowser.OfficialServerBadges.Initialize);
                 SafeInit("UiTextShadow", ToasterReskinLoader.hud.UiTextShadow.Initialize);
+                SafeInit("Emotes", ToasterReskinLoader.emotes.EmoteRuntime.Setup);
                 core.TickDriver.Bootstrap();
 
                 // Apply the persisted color grade (counteracts the B1153+ gray/
@@ -209,6 +210,7 @@ public class Plugin : IPuckPlugin
             ToasterReskinLoader.serverbrowser.AutoConnectMatchmaking.Disable();
             ToasterReskinLoader.diagnostics.profiler.FrameProfiler.Disable();
             ToasterReskinLoader.hud.AnnouncementHideGuard.Disable();
+            try { ToasterReskinLoader.emotes.EmoteRuntime.Teardown(); } catch { }
             harmony.UnpatchSelf();
             AppearanceAPI.Cleanup();
             PartyLineup.Cleanup();
