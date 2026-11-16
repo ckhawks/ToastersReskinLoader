@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.5.1
+
+### Fixed
+- **Chat no longer keeps eating your typing after you send.** Picking an emote from autocomplete with Enter and then sending could leave the hidden chat box still taking keys, so you'd skate and type at the same time, and Enter would send it.
+
+### Changed
+- **Emotes stay up to date.** A player's emotes are fetched again whenever they join, so changes made on puckstats.io show up after a rejoin.
+- **Emotes load faster and more smoothly.** Images download several at a time and are decoded across frames, so joining a busy server no longer stutters. Other players' emotes load the first time they're used in chat; that first message shows the `:name:` for a moment before the image appears.
+
 ## 2.5.0
 
 ### Added
