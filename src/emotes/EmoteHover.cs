@@ -28,6 +28,8 @@ public class EmoteHover : MonoBehaviour
     readonly List<Tracked> tracked = new List<Tracked>();
     EmoteAtlas atlas;
     EmoteTooltip tooltip;
+    // Emote in the tooltip preview right now, so it keeps animating.
+    string shownId;
     bool loggedFirstHit;
 
     public static EmoteHover Create(EmoteAtlas atlas)
@@ -162,10 +164,20 @@ public class EmoteHover : MonoBehaviour
         float aspect = slot.Rect.height > 0 ? (float)slot.Rect.width / slot.Rect.height : 1f;
         float previewSize = aspect > 1f ? PREVIEW_FONT_SIZE / aspect : PREVIEW_FONT_SIZE;
         tooltip.ShowAt(":" + slot.Name + ":", root.WorldToLocal(label.LocalToWorld(localRect)), atlas.Tag(slot), previewSize);
+        shownId = slot.Id;
+    }
+
+    public static void CollectVisible(HashSet<string> ids)
+    {
+        if (instance?.shownId != null)
+        {
+            ids.Add(instance.shownId);
+        }
     }
 
     void Hide()
     {
+        shownId = null;
         tooltip?.Hide();
     }
 

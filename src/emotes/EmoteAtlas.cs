@@ -12,6 +12,8 @@ public class EmoteSlot
     // Name the emote had in the first set it arrived from; used for hover text.
     public string Name;
     public RectInt Rect;
+    // Index of the cell, which is also the sprite's index in the sprite asset.
+    public int Cell;
     public string SpriteName => "e" + Id;
 }
 
@@ -19,6 +21,12 @@ public class EmoteSlot
 // Each emote gets one 64px cell and a sprite named by its puckstats id, so two players'
 // :pog: are different sprites. Animated emotes keep their cell and EmoteAnimator copies
 // later frames into it from the emote's sprite sheet.
+//
+// Cells are reused: Free() returns an emote's cell, and the next Add() renames that cell's
+// sprite instead of appending a new one. The sprite's index never changes, because laid-out
+// text refers to sprites by index; removing one would shift every later emote. A freed cell
+// must not be shown by any label still on screen, or that label would show the new emote,
+// which is why EmoteFeed only frees emotes nothing references.
 public class EmoteAtlas
 {
     public const string NAME = "TRLEmotes";
@@ -26,9 +34,12 @@ public class EmoteAtlas
     // 64px frames plus a 1px gutter on each side so bilinear sampling never bleeds.
     const int CELL = 66;
     const int CELLS_PER_ROW = SIZE / CELL;
-    const int CAPACITY = CELLS_PER_ROW * CELLS_PER_ROW;
+    public const int CAPACITY = CELLS_PER_ROW * CELLS_PER_ROW;
     // How far the emote sits above the baseline, as a fraction of its height.
     const float BEARING_Y = 0.85f;
+
+    // Laid-out text holds each sprite as U+E000 + its index, which is what a selection copies.
+    public const char FIRST_SPRITE_CHAR = '';
 
     static readonly PropertyInfo spriteSheetProperty = typeof(SpriteAsset).GetProperty("spriteSheet");
 
@@ -37,7 +48,9 @@ public class EmoteAtlas
 
     readonly Dictionary<string, EmoteSlot> byId = new Dictionary<string, EmoteSlot>();
     readonly Dictionary<Vector2Int, EmoteSlot> byOrigin = new Dictionary<Vector2Int, EmoteSlot>();
-    readonly List<EmoteSlot> byIndex = new List<EmoteSlot>();
+    // Indexed by cell; null for a free cell.
+    readonly List<EmoteSlot> byCell = new List<EmoteSlot>();
+    readonly Stack<int> freeCells = new Stack<int>();
     bool loggedFull;
 
     public static EmoteAtlas Create()
@@ -62,23 +75,24 @@ public class EmoteAtlas
 
     public int Count => byId.Count;
 
+    public float FillRatio => (float)byId.Count / CAPACITY;
+
+    public IEnumerable<string> Ids => byId.Keys;
+
     public EmoteSlot Get(string id)
     {
         return id != null && byId.TryGetValue(id, out EmoteSlot slot) ? slot : null;
     }
 
-    // Laid-out text holds each sprite as U+E000 + its index, which is what a selection copies.
-    public const char FIRST_SPRITE_CHAR = '';
-
     public EmoteSlot GetBySpriteChar(char c)
     {
-        int index = c - FIRST_SPRITE_CHAR;
-        return index >= 0 && index < byIndex.Count ? byIndex[index] : null;
+        int cell = c - FIRST_SPRITE_CHAR;
+        return cell >= 0 && cell < byCell.Count ? byCell[cell] : null;
     }
 
     public bool TryGetByOrigin(Vector2Int origin, out EmoteSlot slot)
     {
-        return byOrigin.TryGetValue(origin, out slot);
+        return byOrigin.TryGetValue(origin, out slot) && slot != null;
     }
 
     public string Tag(EmoteSlot slot)
@@ -94,37 +108,73 @@ public class EmoteAtlas
         {
             return existing;
         }
-        if (byId.Count >= CAPACITY)
+
+        bool reuse = freeCells.Count > 0;
+        if (!reuse && byCell.Count >= CAPACITY)
         {
             if (!loggedFull)
             {
                 loggedFull = true;
-                Plugin.LogError($"[Emotes] Atlas is full ({CAPACITY} emotes); new emotes will show as text.");
+                Plugin.LogError($"[Emotes] Atlas is full ({CAPACITY} emotes in use); new emotes will show as text.");
             }
             return null;
         }
+        int cell = reuse ? freeCells.Pop() : byCell.Count;
 
-        int index = byId.Count;
         var rect = new RectInt(
-            (index % CELLS_PER_ROW) * CELL + 1,
-            (index / CELLS_PER_ROW) * CELL + 1,
+            (cell % CELLS_PER_ROW) * CELL + 1,
+            (cell / CELLS_PER_ROW) * CELL + 1,
             emote.FrameWidth,
             emote.FrameHeight);
         RectInt source = emote.FrameRect(0, sheet.height);
         Graphics.CopyTexture(sheet, 0, 0, source.x, source.y, source.width, source.height, Texture, 0, 0, rect.x, rect.y);
 
+        var slot = new EmoteSlot { Id = emote.Id, Name = emote.Name, Rect = rect, Cell = cell };
         var metrics = new GlyphMetrics(rect.width, rect.height, 0f, rect.height * BEARING_Y, rect.width);
-        var glyph = new SpriteGlyph((uint)index, metrics, new GlyphRect(rect.x, rect.y, rect.width, rect.height), 1f, 0);
-        var slot = new EmoteSlot { Id = emote.Id, Name = emote.Name, Rect = rect };
-        var character = new SpriteCharacter(0xE000u + (uint)index, SpriteAsset, glyph) { name = slot.SpriteName };
-        SpriteAsset.spriteGlyphTable.Add(glyph);
-        SpriteAsset.spriteCharacterTable.Add(character);
+        var glyphRect = new GlyphRect(rect.x, rect.y, rect.width, rect.height);
+        if (reuse)
+        {
+            SpriteGlyph glyph = SpriteAsset.spriteGlyphTable[cell];
+            glyph.metrics = metrics;
+            glyph.glyphRect = glyphRect;
+            SpriteAsset.spriteCharacterTable[cell].name = slot.SpriteName;
+            byCell[cell] = slot;
+        }
+        else
+        {
+            var glyph = new SpriteGlyph((uint)cell, metrics, glyphRect, 1f, 0);
+            var character = new SpriteCharacter(FIRST_SPRITE_CHAR + (uint)cell, SpriteAsset, glyph) { name = slot.SpriteName };
+            SpriteAsset.spriteGlyphTable.Add(glyph);
+            SpriteAsset.spriteCharacterTable.Add(character);
+            byCell.Add(slot);
+        }
         SpriteAsset.UpdateLookupTables();
 
         byId[emote.Id] = slot;
         byOrigin[new Vector2Int(rect.x, rect.y)] = slot;
-        byIndex.Add(slot);
         return slot;
+    }
+
+    // Returns the emote's cell to the free list. The caller guarantees nothing shows it.
+    public void Free(string id)
+    {
+        EmoteSlot slot = Get(id);
+        if (slot == null)
+        {
+            return;
+        }
+        byId.Remove(id);
+        byOrigin.Remove(new Vector2Int(slot.Rect.x, slot.Rect.y));
+        byCell[slot.Cell] = null;
+        // A name no sprite tag can produce, so the freed sprite is unreachable until reused.
+        SpriteAsset.spriteCharacterTable[slot.Cell].name = "free_" + slot.Cell;
+        freeCells.Push(slot.Cell);
+        loggedFull = false;
+    }
+
+    public void CommitFrees()
+    {
+        SpriteAsset.UpdateLookupTables();
     }
 
     static Material CreateMaterial(Texture2D texture)
@@ -145,7 +195,8 @@ public class EmoteAtlas
     {
         byId.Clear();
         byOrigin.Clear();
-        byIndex.Clear();
+        byCell.Clear();
+        freeCells.Clear();
         if (SpriteAsset != null)
         {
             Object.Destroy(SpriteAsset.material);

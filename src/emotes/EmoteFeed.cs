@@ -26,6 +26,8 @@ public class EmoteFeed : MonoBehaviour
     const float BATCH_DELAY_S = 0.3f;
     const int MAX_BATCH = 64;
     const float ENDPOINT_WAIT_S = 15f;
+    // Free unused emotes before adding more once the atlas is this full.
+    const float COMPACT_AT_FILL = 0.8f;
 
     static readonly Regex steamIdPattern = new Regex(@"^\d{17}$");
     static readonly Regex sheetFilePattern = new Regex(@"^[0-9a-f]{64}\.png$");
@@ -50,6 +52,8 @@ public class EmoteFeed : MonoBehaviour
     readonly HashSet<string> pendingBatch = new HashSet<string>();
     bool batchScheduled;
     readonly Dictionary<string, Texture2D> sheets = new Dictionary<string, Texture2D>();
+    // Which sheet each emote in the atlas came from, so freeing it can release the sheet.
+    readonly Dictionary<string, string> sheetOf = new Dictionary<string, string>();
     int connectionGeneration;
 
     Action<Dictionary<string, object>> onSteamIdChanged;
@@ -163,6 +167,7 @@ public class EmoteFeed : MonoBehaviour
         CommunityName = null;
         personal.Clear();
         requested.Clear();
+        Compact();
         Request(LocalSteamId);
         StartCoroutine(FetchServerSet(connectionGeneration));
         SetsChanged?.Invoke(null);
@@ -174,7 +179,74 @@ public class EmoteFeed : MonoBehaviour
         serverSet = NewNameMap();
         AllowPersonal = true;
         CommunityName = null;
+        Compact();
         SetsChanged?.Invoke(null);
+    }
+
+    // Frees every emote nothing can show any more: not in a live chat line, the server set,
+    // your own set, or the set of a player still here. Sets of players who left are dropped
+    // too, so they are fetched fresh if the player comes back. Freed cells get reused.
+    public void Compact()
+    {
+        var keep = new HashSet<string>();
+        EmoteChat.CollectReferenced(keep);
+        foreach (RemoteEmote emote in serverSet.Values)
+        {
+            keep.Add(emote.Id);
+        }
+
+        var present = new HashSet<string>();
+        if (LocalSteamId != null)
+        {
+            present.Add(LocalSteamId);
+        }
+        try
+        {
+            foreach (Player player in PlayerManager.Instance?.GetPlayers() ?? new List<Player>())
+            {
+                present.Add(player.SteamId.Value.ToString());
+            }
+        }
+        catch (Exception)
+        {
+            // Not connected: only the local player is present.
+        }
+        foreach (string steamId in personal.Keys.ToList())
+        {
+            if (present.Contains(steamId))
+            {
+                foreach (RemoteEmote emote in personal[steamId].Values)
+                {
+                    keep.Add(emote.Id);
+                }
+            }
+            else
+            {
+                personal.Remove(steamId);
+                requested.Remove(steamId);
+            }
+        }
+
+        List<string> drop = atlas.Ids.Where(id => !keep.Contains(id)).ToList();
+        foreach (string id in drop)
+        {
+            atlas.Free(id);
+            animator?.Remove(id);
+            if (sheetOf.TryGetValue(id, out string path))
+            {
+                sheetOf.Remove(id);
+                if (!sheetOf.ContainsValue(path) && sheets.TryGetValue(path, out Texture2D sheet))
+                {
+                    sheets.Remove(path);
+                    UnityEngine.Object.Destroy(sheet);
+                }
+            }
+        }
+        if (drop.Count > 0)
+        {
+            atlas.CommitFrees();
+            Plugin.Log($"[Emotes] Freed {drop.Count} unused emotes; {atlas.Count} still loaded.");
+        }
     }
 
     IEnumerator FetchServerSet(int generation)
@@ -362,9 +434,14 @@ public class EmoteFeed : MonoBehaviour
                 Plugin.LogWarning($"[Emotes] Sheet for :{emote.Name}: is smaller than its layout; skipped.");
                 continue;
             }
+            if (atlas.FillRatio >= COMPACT_AT_FILL)
+            {
+                Compact();
+            }
             EmoteSlot slot = atlas.Add(emote, sheet);
             if (slot != null)
             {
+                sheetOf[emote.Id] = emote.Sheet;
                 animator?.Add(emote, sheet, slot);
             }
         }

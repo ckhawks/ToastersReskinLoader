@@ -48,6 +48,12 @@ public static class EmoteRuntime
             Teardown();
             return;
         }
+        animator.CollectVisible = ids =>
+        {
+            EmoteChat.CollectVisible(ids);
+            EmoteInput.CollectVisible(ids);
+            EmoteHover.CollectVisible(ids);
+        };
         feed = EmoteFeed.Create(Atlas, animator);
         EmoteChat.Setup();
         hover = EmoteHover.Create(Atlas);

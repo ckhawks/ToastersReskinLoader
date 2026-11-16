@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using HarmonyLib;
 using UnityEngine.UIElements;
 
@@ -10,16 +11,76 @@ namespace ToasterReskinLoader.emotes;
 // then the sender's personal set), so AddChatMessage records who sent the message being
 // formatted. Each message keeps its raw text so it can be re-rendered when a sender's set
 // arrives after the message did, and so copying a line gives back the typed :name: codes.
+//
+// Records live as long as their label does, because they are also how EmoteFeed knows which
+// emotes are still on screen: an emote in any live line must keep its atlas cell.
 public static class EmoteChat
 {
-    const int MAX_RECORDS = 200;
+    static readonly Regex spriteIdPattern = new Regex(@"name=""e(\d+)""", RegexOptions.Compiled);
 
     class Record
     {
         public Label Label;
+        public ScrollView ScrollView;
         public string Sender;
         public string Raw;
         public string Formatted;
+        public List<string> Ids = new List<string>();
+    }
+
+    static List<string> IdsIn(string formatted)
+    {
+        var ids = new List<string>();
+        foreach (Match m in spriteIdPattern.Matches(formatted))
+        {
+            ids.Add(m.Groups[1].Value);
+        }
+        return ids;
+    }
+
+    static void Prune()
+    {
+        for (LinkedListNode<Record> node = records.First; node != null;)
+        {
+            LinkedListNode<Record> next = node.Next;
+            if (node.Value.Label.panel == null)
+            {
+                records.Remove(node);
+            }
+            node = next;
+        }
+    }
+
+    // Emotes shown by any chat line that still exists.
+    public static void CollectReferenced(HashSet<string> ids)
+    {
+        Prune();
+        foreach (Record record in records)
+        {
+            ids.UnionWith(record.Ids);
+        }
+    }
+
+    // Emotes in chat lines that can be seen right now: not faded out, not scrolled away.
+    public static void CollectVisible(HashSet<string> ids)
+    {
+        foreach (Record record in records)
+        {
+            if (record.Ids.Count == 0 || record.Label.panel == null || record.Label.ClassListContains("blurred"))
+            {
+                continue;
+            }
+            if (record.Label.resolvedStyle.display == DisplayStyle.None || record.Label.resolvedStyle.opacity <= 0.01f)
+            {
+                continue;
+            }
+            VisualElement viewport = record.ScrollView?.contentViewport;
+            if (viewport != null && !viewport.worldBound.Overlaps(record.Label.worldBound))
+            {
+                continue;
+            }
+            ids.UnionWith(record.Ids);
+        }
     }
 
     // Set by the AddChatMessage prefix for the duration of that call.
@@ -87,11 +148,15 @@ public static class EmoteChat
         {
             return;
         }
-        records.AddLast(new Record { Label = label, Sender = sender, Raw = raw, Formatted = formatted });
-        while (records.Count > MAX_RECORDS)
+        records.AddLast(new Record
         {
-            records.RemoveFirst();
-        }
+            Label = label,
+            ScrollView = label.GetFirstAncestorOfType<ScrollView>(),
+            Sender = sender,
+            Raw = raw,
+            Formatted = formatted,
+            Ids = IdsIn(formatted),
+        });
         if (formatted.Contains("<sprite"))
         {
             EmoteHover.Track(label);
@@ -128,6 +193,7 @@ public static class EmoteChat
         }
         record.Label.text = text.Substring(0, text.Length - record.Formatted.Length) + formatted;
         record.Formatted = formatted;
+        record.Ids = IdsIn(formatted);
         if (formatted.Contains("<sprite"))
         {
             EmoteHover.Track(record.Label);

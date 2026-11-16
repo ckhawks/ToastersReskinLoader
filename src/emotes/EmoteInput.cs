@@ -61,6 +61,43 @@ public class EmoteInput : MonoBehaviour
     Label footerNote;
     const string OFF_HERE = "Off on this server";
 
+    string buttonEmoteId;
+
+    // Emotes on screen in the picker, the autocomplete list and the picker button.
+    public static void CollectVisible(HashSet<string> ids)
+    {
+        EmoteInput self = instance;
+        if (self == null || self.uiChat == null || !self.uiChat.IsFocused)
+        {
+            return;
+        }
+        if (self.buttonEmoteId != null)
+        {
+            ids.Add(self.buttonEmoteId);
+        }
+        if (self.PickerOpen)
+        {
+            foreach (var entry in self.serverEntries)
+            {
+                ids.Add(entry.slot.Id);
+            }
+            foreach (var entry in self.personalEntries)
+            {
+                ids.Add(entry.slot.Id);
+            }
+        }
+        if (self.SuggestOpen)
+        {
+            foreach (string name in self.suggestions)
+            {
+                if (self.usable.TryGetValue(name, out EmoteSlot slot))
+                {
+                    ids.Add(slot.Id);
+                }
+            }
+        }
+    }
+
     bool SuggestOpen => suggestBox != null && suggestBox.style.display == DisplayStyle.Flex;
     bool PickerOpen => picker != null && picker.style.display == DisplayStyle.Flex;
 
@@ -678,6 +715,7 @@ public class EmoteInput : MonoBehaviour
         {
             EmoteSlot slot = usable[usableNames[Random.Range(0, usableNames.Count)]];
             pickerButton.text = atlas.Tag(slot);
+            buttonEmoteId = slot.Id;
             pickerButton.style.fontSize = FitFontSize(slot, BUTTON_FONT);
         }
     }
