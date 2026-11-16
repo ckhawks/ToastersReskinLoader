@@ -33,6 +33,9 @@ public class EmoteFeed : MonoBehaviour
     const float REFRESH_MIN_INTERVAL_S = 10f;
     // Decoding sheets runs on the main thread; spread it over frames past this much per frame.
     const double DECODE_BUDGET_MS = 3.0;
+    const int MAX_PARALLEL_LOADS = 4;
+    // Loads landing within this window share one redraw.
+    const float REDRAW_DELAY_S = 0.1f;
 
     static readonly Regex steamIdPattern = new Regex(@"^\d{17}$");
     static readonly Regex sheetFilePattern = new Regex(@"^[0-9a-f]{64}\.png$");
@@ -60,6 +63,20 @@ public class EmoteFeed : MonoBehaviour
     readonly Dictionary<string, Texture2D> sheets = new Dictionary<string, Texture2D>();
     // Which sheet each emote in the atlas came from, so freeing it can release the sheet.
     readonly Dictionary<string, string> sheetOf = new Dictionary<string, string>();
+
+    readonly Queue<RemoteEmote> loadQueue = new Queue<RemoteEmote>();
+    // Emote ids queued or loading.
+    readonly HashSet<string> queuedIds = new HashSet<string>();
+    readonly HashSet<string> loadingSheets = new HashSet<string>();
+    // Sheets that failed to download or decode; not retried until the next connection.
+    readonly HashSet<string> failedSheets = new HashSet<string>();
+    int activeLoaders;
+    int budgetFrame = -1;
+    double budgetUsedMs;
+
+    readonly HashSet<string> redrawOwners = new HashSet<string>();
+    bool redrawAll;
+    bool redrawScheduled;
     int connectionGeneration;
 
     Action<Dictionary<string, object>> onSteamIdChanged;
@@ -126,7 +143,7 @@ public class EmoteFeed : MonoBehaviour
     {
         if (serverSet.TryGetValue(name, out RemoteEmote serverEmote))
         {
-            return atlas.Get(serverEmote.Id);
+            return SlotOrLoad(serverEmote);
         }
         if (!AllowPersonal || senderSteamId == null)
         {
@@ -134,8 +151,19 @@ public class EmoteFeed : MonoBehaviour
         }
         Request(senderSteamId);
         return personal.TryGetValue(senderSteamId, out var set) && set.TryGetValue(name, out RemoteEmote emote)
-            ? atlas.Get(emote.Id)
+            ? SlotOrLoad(emote)
             : null;
+    }
+
+    // The emote's slot, or null while it loads; the line is redrawn when it arrives.
+    EmoteSlot SlotOrLoad(RemoteEmote emote)
+    {
+        EmoteSlot slot = atlas.Get(emote.Id);
+        if (slot == null)
+        {
+            EnsureLoaded(emote);
+        }
+        return slot;
     }
 
     public IEnumerable<(string name, EmoteSlot slot)> ServerEmotes()
@@ -174,6 +202,10 @@ public class EmoteFeed : MonoBehaviour
         personal.Clear();
         requested.Clear();
         requestedAt.Clear();
+        // Loads in flight finish on their own; drop what hasn't started.
+        loadQueue.Clear();
+        queuedIds.Clear();
+        failedSheets.Clear();
         Compact();
         Request(LocalSteamId);
         StartCoroutine(FetchServerSet(connectionGeneration));
@@ -328,11 +360,13 @@ public class EmoteFeed : MonoBehaviour
             Plugin.LogWarning($"[Emotes] Could not list players: {e.Message}");
         }
 
-        yield return LoadSheets(emotes);
-        if (generation == connectionGeneration)
+        // Server emotes are in the picker, so they load now. Lines redraw as each one lands;
+        // this redraw covers allowPersonal changing.
+        foreach (RemoteEmote emote in emotes)
         {
-            SetsChanged?.Invoke(null);
+            EnsureLoaded(emote);
         }
+        SetsChanged?.Invoke(null);
     }
 
     // ---- personal sets ----
@@ -399,7 +433,6 @@ public class EmoteFeed : MonoBehaviour
                 continue;
             }
 
-            var emotes = new List<RemoteEmote>();
             var changed = new List<string>();
             try
             {
@@ -413,7 +446,15 @@ public class EmoteFeed : MonoBehaviour
                         if (emote != null)
                         {
                             set[emote.Name] = emote;
-                            emotes.Add(emote);
+                        }
+                    }
+                    // Only your own emotes load up front (they're in your picker). Other
+                    // players' load the first time one shows up in chat, via Resolve.
+                    if (id == LocalSteamId)
+                    {
+                        foreach (RemoteEmote emote in set.Values)
+                        {
+                            EnsureLoaded(emote);
                         }
                     }
                     // A refresh that emptied the set still needs that player's lines redrawn.
@@ -431,8 +472,9 @@ public class EmoteFeed : MonoBehaviour
                 continue;
             }
 
-            yield return LoadSheets(emotes);
-            if (generation == connectionGeneration && changed.Count > 0)
+            // Redrawing these players' lines resolves their :name: codes, which queues the
+            // emotes those lines actually use.
+            if (changed.Count > 0)
             {
                 SetsChanged?.Invoke(changed);
             }
@@ -441,54 +483,133 @@ public class EmoteFeed : MonoBehaviour
 
     // ---- sheets ----
 
-    IEnumerator LoadSheets(List<RemoteEmote> emotes)
+    // Queues the emote's sheet to load into the atlas, unless it's there, queued, or its
+    // sheet already failed this connection. A few loaders run at once so a server's worth of
+    // first-time downloads don't line up one behind another.
+    void EnsureLoaded(RemoteEmote emote)
     {
-        // Time spent decoding in the current frame. Cached sheets load without waiting on
-        // anything, so without this a whole server's worth would decode in one frame.
-        var frameTime = System.Diagnostics.Stopwatch.StartNew();
-        int frame = Time.frameCount;
-        foreach (RemoteEmote emote in emotes)
+        if (atlas.Get(emote.Id) != null || failedSheets.Contains(emote.Sheet) || !queuedIds.Add(emote.Id))
         {
-            if (atlas.Get(emote.Id) != null)
+            return;
+        }
+        loadQueue.Enqueue(emote);
+        while (activeLoaders < MAX_PARALLEL_LOADS && activeLoaders < loadQueue.Count)
+        {
+            activeLoaders++;
+            StartCoroutine(Loader());
+        }
+    }
+
+    IEnumerator Loader()
+    {
+        while (loadQueue.Count > 0)
+        {
+            RemoteEmote emote = loadQueue.Dequeue();
+            yield return LoadEmote(emote);
+            queuedIds.Remove(emote.Id);
+        }
+        activeLoaders--;
+    }
+
+    IEnumerator LoadEmote(RemoteEmote emote)
+    {
+        if (atlas.Get(emote.Id) != null)
+        {
+            yield break;
+        }
+        if (!sheets.TryGetValue(emote.Sheet, out Texture2D sheet))
+        {
+            // Another loader may already be fetching this sheet; wait for it instead.
+            if (loadingSheets.Contains(emote.Sheet))
             {
-                continue;
-            }
-            if (!sheets.TryGetValue(emote.Sheet, out Texture2D sheet))
-            {
-                if (Time.frameCount != frame)
-                {
-                    frame = Time.frameCount;
-                    frameTime.Restart();
-                }
-                if (frameTime.Elapsed.TotalMilliseconds > DECODE_BUDGET_MS)
+                while (loadingSheets.Contains(emote.Sheet))
                 {
                     yield return null;
-                    frame = Time.frameCount;
-                    frameTime.Restart();
                 }
+            }
+            else
+            {
+                loadingSheets.Add(emote.Sheet);
                 yield return LoadSheet(emote.Sheet);
-                if (!sheets.TryGetValue(emote.Sheet, out sheet))
+                loadingSheets.Remove(emote.Sheet);
+                if (!sheets.ContainsKey(emote.Sheet))
                 {
-                    continue;
+                    failedSheets.Add(emote.Sheet);
                 }
             }
-            int rows = (emote.Frames + emote.Columns - 1) / emote.Columns;
-            if (sheet.width < emote.Columns * emote.FrameWidth || sheet.height < rows * emote.FrameHeight)
+            if (!sheets.TryGetValue(emote.Sheet, out sheet))
             {
-                Plugin.LogWarning($"[Emotes] Sheet for :{emote.Name}: is smaller than its layout; skipped.");
-                continue;
-            }
-            if (atlas.FillRatio >= COMPACT_AT_FILL)
-            {
-                Compact();
-            }
-            EmoteSlot slot = atlas.Add(emote, sheet);
-            if (slot != null)
-            {
-                sheetOf[emote.Id] = emote.Sheet;
-                animator?.Add(emote, sheet, slot);
+                yield break;
             }
         }
+        int rows = (emote.Frames + emote.Columns - 1) / emote.Columns;
+        if (sheet.width < emote.Columns * emote.FrameWidth || sheet.height < rows * emote.FrameHeight)
+        {
+            Plugin.LogWarning($"[Emotes] Sheet for :{emote.Name}: is smaller than its layout; skipped.");
+            yield break;
+        }
+        if (atlas.FillRatio >= COMPACT_AT_FILL)
+        {
+            Compact();
+        }
+        EmoteSlot slot = atlas.Add(emote, sheet);
+        if (slot != null)
+        {
+            sheetOf[emote.Id] = emote.Sheet;
+            animator?.Add(emote, sheet, slot);
+            MarkLoaded(emote.Id);
+        }
+    }
+
+    // Collects who is affected by newly loaded emotes and redraws once for the lot, so a
+    // burst of loads is one redraw rather than one per emote.
+    void MarkLoaded(string id)
+    {
+        if (serverSet.Values.Any(e => e.Id == id))
+        {
+            redrawAll = true;
+        }
+        foreach (var pair in personal)
+        {
+            if (pair.Value.Values.Any(e => e.Id == id))
+            {
+                redrawOwners.Add(pair.Key);
+            }
+        }
+        if (!redrawScheduled && (redrawAll || redrawOwners.Count > 0))
+        {
+            redrawScheduled = true;
+            StartCoroutine(FlushRedraw());
+        }
+    }
+
+    IEnumerator FlushRedraw()
+    {
+        yield return new WaitForSecondsRealtime(REDRAW_DELAY_S);
+        redrawScheduled = false;
+        if (redrawAll)
+        {
+            redrawAll = false;
+            redrawOwners.Clear();
+            SetsChanged?.Invoke(null);
+        }
+        else if (redrawOwners.Count > 0)
+        {
+            List<string> owners = redrawOwners.ToList();
+            redrawOwners.Clear();
+            SetsChanged?.Invoke(owners);
+        }
+    }
+
+    // Decoding is main-thread work; loaders share this per-frame allowance.
+    bool DecodeBudgetLeft()
+    {
+        if (Time.frameCount != budgetFrame)
+        {
+            budgetFrame = Time.frameCount;
+            budgetUsedMs = 0;
+        }
+        return budgetUsedMs < DECODE_BUDGET_MS;
     }
 
     IEnumerator LoadSheet(string path)
@@ -564,7 +685,13 @@ public class EmoteFeed : MonoBehaviour
             });
         }
 
+        while (!DecodeBudgetLeft())
+        {
+            yield return null;
+        }
+        var decodeTime = System.Diagnostics.Stopwatch.StartNew();
         Texture2D sheet = DecodeSheet(bytes);
+        budgetUsedMs += decodeTime.Elapsed.TotalMilliseconds;
         if (sheet == null)
         {
             Plugin.LogWarning($"[Emotes] Could not decode sheet {file}.");
