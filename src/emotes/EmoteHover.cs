@@ -24,27 +24,23 @@ public class EmoteHover : MonoBehaviour
     static EmoteHover instance;
 
     readonly List<Tracked> tracked = new List<Tracked>();
-    readonly Dictionary<Vector2Int, EmoteSlot> slotsByOrigin = new Dictionary<Vector2Int, EmoteSlot>();
     EmoteAtlas atlas;
     EmoteTooltip tooltip;
     bool loggedFirstHit;
 
     public static EmoteHover Create(EmoteAtlas atlas)
     {
-        var go = new GameObject("ToasterEmotesHover");
+        var go = new GameObject("TRLEmotesHover");
         DontDestroyOnLoad(go);
         instance = go.AddComponent<EmoteHover>();
         instance.atlas = atlas;
-        foreach (EmoteSlot slot in atlas.Slots.Values)
-        {
-            instance.slotsByOrigin[new Vector2Int(slot.Rect.x, slot.Rect.y)] = slot;
-        }
         return instance;
     }
 
     public static void Track(Label label)
     {
-        if (instance == null)
+        // A re-rendered message is tracked already; its hits refresh on the next layout.
+        if (instance == null || instance.tracked.Exists(t => t.Label == label))
         {
             return;
         }
@@ -83,7 +79,7 @@ public class EmoteHover : MonoBehaviour
             }
 
             var origin = new Vector2Int(Mathf.RoundToInt(uvMin.x * atlasW), Mathf.RoundToInt(uvMin.y * atlasH));
-            if (!slotsByOrigin.TryGetValue(origin, out EmoteSlot slot))
+            if (!atlas.TryGetByOrigin(origin, out EmoteSlot slot))
             {
                 continue;
             }
@@ -95,7 +91,7 @@ public class EmoteHover : MonoBehaviour
                 continue;
             }
 
-            entry.Hits.Add((Rect.MinMaxRect(posMin.x, posMin.y, posMax.x, posMax.y), slot.Source.Name));
+            entry.Hits.Add((Rect.MinMaxRect(posMin.x, posMin.y, posMax.x, posMax.y), slot.Name));
         }
 
         if (!loggedFirstHit && entry.Hits.Count > 0)

@@ -32,10 +32,15 @@ public class EmoteInput : MonoBehaviour
     static EmoteInput instance;
 
     EmoteAtlas atlas;
-    // Autocomplete offers usableNames; the picker lists server and personal separately.
-    List<string> usableNames;
-    List<string> serverNames;
-    List<string> personalNames;
+    // From EmoteFeed: the server set and the local player's personal set, refreshed when
+    // either changes. usable maps each name you can send to the sprite it shows (server first).
+    List<(string name, EmoteSlot slot)> serverEntries = new List<(string, EmoteSlot)>();
+    List<(string name, EmoteSlot slot)> personalEntries = new List<(string, EmoteSlot)>();
+    bool personalAllowed = true;
+    readonly Dictionary<string, EmoteSlot> usable = new Dictionary<string, EmoteSlot>(System.StringComparer.OrdinalIgnoreCase);
+    List<string> usableNames = new List<string>();
+    System.Action<ICollection<string>> onSetsChanged;
+    ScrollView pickerScroll;
     UIChat uiChat;
     VisualElement chat;
     TextField textField;
@@ -61,14 +66,21 @@ public class EmoteInput : MonoBehaviour
 
     public static EmoteInput Create(EmoteAtlas atlas)
     {
-        var go = new GameObject("ToasterEmotesInput");
+        var go = new GameObject("TRLEmotesInput");
         DontDestroyOnLoad(go);
         instance = go.AddComponent<EmoteInput>();
         instance.atlas = atlas;
-        var sorted = atlas.Slots.Values.OrderBy(s => s.Source.Name, System.StringComparer.OrdinalIgnoreCase).ToList();
-        instance.serverNames = sorted.Where(s => !s.Source.Personal).Select(s => s.Source.Name).ToList();
-        instance.personalNames = sorted.Where(s => s.Source.Personal).Select(s => s.Source.Name).ToList();
-        instance.usableNames = sorted.Select(s => s.Source.Name).Where(EmoteRuntime.IsUsable).ToList();
+        instance.RefreshSets();
+        EmoteInput self = instance;
+        instance.onSetsChanged = ids =>
+        {
+            EmoteFeed feed = EmoteFeed.Instance;
+            if (ids == null || (feed?.LocalSteamId != null && ids.Contains(feed.LocalSteamId)))
+            {
+                self.RefreshSets();
+            }
+        };
+        EmoteFeed.SetsChanged += instance.onSetsChanged;
 
         // If the chat UI already exists, attach now; otherwise ChatInitializePatch attaches later.
         UIManager uiManager = MonoBehaviourSingleton<UIManager>.Instance;
@@ -157,6 +169,7 @@ public class EmoteInput : MonoBehaviour
 
     public void Destroy()
     {
+        EmoteFeed.SetsChanged -= onSetsChanged;
         Detach();
         instance = null;
         Object.Destroy(gameObject);
@@ -178,7 +191,8 @@ public class EmoteInput : MonoBehaviour
         }
 
         Rect field = root.WorldToLocal(textField.worldBound);
-        pickerButton.style.display = DisplayStyle.Flex;
+        bool anyEmotes = serverEntries.Count > 0 || personalEntries.Count > 0;
+        pickerButton.style.display = anyEmotes ? DisplayStyle.Flex : DisplayStyle.None;
         pickerButton.style.left = field.xMax + GAP;
         pickerButton.style.top = field.center.y - BUTTON_SIZE / 2f;
 
@@ -210,7 +224,7 @@ public class EmoteInput : MonoBehaviour
 
     void BuildSuggestBox()
     {
-        suggestBox = Panel("ToasterEmotesSuggest");
+        suggestBox = Panel("TRLEmotesSuggest");
         suggestHeader = new Label { pickingMode = PickingMode.Ignore };
         suggestHeader.style.fontSize = 12;
         suggestHeader.style.color = EmoteUi.MutedTextColor;
@@ -273,7 +287,7 @@ public class EmoteInput : MonoBehaviour
             Label row = suggestRows[i];
             if (i < suggestions.Count)
             {
-                row.text = EmoteUi.SpriteTag(atlas.Name, suggestions[i]) + "  :" + suggestions[i] + ":";
+                row.text = atlas.Tag(usable[suggestions[i]]) + "  :" + suggestions[i] + ":";
                 row.style.display = DisplayStyle.Flex;
             }
             else
@@ -461,7 +475,7 @@ public class EmoteInput : MonoBehaviour
 
     void BuildPicker()
     {
-        pickerButton = new Label { name = "ToasterEmotesPickerButton", focusable = false };
+        pickerButton = new Label { name = "TRLEmotesPickerButton", focusable = false };
         pickerButton.style.position = Position.Absolute;
         pickerButton.style.width = BUTTON_SIZE;
         pickerButton.style.height = BUTTON_SIZE;
@@ -479,15 +493,14 @@ public class EmoteInput : MonoBehaviour
         EmoteUi.KeepFocusOnClick(pickerButton);
         root.Add(pickerButton);
 
-        picker = Panel("ToasterEmotesPicker");
+        picker = Panel("TRLEmotesPicker");
         picker.style.width = PICKER_COLUMNS * PICKER_CELL + 16f;
 
-        var scroll = new ScrollView(ScrollViewMode.Vertical);
-        scroll.style.maxHeight = PICKER_MAX_HEIGHT;
-        scroll.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
-        AddPickerSection(scroll, "SERVER", serverNames, locked: false);
-        AddPickerSection(scroll, "PERSONAL", personalNames, locked: !EmoteRuntime.PersonalAllowed);
-        picker.Add(scroll);
+        pickerScroll = new ScrollView(ScrollViewMode.Vertical);
+        pickerScroll.style.maxHeight = PICKER_MAX_HEIGHT;
+        pickerScroll.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
+        picker.Add(pickerScroll);
+        RebuildPickerSections();
 
         var divider = new VisualElement { pickingMode = PickingMode.Ignore };
         divider.style.height = 1;
@@ -516,9 +529,49 @@ public class EmoteInput : MonoBehaviour
         root.Add(picker);
     }
 
-    void AddPickerSection(VisualElement parent, string title, List<string> names, bool locked)
+    // Reads the current sets from EmoteFeed and rebuilds whatever UI shows them.
+    void RefreshSets()
     {
-        if (names.Count == 0)
+        EmoteFeed feed = EmoteFeed.Instance;
+        var byName = System.StringComparer.OrdinalIgnoreCase;
+        serverEntries = feed == null ? new List<(string, EmoteSlot)>() : feed.ServerEmotes().OrderBy(e => e.name, byName).ToList();
+        personalEntries = feed == null ? new List<(string, EmoteSlot)>() : feed.LocalPersonalEmotes().OrderBy(e => e.name, byName).ToList();
+        personalAllowed = feed?.AllowPersonal ?? true;
+
+        usable.Clear();
+        foreach (var entry in serverEntries)
+        {
+            usable[entry.name] = entry.slot;
+        }
+        if (personalAllowed)
+        {
+            foreach (var entry in personalEntries)
+            {
+                if (!usable.ContainsKey(entry.name))
+                {
+                    usable[entry.name] = entry.slot;
+                }
+            }
+        }
+        usableNames = usable.Keys.OrderBy(n => n, byName).ToList();
+
+        if (pickerScroll != null)
+        {
+            RebuildPickerSections();
+            ShuffleButtonIcon();
+        }
+    }
+
+    void RebuildPickerSections()
+    {
+        pickerScroll.Clear();
+        AddPickerSection(pickerScroll, "SERVER", serverEntries, locked: false);
+        AddPickerSection(pickerScroll, "PERSONAL", personalEntries, locked: !personalAllowed);
+    }
+
+    void AddPickerSection(VisualElement parent, string title, List<(string name, EmoteSlot slot)> entries, bool locked)
+    {
+        if (entries.Count == 0)
         {
             return;
         }
@@ -556,19 +609,19 @@ public class EmoteInput : MonoBehaviour
             grid.style.filter = new StyleList<FilterFunction>(new List<FilterFunction> { grayscale });
             grid.style.opacity = 0.55f;
         }
-        foreach (string name in names)
+        foreach (var entry in entries)
         {
-            grid.Add(PickerCell(name, locked));
+            grid.Add(PickerCell(entry.name, entry.slot, locked));
         }
         parent.Add(grid);
     }
 
-    VisualElement PickerCell(string name, bool locked)
+    VisualElement PickerCell(string name, EmoteSlot slot, bool locked)
     {
-        var cell = new Label(EmoteUi.SpriteTag(atlas.Name, name)) { focusable = false };
+        var cell = new Label(atlas.Tag(slot)) { focusable = false };
         cell.style.width = PICKER_CELL;
         cell.style.height = PICKER_CELL;
-        cell.style.fontSize = FitFontSize(name, PICKER_FONT);
+        cell.style.fontSize = FitFontSize(slot, PICKER_FONT);
         cell.style.unityTextAlign = TextAnchor.MiddleCenter;
         EmoteUi.Padding(cell, 0, 0);
         EmoteUi.Rounded(cell);
@@ -578,7 +631,7 @@ public class EmoteInput : MonoBehaviour
             {
                 cell.style.backgroundColor = EmoteUi.HighlightColor;
             }
-            ShowInFooter(name, locked);
+            ShowInFooter(name, slot, locked);
         });
         cell.RegisterCallback<PointerLeaveEvent>(_ => cell.style.backgroundColor = Color.clear);
         if (locked)
@@ -599,19 +652,19 @@ public class EmoteInput : MonoBehaviour
     }
 
     // The footer always shows an emote: the last hovered one, or the first usable one on open.
-    void ShowInFooter(string name, bool locked)
+    void ShowInFooter(string name, EmoteSlot slot, bool locked)
     {
-        footerEmote.text = EmoteUi.SpriteTag(atlas.Name, name);
-        footerEmote.style.fontSize = FitFontSize(name, PICKER_FONT);
+        footerEmote.text = atlas.Tag(slot);
+        footerEmote.style.fontSize = FitFontSize(slot, PICKER_FONT);
         pickerFooter.text = ":" + name + ":";
         footerNote.style.display = locked ? DisplayStyle.Flex : DisplayStyle.None;
     }
 
     // Sprites scale with font size and keep their aspect, so a 2:1 emote at the normal size is
     // twice as wide as a cell. Shrink wide ones until they fit the square.
-    float FitFontSize(string name, float size)
+    static float FitFontSize(EmoteSlot slot, float size)
     {
-        if (!atlas.Slots.TryGetValue(name, out EmoteSlot slot) || slot.Rect.height == 0)
+        if (slot == null || slot.Rect.height == 0)
         {
             return size;
         }
@@ -623,9 +676,9 @@ public class EmoteInput : MonoBehaviour
     {
         if (usableNames.Count > 0)
         {
-            string name = usableNames[Random.Range(0, usableNames.Count)];
-            pickerButton.text = EmoteUi.SpriteTag(atlas.Name, name);
-            pickerButton.style.fontSize = FitFontSize(name, BUTTON_FONT);
+            EmoteSlot slot = usable[usableNames[Random.Range(0, usableNames.Count)]];
+            pickerButton.text = atlas.Tag(slot);
+            pickerButton.style.fontSize = FitFontSize(slot, BUTTON_FONT);
         }
     }
 
@@ -639,7 +692,7 @@ public class EmoteInput : MonoBehaviour
         HideSuggestions();
         if (usableNames.Count > 0)
         {
-            ShowInFooter(usableNames[0], locked: false);
+            ShowInFooter(usableNames[0], usable[usableNames[0]], locked: false);
         }
         picker.style.display = DisplayStyle.Flex;
         picker.BringToFront();

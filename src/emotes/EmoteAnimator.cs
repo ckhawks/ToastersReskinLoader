@@ -4,9 +4,10 @@ using UnityEngine.Rendering;
 
 namespace ToasterReskinLoader.emotes;
 
-// Animates by overwriting each animated emote's atlas slot on the GPU when its frame changes.
-// Every chat label showing that emote samples the same slot, so cost scales with the number
-// of distinct animated emotes, not with how many are on screen, and no text is re-laid out.
+// Animates by copying each animated emote's current frame from its sprite sheet into its
+// atlas cell on the GPU, only when the frame changes. Every chat label showing that emote
+// samples the same cell, so cost scales with distinct animated emotes, not with how many are
+// on screen, and no text is re-laid out.
 public class EmoteAnimator : MonoBehaviour
 {
     // Browsers treat GIF delays under 20 ms as 100 ms; match that so broken GIFs don't spin.
@@ -15,9 +16,11 @@ public class EmoteAnimator : MonoBehaviour
 
     class Track
     {
-        public EmoteSlot Slot;
+        public Texture2D Sheet;
+        public RectInt[] Frames;
         public int[] FrameEndsMs;
         public int TotalMs;
+        public RectInt Cell;
         public int CurrentFrame;
     }
 
@@ -28,41 +31,35 @@ public class EmoteAnimator : MonoBehaviour
     {
         if (SystemInfo.copyTextureSupport == CopyTextureSupport.None)
         {
-            Plugin.LogError("[Emotes] GPU does not support CopyTexture. Animated emotes will show their first frame only.");
+            Plugin.LogError("[Emotes] GPU does not support CopyTexture. Emotes will not render.");
             return null;
         }
-
-        if (atlas.Texture.format != TextureFormat.RGBA32)
-        {
-            Plugin.LogError($"[Emotes] Atlas format is {atlas.Texture.format}, frames are RGBA32. Animated emotes will show their first frame only.");
-            return null;
-        }
-
-        var go = new GameObject("ToasterEmotesAnimator");
+        var go = new GameObject("TRLEmotesAnimator");
         DontDestroyOnLoad(go);
         var animator = go.AddComponent<EmoteAnimator>();
         animator.atlasTexture = atlas.Texture;
-
-        foreach (EmoteSlot slot in atlas.Slots.Values)
-        {
-            if (!slot.Source.IsAnimated)
-            {
-                continue;
-            }
-            var ends = new int[slot.Source.Frames.Count];
-            int total = 0;
-            for (int i = 0; i < ends.Length; i++)
-            {
-                int delay = slot.Source.FrameDelaysMs[i];
-                total += delay < MIN_DELAY_MS ? FALLBACK_DELAY_MS : delay;
-                ends[i] = total;
-            }
-            animator.tracks.Add(new Track { Slot = slot, FrameEndsMs = ends, TotalMs = total });
-        }
-
-        animator.enabled = animator.tracks.Count > 0;
-        Plugin.Log($"[Emotes] Animating {animator.tracks.Count} emotes");
+        animator.enabled = false;
         return animator;
+    }
+
+    public void Add(RemoteEmote emote, Texture2D sheet, EmoteSlot slot)
+    {
+        if (!emote.IsAnimated)
+        {
+            return;
+        }
+        var frames = new RectInt[emote.Frames];
+        var ends = new int[emote.Frames];
+        int total = 0;
+        for (int i = 0; i < emote.Frames; i++)
+        {
+            frames[i] = emote.FrameRect(i, sheet.height);
+            int delay = i < emote.DelaysMs.Length ? emote.DelaysMs[i] : FALLBACK_DELAY_MS;
+            total += delay < MIN_DELAY_MS ? FALLBACK_DELAY_MS : delay;
+            ends[i] = total;
+        }
+        tracks.Add(new Track { Sheet = sheet, Frames = frames, FrameEndsMs = ends, TotalMs = total, Cell = slot.Rect });
+        enabled = true;
     }
 
     void Update()
@@ -85,15 +82,16 @@ public class EmoteAnimator : MonoBehaviour
             }
             track.CurrentFrame = frame;
 
-            RectInt rect = track.Slot.Rect;
+            RectInt source = track.Frames[frame];
             Graphics.CopyTexture(
-                track.Slot.Source.Frames[frame], 0, 0, 0, 0, rect.width, rect.height,
-                atlasTexture, 0, 0, rect.x, rect.y);
+                track.Sheet, 0, 0, source.x, source.y, source.width, source.height,
+                atlasTexture, 0, 0, track.Cell.x, track.Cell.y);
         }
     }
 
     public void Destroy()
     {
+        tracks.Clear();
         Object.Destroy(gameObject);
     }
 }

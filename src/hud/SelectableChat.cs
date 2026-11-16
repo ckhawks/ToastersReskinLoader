@@ -61,7 +61,7 @@ internal static class SelectableChat
                         {
                             if (evt.button != 0) return;
                             GUIUtility.systemCopyBuffer = StripRichText(
-                                ToasterReskinLoader.emotes.ChatEmoteFormatter.SpriteTagsToShortcodes(copyTarget.text ?? ""));
+                                ToasterReskinLoader.emotes.EmoteChat.ForCopy(copyTarget, copyTarget.text ?? ""));
                             evt.StopPropagation();
                         }
                         catch { }

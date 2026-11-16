@@ -11,10 +11,12 @@ public class ChatEmoteFormatterTests
         "spin",
     };
 
-    static string Format(string s) => ChatEmoteFormatter.Format(s, "A", known.Contains, new EmoteFormatOptions());
+    static string TagFor(string name) => known.Contains(name) ? Tag(name) : null;
+
+    static string Format(string s) => ChatEmoteFormatter.Format(s, TagFor, new EmoteFormatOptions());
 
     static string Hidden(string s, HiddenEmoteMode mode) =>
-        ChatEmoteFormatter.Format(s, "A", known.Contains, new EmoteFormatOptions { Render = false, WhenHidden = mode });
+        ChatEmoteFormatter.Format(s, TagFor, new EmoteFormatOptions { Render = false, WhenHidden = mode });
 
     static string Tag(string name) => $"<sprite=\"A\" name=\"{name}\">";
 
@@ -77,7 +79,7 @@ public class ChatEmoteFormatterTests
     public void JumboCanBeTurnedOff()
     {
         var options = new EmoteFormatOptions { Jumbo = false };
-        Assert.Equal(Tag("pog"), ChatEmoteFormatter.Format(":pog:", "A", known.Contains, options));
+        Assert.Equal(Tag("pog"), ChatEmoteFormatter.Format(":pog:", TagFor, options));
     }
 
     [Fact]
@@ -108,12 +110,5 @@ public class ChatEmoteFormatterTests
     public void HiddenEmoteOnlyKeepsMixedMessageAsTyped()
     {
         Assert.Equal("gg :pog:", Hidden("gg :pog:", HiddenEmoteMode.HideEmoteOnly));
-    }
-
-    [Fact]
-    public void SpriteTagsBecomeShortcodesForCopying()
-    {
-        string formatted = Format("nice :pog: shot");
-        Assert.Equal("nice :pog: shot", ChatEmoteFormatter.SpriteTagsToShortcodes(formatted));
     }
 }

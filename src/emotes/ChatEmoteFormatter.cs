@@ -29,22 +29,12 @@ public static class ChatEmoteFormatter
     public const string JUMBO_SIZE = "200%";
 
     static readonly Regex shortcode = new Regex(":([A-Za-z0-9_]{2,32}):", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-    static readonly Regex spriteTag = new Regex("<sprite=\"[^\"]*\" name=\"([A-Za-z0-9_]{2,32})\">", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-    // Turns our sprite tags back into ":name:", so copying a chat line keeps its emotes.
-    public static string SpriteTagsToShortcodes(string text)
-    {
-        if (string.IsNullOrEmpty(text) || text.IndexOf("<sprite", StringComparison.Ordinal) < 0)
-        {
-            return text;
-        }
-        return spriteTag.Replace(text, ":$1:");
-    }
-
-    // Rewrites known :name: shortcodes per the options. Input must already be rich-text filtered
+    // Rewrites :name: shortcodes per the options. tagFor returns the sprite tag a name shows
+    // as for this message's sender, or null when it isn't an emote for them. Input must already be rich-text filtered
     // by the game so the only tags in the output are ours. Unknown shortcodes always stay as text.
     // An empty result makes the game hide the message.
-    public static string Format(string content, string atlasName, Func<string, bool> isKnown, EmoteFormatOptions options)
+    public static string Format(string content, Func<string, string> tagFor, EmoteFormatOptions options)
     {
         if (string.IsNullOrEmpty(content) || content.IndexOf(':') < 0)
         {
@@ -70,7 +60,8 @@ public static class ChatEmoteFormatter
                 break;
             }
             string name = m.Groups[1].Value;
-            if (!isKnown(name))
+            string tag = tagFor(name);
+            if (tag == null)
             {
                 pos = m.Index + m.Length - 1;
                 continue;
@@ -80,7 +71,7 @@ public static class ChatEmoteFormatter
             sb.Append(content, last, m.Index - last);
             if (options.Render)
             {
-                sb.Append("<sprite=\"").Append(atlasName).Append("\" name=\"").Append(name).Append("\">");
+                sb.Append(tag);
             }
             emoteCount++;
             last = m.Index + m.Length;

@@ -8,95 +8,112 @@ namespace ToasterReskinLoader.emotes;
 
 public class EmoteSlot
 {
-    public EmoteSource Source;
+    public string Id;
+    // Name the emote had in the first set it arrived from; used for hover text.
+    public string Name;
     public RectInt Rect;
+    public string SpriteName => "e" + Id;
 }
 
-// Packs the first frame of every emote into one texture and wraps it in a TextCore
-// SpriteAsset, so chat labels can draw them with <sprite="ATLAS" name="emote">.
-// Animated emotes keep their slot and get later frames copied in by EmoteAnimator.
+// One atlas page that emotes are added to as their sets arrive, never rebuilt.
+// Each emote gets one 64px cell and a sprite named by its puckstats id, so two players'
+// :pog: are different sprites. Animated emotes keep their cell and EmoteAnimator copies
+// later frames into it from the emote's sprite sheet.
 public class EmoteAtlas
 {
-    const int PADDING = 2;
-    const int MAX_ATLAS_SIZE = 4096;
+    public const string NAME = "TRLEmotes";
+    const int SIZE = 2048;
+    // 64px frames plus a 1px gutter on each side so bilinear sampling never bleeds.
+    const int CELL = 66;
+    const int CELLS_PER_ROW = SIZE / CELL;
+    const int CAPACITY = CELLS_PER_ROW * CELLS_PER_ROW;
     // How far the emote sits above the baseline, as a fraction of its height.
     const float BEARING_Y = 0.85f;
 
     static readonly PropertyInfo spriteSheetProperty = typeof(SpriteAsset).GetProperty("spriteSheet");
 
-    public string Name;
-    public Texture2D Texture;
-    public SpriteAsset SpriteAsset;
-    public readonly Dictionary<string, EmoteSlot> Slots = new Dictionary<string, EmoteSlot>(System.StringComparer.OrdinalIgnoreCase);
+    public Texture2D Texture { get; private set; }
+    public SpriteAsset SpriteAsset { get; private set; }
 
-    public static EmoteAtlas Build(string atlasName, List<EmoteSource> sources)
+    readonly Dictionary<string, EmoteSlot> byId = new Dictionary<string, EmoteSlot>();
+    readonly Dictionary<Vector2Int, EmoteSlot> byOrigin = new Dictionary<Vector2Int, EmoteSlot>();
+    bool loggedFull;
+
+    public static EmoteAtlas Create()
     {
-        var atlas = new EmoteAtlas { Name = atlasName };
-
-        var seen = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
-        var unique = new List<EmoteSource>();
-        foreach (EmoteSource source in sources)
-        {
-            if (!seen.Add(source.Name))
-            {
-                Plugin.LogError($"[Emotes] Duplicate emote name '{source.Name}' (names are case-insensitive). Skipped.");
-                continue;
-            }
-            unique.Add(source);
-        }
-
-        var firstFrames = new Texture2D[unique.Count];
-        for (int i = 0; i < unique.Count; i++)
-        {
-            firstFrames[i] = unique[i].Frames[0];
-        }
-
-        atlas.Texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-        atlas.Texture.name = atlasName;
-        Rect[] uvRects = atlas.Texture.PackTextures(firstFrames, PADDING, MAX_ATLAS_SIZE, false);
+        var atlas = new EmoteAtlas();
+        atlas.Texture = new Texture2D(SIZE, SIZE, TextureFormat.RGBA32, false) { name = NAME };
+        atlas.Texture.SetPixels32(new Color32[SIZE * SIZE]);
         atlas.Texture.filterMode = FilterMode.Bilinear;
         atlas.Texture.wrapMode = TextureWrapMode.Clamp;
-
-        var spriteAsset = ScriptableObject.CreateInstance<SpriteAsset>();
-        spriteAsset.name = atlasName;
-        spriteAsset.hashCode = TextHash.CaseInsensitive(atlasName);
-        spriteSheetProperty.GetSetMethod(true).Invoke(spriteAsset, new object[] { atlas.Texture });
-        spriteAsset.material = CreateMaterial(atlas.Texture);
-
-        for (int i = 0; i < unique.Count; i++)
-        {
-            EmoteSource source = unique[i];
-            var rect = new RectInt(
-                Mathf.RoundToInt(uvRects[i].x * atlas.Texture.width),
-                Mathf.RoundToInt(uvRects[i].y * atlas.Texture.height),
-                source.Width,
-                source.Height);
-
-            var metrics = new GlyphMetrics(source.Width, source.Height, 0f, source.Height * BEARING_Y, source.Width);
-            var glyphRect = new GlyphRect(rect.x, rect.y, rect.width, rect.height);
-            var glyph = new SpriteGlyph((uint)i, metrics, glyphRect, 1f, 0);
-            var character = new SpriteCharacter(0xE000u + (uint)i, spriteAsset, glyph) { name = source.Name };
-
-            spriteAsset.spriteGlyphTable.Add(glyph);
-            spriteAsset.spriteCharacterTable.Add(character);
-            atlas.Slots[source.Name] = new EmoteSlot { Source = source, Rect = rect };
-        }
-
-        spriteAsset.UpdateLookupTables();
-        atlas.SpriteAsset = spriteAsset;
-
-        // Animation copies GPU-side only, so drop the CPU copies of every frame and the atlas.
-        foreach (EmoteSource source in unique)
-        {
-            foreach (Texture2D frame in source.Frames)
-            {
-                frame.Apply(false, true);
-            }
-        }
+        // Cells are filled on the GPU, so the CPU copy is never needed.
         atlas.Texture.Apply(false, true);
 
-        Plugin.Log($"[Emotes] Built atlas '{atlasName}': {unique.Count} emotes, {atlas.Texture.width}x{atlas.Texture.height}");
+        var spriteAsset = ScriptableObject.CreateInstance<SpriteAsset>();
+        spriteAsset.name = NAME;
+        spriteAsset.hashCode = TextHash.CaseInsensitive(NAME);
+        spriteSheetProperty.GetSetMethod(true).Invoke(spriteAsset, new object[] { atlas.Texture });
+        spriteAsset.material = CreateMaterial(atlas.Texture);
+        spriteAsset.UpdateLookupTables();
+        atlas.SpriteAsset = spriteAsset;
         return atlas;
+    }
+
+    public int Count => byId.Count;
+
+    public EmoteSlot Get(string id)
+    {
+        return id != null && byId.TryGetValue(id, out EmoteSlot slot) ? slot : null;
+    }
+
+    public bool TryGetByOrigin(Vector2Int origin, out EmoteSlot slot)
+    {
+        return byOrigin.TryGetValue(origin, out slot);
+    }
+
+    public string Tag(EmoteSlot slot)
+    {
+        return "<sprite=\"" + NAME + "\" name=\"" + slot.SpriteName + "\">";
+    }
+
+    // Copies the emote's first frame into a free cell and registers its sprite.
+    public EmoteSlot Add(RemoteEmote emote, Texture2D sheet)
+    {
+        EmoteSlot existing = Get(emote.Id);
+        if (existing != null)
+        {
+            return existing;
+        }
+        if (byId.Count >= CAPACITY)
+        {
+            if (!loggedFull)
+            {
+                loggedFull = true;
+                Plugin.LogError($"[Emotes] Atlas is full ({CAPACITY} emotes); new emotes will show as text.");
+            }
+            return null;
+        }
+
+        int index = byId.Count;
+        var rect = new RectInt(
+            (index % CELLS_PER_ROW) * CELL + 1,
+            (index / CELLS_PER_ROW) * CELL + 1,
+            emote.FrameWidth,
+            emote.FrameHeight);
+        RectInt source = emote.FrameRect(0, sheet.height);
+        Graphics.CopyTexture(sheet, 0, 0, source.x, source.y, source.width, source.height, Texture, 0, 0, rect.x, rect.y);
+
+        var metrics = new GlyphMetrics(rect.width, rect.height, 0f, rect.height * BEARING_Y, rect.width);
+        var glyph = new SpriteGlyph((uint)index, metrics, new GlyphRect(rect.x, rect.y, rect.width, rect.height), 1f, 0);
+        var slot = new EmoteSlot { Id = emote.Id, Name = emote.Name, Rect = rect };
+        var character = new SpriteCharacter(0xE000u + (uint)index, SpriteAsset, glyph) { name = slot.SpriteName };
+        SpriteAsset.spriteGlyphTable.Add(glyph);
+        SpriteAsset.spriteCharacterTable.Add(character);
+        SpriteAsset.UpdateLookupTables();
+
+        byId[emote.Id] = slot;
+        byOrigin[new Vector2Int(rect.x, rect.y)] = slot;
+        return slot;
     }
 
     static Material CreateMaterial(Texture2D texture)
@@ -115,14 +132,8 @@ public class EmoteAtlas
 
     public void Destroy()
     {
-        foreach (EmoteSlot slot in Slots.Values)
-        {
-            foreach (Texture2D frame in slot.Source.Frames)
-            {
-                Object.Destroy(frame);
-            }
-        }
-        Slots.Clear();
+        byId.Clear();
+        byOrigin.Clear();
         if (SpriteAsset != null)
         {
             Object.Destroy(SpriteAsset.material);

@@ -1,16 +1,13 @@
-using System.IO;
 using ToasterReskinLoader.core;
 
 namespace ToasterReskinLoader.emotes;
 
+// Chat emotes from puckstats: see EmoteFeed for where sets come from and how :name:
+// resolves per sender.
 public static class EmoteRuntime
 {
-    const string ATLAS_NAME = "ToasterEmotes";
-
-    // POC stand-in for the server's "allow personal emotes" community setting.
-    const string PERSONAL_DISABLED_MARKER = "personal-disabled";
-
     public static EmoteAtlas Atlas { get; private set; }
+
     // Read per message so settings changes apply to new messages straight away.
     public static bool Enabled => Settings.Current?.enableEmotes ?? true;
 
@@ -20,6 +17,11 @@ public static class EmoteRuntime
         WhenHidden = ParseHiddenMode(Settings.Current?.emotesWhenHidden),
         Jumbo = Settings.Current?.emotesJumbo ?? true,
     };
+
+    static EmoteAnimator animator;
+    static EmoteFeed feed;
+    static EmoteHover hover;
+    static EmoteInput input;
 
     static HiddenEmoteMode ParseHiddenMode(string value)
     {
@@ -33,36 +35,20 @@ public static class EmoteRuntime
                 return HiddenEmoteMode.ShowName;
         }
     }
-    public static bool PersonalAllowed { get; private set; } = true;
-    static EmoteAnimator animator;
-    static EmoteHover hover;
-    static EmoteInput input;
-
-    // Whether :name: may render or be inserted right now: server emotes always,
-    // personal ones only where the server allows them.
-    public static bool IsUsable(string name)
-    {
-        return Atlas != null
-            && Atlas.Slots.TryGetValue(name, out EmoteSlot slot)
-            && (!slot.Source.Personal || PersonalAllowed);
-    }
 
     public static void Setup()
     {
-        string pluginDir = Path.GetDirectoryName(typeof(EmoteRuntime).Assembly.Location);
-        string emotesDir = Path.Combine(pluginDir, "emotes");
-        PersonalAllowed = !File.Exists(Path.Combine(emotesDir, PERSONAL_DISABLED_MARKER));
-        Plugin.Log($"[Emotes] Personal emotes {(PersonalAllowed ? "allowed" : "disabled")}.");
-        var sources = LocalEmoteLoader.Load(emotesDir);
-        if (sources.Count == 0)
-        {
-            Plugin.Log("[Emotes] No emotes loaded.");
-            return;
-        }
-
-        Atlas = EmoteAtlas.Build(ATLAS_NAME, sources);
+        Atlas = EmoteAtlas.Create();
         SpriteAssetRegistry.Register(Atlas.SpriteAsset);
         animator = EmoteAnimator.Create(Atlas);
+        if (animator == null)
+        {
+            // Without CopyTexture nothing can be put in the atlas.
+            Teardown();
+            return;
+        }
+        feed = EmoteFeed.Create(Atlas, animator);
+        EmoteChat.Setup();
         hover = EmoteHover.Create(Atlas);
         input = EmoteInput.Create(Atlas);
     }
@@ -73,6 +59,9 @@ public static class EmoteRuntime
         input = null;
         hover?.Destroy();
         hover = null;
+        EmoteChat.Teardown();
+        feed?.Destroy();
+        feed = null;
         animator?.Destroy();
         animator = null;
         if (Atlas != null)
