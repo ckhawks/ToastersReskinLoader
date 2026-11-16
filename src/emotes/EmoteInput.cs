@@ -393,6 +393,19 @@ public class EmoteInput : MonoBehaviour
 
     void OnKeyDown(KeyDownEvent e)
     {
+        // Enter and Tab also arrive as a second KeyDown carrying just the character. If that
+        // reaches the text field after we used the key, Enter moves focus off the inner text
+        // input, and the next Enter then refocuses it after the game has closed chat, leaving
+        // a hidden field that eats typing.
+        if (e.keyCode == KeyCode.None && IsActionCharacter(e.character))
+        {
+            if (handledFrame == Time.frameCount)
+            {
+                Swallow(e);
+            }
+            return;
+        }
+
         bool actionKey = e.keyCode == KeyCode.UpArrow
             || e.keyCode == KeyCode.DownArrow
             || e.keyCode == KeyCode.Tab
@@ -500,6 +513,41 @@ public class EmoteInput : MonoBehaviour
         ClosePicker();
         handledFrame = Time.frameCount;
         Swallow(e);
+    }
+
+    static bool IsActionCharacter(char c)
+    {
+        return c == '\n' || c == '\r' || c == '\t' || c == (char)3;
+    }
+
+    // Called after the game closes chat input. If anything left keyboard focus inside the
+    // hidden text field, typing would go into it while the player skates; take it away.
+    public static void OnChatInputStopped()
+    {
+        EmoteInput self = instance;
+        if (self == null || self.textField == null)
+        {
+            return;
+        }
+        self.HideSuggestions();
+        self.ClosePicker();
+        // Unity can refocus the field later in the same event dispatch, so check again next tick.
+        self.BlurHiddenField();
+        self.textField.schedule.Execute(self.BlurHiddenField);
+    }
+
+    void BlurHiddenField()
+    {
+        if (uiChat == null || uiChat.IsFocused || textField == null)
+        {
+            return;
+        }
+        if (textField.focusController?.focusedElement is VisualElement focused
+            && (focused == textField || textField.Contains(focused)))
+        {
+            focused.Blur();
+            Plugin.Log("[Emotes] Cleared focus left in the closed chat field.");
+        }
     }
 
     void Swallow(EventBase e)
