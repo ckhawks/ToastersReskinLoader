@@ -62,6 +62,17 @@ public static class ChatSection
         SettingsUI.Note(root,
             "Turns :name: codes in chat into images, with autocomplete and the emote picker. Applies to new messages.");
 
+        SettingsUI.Note(root,
+            "Your own emotes are set up on puckstats.io: sign in with Steam, then upload emotes or add them from Browse. Changes show up the next time you join a server.");
+        {
+            var row = UITools.CreateConfigurationRow();
+            var manage = new Button { text = "Manage my emotes on puckstats.io" };
+            UITools.StyleConfigButton(manage);
+            manage.clicked += () => Application.OpenURL("https://puckstats.io/emotes?tab=mine");
+            row.Add(manage);
+            root.Add(row);
+        }
+
         SettingsUI.ToggleRow(root, "Pause animated emotes when chat fades", cfg.pauseEmotesWhenChatFaded,
             v => { cfg.pauseEmotesWhenChatFaded = v; Settings.Save(); });
         SettingsUI.Note(root,

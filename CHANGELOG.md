@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.5.2
+
+### Added
+- **Emotes in quick chat.** With Quick Chat Plus you can bind your own emotes to quick chat slots, and the menu shows them as images.
+- **Manage emotes from settings.** Chat > Emotes has a button that opens your emotes on puckstats.io.
+
 ## 2.5.1
 
 ### Fixed

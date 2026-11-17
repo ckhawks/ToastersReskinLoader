@@ -178,6 +178,18 @@ public class EmoteFeed : MonoBehaviour
             : Enumerable.Empty<(string, EmoteSlot)>();
     }
 
+    // The local player's set as fetched, loaded into the atlas or not. False until it arrives.
+    public bool TryGetLocalSet(out ICollection<RemoteEmote> emotes)
+    {
+        emotes = null;
+        if (LocalSteamId == null || !personal.TryGetValue(LocalSteamId, out var set))
+        {
+            return false;
+        }
+        emotes = set.Values;
+        return true;
+    }
+
     IEnumerable<(string, EmoteSlot)> Loaded(Dictionary<string, RemoteEmote> set)
     {
         foreach (var pair in set)

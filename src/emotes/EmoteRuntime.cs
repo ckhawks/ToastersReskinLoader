@@ -53,9 +53,13 @@ public static class EmoteRuntime
             EmoteChat.CollectVisible(ids);
             EmoteInput.CollectVisible(ids);
             EmoteHover.CollectVisible(ids);
+            EmoteQuickChatMenu.CollectVisible(ids);
         };
+        // Before the feed starts, so the local set's first arrival reaches other mods.
+        EmoteFeed.SetsChanged += EmoteAPI.OnSetsChanged;
         feed = EmoteFeed.Create(Atlas, animator);
         EmoteChat.Setup();
+        EmoteQuickChatMenu.Setup();
         hover = EmoteHover.Create(Atlas);
         input = EmoteInput.Create(Atlas);
     }
@@ -67,6 +71,9 @@ public static class EmoteRuntime
         hover?.Destroy();
         hover = null;
         EmoteChat.Teardown();
+        EmoteQuickChatMenu.Teardown();
+        EmoteFeed.SetsChanged -= EmoteAPI.OnSetsChanged;
+        EmoteAPI.Reset();
         feed?.Destroy();
         feed = null;
         animator?.Destroy();
